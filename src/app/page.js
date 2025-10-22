@@ -1,10 +1,21 @@
 "use client";
 import { useState, useEffect } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 import EventCard from "../components/EventCard";
+import LoginForm from "../components/auth/LoginForm";
+import SignupForm from "../components/auth/SignupForm";
+import UserMenu from "../components/auth/UserMenu";
 
 export default function Home() {
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showLogin, setShowLogin] = useState(false);
+  const [showSignup, setShowSignup] = useState(false);
+  const [particles, setParticles] = useState([]);
+
+  const { user, loading: authLoading, signOut } = useAuth();
 
   useEffect(() => {
     const handleMouseMove = (e) => {
@@ -15,157 +26,67 @@ export default function Home() {
     return () => window.removeEventListener("mousemove", handleMouseMove);
   }, []);
 
-  const events = [
-    {
-      id: 1,
-      title: "Summer Music Festival 2025",
-      description: "Three days of incredible music, art, and community",
-      date: "July 15, 2025 at 14:00",
-      location: "Central Park, New York",
-      price: 299,
-      category: "Music",
-      registered: 3847,
-      capacity: 5000,
-      featured: true,
-      imageUrl: null, // Will use gradient background
-    },
-    {
-      id: 2,
-      title: "Tech Innovation Summit",
-      description:
-        "Discover the latest in AI, blockchain, and emerging technologies",
-      date: "January 20, 2025 at 09:00",
-      location: "Moscone Center, San Francisco",
-      price: 499,
-      category: "Technology",
-      registered: 1250,
-      capacity: 1500,
-      featured: false,
-      imageUrl: null,
-    },
-    {
-      id: 3,
-      title: "International Food & Wine Festival",
-      description: "A culinary journey around the world with master chefs",
-      date: "February 5, 2025 at 18:00",
-      location: "Navy Pier, Chicago",
-      price: 149,
-      category: "Food & Drink",
-      registered: 890,
-      capacity: 1200,
-      featured: true,
-      imageUrl: null,
-    },
-    {
-      id: 4,
-      title: "Digital Art & Design Expo",
-      description:
-        "Showcase of contemporary digital art and interactive installations",
-      date: "March 10, 2025 at 10:00",
-      location: "LACMA, Los Angeles",
-      price: 75,
-      category: "Art & Culture",
-      registered: 456,
-      capacity: 800,
-      featured: false,
-      imageUrl: null,
-    },
-    {
-      id: 5,
-      title: "Startup Pitch Competition",
-      description:
-        "Watch innovative startups compete for venture capital funding",
-      date: "April 15, 2025 at 13:00",
-      location: "Austin Convention Center, Texas",
-      price: 199,
-      category: "Business",
-      registered: 678,
-      capacity: 1000,
-      featured: false,
-      imageUrl: null,
-    },
-    {
-      id: 6,
-      title: "Wellness & Mindfulness Retreat",
-      description:
-        "A weekend of yoga, meditation, and holistic wellness practices",
-      date: "May 20, 2025 at 08:00",
-      location: "Sedona, Arizona",
-      price: 350,
-      category: "Health & Wellness",
-      registered: 234,
-      capacity: 300,
-      featured: true,
-      imageUrl: null,
-    },
-    {
-      id: 7,
-      title: "Gaming Championship 2025",
-      description: "The ultimate esports tournament with top players worldwide",
-      date: "June 10, 2025 at 16:00",
-      location: "MGM Grand, Las Vegas",
-      price: 125,
-      category: "Gaming",
-      registered: 1890,
-      capacity: 2500,
-      featured: false,
-      imageUrl: null,
-    },
-    {
-      id: 8,
-      title: "Photography Workshop",
-      description: "Master the art of landscape and portrait photography",
-      date: "July 5, 2025 at 10:00",
-      location: "Yosemite National Park",
-      price: 199,
-      category: "Education",
-      registered: 67,
-      capacity: 80,
-      featured: false,
-      imageUrl: null,
-    },
-    {
-      id: 9,
-      title: "Blockchain & Crypto Conference",
-      description: "Explore the future of decentralized finance and Web3",
-      date: "August 15, 2025 at 09:00",
-      location: "Miami Beach Convention Center",
-      price: 599,
-      category: "Technology",
-      registered: 2100,
-      capacity: 3000,
-      featured: false,
-      imageUrl: null,
-    },
-    {
-      id: 10,
-      title: "International Comedy Festival",
-      description: "Laugh out loud with world-renowned comedians",
-      date: "September 22, 2025 at 19:00",
-      location: "Madison Square Garden, NYC",
-      price: 89,
-      category: "Entertainment",
-      registered: 4500,
-      capacity: 5000,
-      featured: true,
-      imageUrl: null,
-    },
-  ];
+  // Generate particles on client side only to avoid hydration issues
+  useEffect(() => {
+    const generateParticles = () => {
+      const newParticles = [...Array(50)].map((_, i) => ({
+        id: i,
+        left: Math.random() * 100,
+        top: Math.random() * 100,
+        animationDelay: Math.random() * 2,
+        animationDuration: 2 + Math.random() * 3,
+      }));
+      setParticles(newParticles);
+    };
+
+    generateParticles();
+  }, []);
+
+  // Fetch events from API
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch("/api/events");
+        if (response.ok) {
+          const data = await response.json();
+          setEvents(data.events.slice(0, 6)); // Show only first 6 events on homepage
+        }
+      } catch (error) {
+        console.error("Error fetching events:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchEvents();
+  }, []);
+
+  // Format date for display
+  const formatEventDate = (dateString, timeString) => {
+    const date = new Date(dateString);
+    const options = {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    };
+    return `${date.toLocaleDateString("en-US", options)} at ${timeString}`;
+  };
 
   return (
     <div className="min-h-screen bg-linear-to-br from-gray-900 via-blue-900 to-purple-900 relative overflow-hidden">
       {/* Animated Background Elements */}
       <div className="absolute inset-0">
         {/* Floating particles */}
-        {[...Array(50)].map((_, i) => (
+        {particles.map((particle) => (
           <div
-            key={i}
+            key={particle.id}
             className="absolute w-1 h-1 bg-white rounded-full opacity-20 animate-pulse"
             style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              animationDelay: `${Math.random() * 2}s`,
-              animationDuration: `${2 + Math.random() * 3}s`,
+              left: `${particle.left}%`,
+              top: `${particle.top}%`,
+              animationDelay: `${particle.animationDelay}s`,
+              animationDuration: `${particle.animationDuration}s`,
             }}
           />
         ))}
@@ -222,7 +143,10 @@ export default function Home() {
               <a href="/events" className="hover:text-white transition-colors">
                 Events
               </a>
-              <a href="#" className="hover:text-white transition-colors">
+              <a
+                href="/my-events"
+                className="hover:text-white transition-colors"
+              >
                 My Events
               </a>
               <a href="/about" className="hover:text-white transition-colors">
@@ -234,10 +158,29 @@ export default function Home() {
             </div>
 
             <div className="flex items-center space-x-4">
-              {/* Desktop Sign Up Button */}
-              <button className="hidden md:block bg-linear-to-r from-blue-600 to-purple-600 text-white px-4 lg:px-6 py-2 rounded-full hover:from-blue-700 hover:to-purple-700 transition-all duration-300 transform hover:scale-105 shadow-lg text-sm lg:text-base">
-                Sign Up
-              </button>
+              {/* Authentication Section */}
+              {!authLoading && (
+                <>
+                  {user ? (
+                    <UserMenu />
+                  ) : (
+                    <div className="hidden md:flex items-center space-x-3">
+                      <button
+                        onClick={() => setShowLogin(true)}
+                        className="text-white/80 hover:text-white transition-colors font-medium"
+                      >
+                        Sign In
+                      </button>
+                      <button
+                        onClick={() => setShowSignup(true)}
+                        className="bg-linear-to-r from-blue-600 to-purple-600 text-white px-4 lg:px-6 py-2 rounded-full hover:from-blue-700 hover:to-purple-700 transition-all duration-300 transform hover:scale-105 shadow-lg text-sm lg:text-base"
+                      >
+                        Sign Up
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
 
               {/* Mobile menu button */}
               <button
@@ -282,7 +225,7 @@ export default function Home() {
                   Events
                 </a>
                 <a
-                  href="#"
+                  href="/my-events"
                   className="block px-3 py-2 text-white/80 hover:text-white transition-colors"
                 >
                   My Events
@@ -294,16 +237,81 @@ export default function Home() {
                   About
                 </a>
                 <a
-                  href="#"
+                  href="/contact"
                   className="block px-3 py-2 text-white/80 hover:text-white transition-colors"
                 >
                   Contact
                 </a>
-                <div className="px-3 py-2">
-                  <button className="w-full bg-linear-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-full hover:from-blue-700 hover:to-purple-700 transition-all duration-300 text-sm">
-                    Sign Up
-                  </button>
-                </div>
+
+                {/* Mobile Authentication */}
+                {!authLoading && (
+                  <div className="border-t border-white/20 mt-2 pt-2">
+                    {user ? (
+                      <>
+                        <div className="px-3 py-2 border-b border-white/20">
+                          <p className="text-sm font-medium text-white">
+                            {user.displayName || user.email?.split("@")[0]}
+                          </p>
+                          <p className="text-xs text-white/60">{user.email}</p>
+                        </div>
+                        <a
+                          href="/profile"
+                          className="block px-3 py-2 text-white/80 hover:text-white transition-colors"
+                        >
+                          Profile
+                        </a>
+                        <a
+                          href="/bookings"
+                          className="block px-3 py-2 text-white/80 hover:text-white transition-colors"
+                        >
+                          My Bookings
+                        </a>
+                        <button
+                          onClick={async () => {
+                            try {
+                              const result = await signOut();
+
+                              // Only close menu and reload if sign out was successful
+                              if (!result.error) {
+                                setMobileMenuOpen(false);
+                                window.location.reload();
+                              } else {
+                                setMobileMenuOpen(false);
+                              }
+                            } catch (error) {
+                              console.error("Error signing out:", error);
+                              setMobileMenuOpen(false);
+                            }
+                          }}
+                          className="block w-full text-left px-3 py-2 text-red-400 hover:text-red-300 transition-colors cursor-pointer"
+                        >
+                          Sign Out
+                        </button>
+                      </>
+                    ) : (
+                      <div className="px-3 py-2 space-y-2">
+                        <button
+                          onClick={() => {
+                            setMobileMenuOpen(false);
+                            setShowLogin(true);
+                          }}
+                          className="w-full text-white/80 hover:text-white transition-colors text-left py-2"
+                        >
+                          Sign In
+                        </button>
+                        <button
+                          onClick={() => {
+                            setMobileMenuOpen(false);
+                            setShowSignup(true);
+                          }}
+                          className="w-full bg-linear-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-full hover:from-blue-700 hover:to-purple-700 transition-all duration-300 text-sm"
+                        >
+                          Sign Up
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -427,18 +435,30 @@ export default function Home() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 sm:gap-8 lg:gap-10">
-            {events
-              .filter((event) => event.featured)
-              .slice(0, 3)
-              .map((event, index) => (
-                <div
-                  key={event.id}
-                  style={{ animationDelay: `${index * 200}ms` }}
-                  className="animate-fade-in-up"
-                >
-                  <EventCard event={event} />
-                </div>
-              ))}
+            {loading
+              ? Array(3)
+                  .fill()
+                  .map((_, index) => (
+                    <div key={index} className="animate-pulse">
+                      <div className="bg-white/10 backdrop-blur-md rounded-2xl h-96 border border-white/20"></div>
+                    </div>
+                  ))
+              : events.slice(0, 3).map((event, index) => (
+                  <div
+                    key={event.id}
+                    style={{ animationDelay: `${index * 200}ms` }}
+                    className="animate-fade-in-up"
+                  >
+                    <EventCard
+                      event={{
+                        ...event,
+                        date: formatEventDate(event.date, event.time),
+                        registered: event._count?.bookings || 0,
+                        featured: true,
+                      }}
+                    />
+                  </div>
+                ))}
           </div>
         </div>
       </section>
@@ -456,24 +476,39 @@ export default function Home() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 sm:gap-8 lg:gap-10">
-            {events
-              .filter((event) => !event.featured)
-              .slice(0, 3)
-              .map((event, index) => (
-                <div
-                  key={event.id}
-                  style={{ animationDelay: `${index * 200}ms` }}
-                  className="animate-fade-in-up"
-                >
-                  <EventCard event={event} />
-                </div>
-              ))}
+            {loading
+              ? Array(3)
+                  .fill()
+                  .map((_, index) => (
+                    <div key={index} className="animate-pulse">
+                      <div className="bg-white/10 backdrop-blur-md rounded-2xl h-96 border border-white/20"></div>
+                    </div>
+                  ))
+              : events.slice(3, 6).map((event, index) => (
+                  <div
+                    key={event.id}
+                    style={{ animationDelay: `${index * 200}ms` }}
+                    className="animate-fade-in-up"
+                  >
+                    <EventCard
+                      event={{
+                        ...event,
+                        date: formatEventDate(event.date, event.time),
+                        registered: event._count?.bookings || 0,
+                        featured: false,
+                      }}
+                    />
+                  </div>
+                ))}
           </div>
 
           <div className="text-center mt-12">
-            <button className="bg-white/10 backdrop-blur-md text-white px-8 py-4 rounded-full border border-white/20 hover:bg-white/20 transition-all duration-300 transform hover:scale-105 font-semibold">
+            <a
+              href="/events"
+              className="inline-block bg-white/10 backdrop-blur-md text-white px-8 py-4 rounded-full border border-white/20 hover:bg-white/20 transition-all duration-300 transform hover:scale-105 font-semibold"
+            >
               View All Events
-            </button>
+            </a>
           </div>
         </div>
       </section>
@@ -515,7 +550,10 @@ export default function Home() {
               <h4 className="text-white font-semibold mb-4">Quick Links</h4>
               <ul className="space-y-2 text-sm">
                 <li>
-                  <a href="#" className="hover:text-white transition-colors">
+                  <a
+                    href="/my-events"
+                    className="hover:text-white transition-colors"
+                  >
                     My Events
                   </a>
                 </li>
@@ -576,6 +614,27 @@ export default function Home() {
           </div>
         </div>
       </footer>
+
+      {/* Authentication Modals */}
+      {showLogin && (
+        <LoginForm
+          onClose={() => setShowLogin(false)}
+          onSwitchToSignup={() => {
+            setShowLogin(false);
+            setShowSignup(true);
+          }}
+        />
+      )}
+
+      {showSignup && (
+        <SignupForm
+          onClose={() => setShowSignup(false)}
+          onSwitchToLogin={() => {
+            setShowSignup(false);
+            setShowLogin(true);
+          }}
+        />
+      )}
     </div>
   );
 }

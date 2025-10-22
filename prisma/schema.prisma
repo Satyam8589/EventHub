@@ -1,0 +1,116 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User model for event attendees and organizers
+model User {
+  id          String   @id @default(cuid())
+  email       String   @unique
+  name        String
+  phone       String?
+  avatar      String?
+  role        Role     @default(ATTENDEE)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  organizedEvents Event[]     @relation("EventOrganizer")
+  bookings        Booking[]
+  reviews         Review[]
+
+  @@map("users")
+}
+
+// Event model for all events
+model Event {
+  id            String      @id @default(cuid())
+  title         String
+  description   String
+  category      String
+  location      String
+  venue         String
+  date          DateTime
+  time          String
+  price         Float
+  capacity      Int
+  imageUrl      String?
+  tags          String[]    @default([])
+  status        EventStatus @default(UPCOMING)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  // Relations
+  organizerId   String
+  organizer     User        @relation("EventOrganizer", fields: [organizerId], references: [id])
+  bookings      Booking[]
+  reviews       Review[]
+
+  @@map("events")
+}
+
+// Booking model for event registrations
+model Booking {
+  id            String        @id @default(cuid())
+  tickets       Int           @default(1)
+  totalAmount   Float
+  status        BookingStatus @default(PENDING)
+  paymentMethod String?
+  paymentId     String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  // Relations
+  userId        String
+  eventId       String
+  user          User          @relation(fields: [userId], references: [id])
+  event         Event         @relation(fields: [eventId], references: [id])
+
+  @@map("bookings")
+}
+
+// Review model for event feedback
+model Review {
+  id        String   @id @default(cuid())
+  rating    Int      @db.SmallInt
+  comment   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  userId    String
+  eventId   String
+  user      User     @relation(fields: [userId], references: [id])
+  event     Event    @relation(fields: [eventId], references: [id])
+
+  @@unique([userId, eventId])
+  @@map("reviews")
+}
+
+// Enums
+enum Role {
+  ADMIN
+  ORGANIZER
+  ATTENDEE
+}
+
+enum EventStatus {
+  UPCOMING
+  ONGOING
+  COMPLETED
+  CANCELLED
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  REFUNDED
+}

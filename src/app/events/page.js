@@ -1,6 +1,10 @@
 "use client";
 import { useState, useEffect } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 import EventCard from "../../components/EventCard";
+import LoginForm from "../../components/auth/LoginForm";
+import SignupForm from "../../components/auth/SignupForm";
+import UserMenu from "../../components/auth/UserMenu";
 
 export default function EventsPage() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -8,6 +12,14 @@ export default function EventsPage() {
   const [selectedDate, setSelectedDate] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [showLogin, setShowLogin] = useState(false);
+  const [showSignup, setShowSignup] = useState(false);
+  const [particles, setParticles] = useState([]);
+
+  const { user, loading: authLoading } = useAuth();
 
   useEffect(() => {
     const handleMouseMove = (e) => {
@@ -18,126 +30,42 @@ export default function EventsPage() {
     return () => window.removeEventListener("mousemove", handleMouseMove);
   }, []);
 
-  // Extended events data
-  const allEvents = [
-    {
-      id: 1,
-      title: "Summer Music Festival 2025",
-      description: "Three days of incredible music, art, and community",
-      date: "July 15, 2025 at 14:00",
-      location: "Central Park, New York",
-      price: 299,
-      category: "Music",
-      registered: 3847,
-      capacity: 5000,
-      featured: true,
-      imageUrl: null,
-    },
-    {
-      id: 2,
-      title: "Tech Innovation Summit",
-      description: "Where technology meets innovation",
-      date: "August 20, 2025 at 09:00",
-      location: "Convention Center, San Francisco",
-      price: 499,
-      category: "Technology",
-      registered: 756,
-      capacity: 1000,
-      featured: true,
-      imageUrl: null,
-    },
-    {
-      id: 3,
-      title: "International Food & Wine Festival",
-      description: "A multicultural journey around the world",
-      date: "September 10, 2025 at 17:00",
-      location: "Harbor Square, Seattle",
-      price: 149,
-      category: "Food & Drink",
-      registered: 789,
-      capacity: 1200,
-      featured: true,
-      imageUrl: null,
-    },
-    {
-      id: 4,
-      title: "Art & Design Expo",
-      description: "Where creativity meets innovation",
-      date: "October 5, 2025 at 10:00",
-      location: "Museum District, Boston",
-      price: 75,
-      category: "Art & Culture",
-      registered: 445,
-      capacity: 800,
-      featured: false,
-      imageUrl: null,
-    },
-    {
-      id: 5,
-      title: "Marathon for Charity",
-      description: "Run for a better tomorrow",
-      date: "November 12, 2025 at 07:00",
-      location: "Downtown, Chicago",
-      price: 45,
-      category: "Sports",
-      registered: 2567,
-      capacity: 3000,
-      featured: false,
-      imageUrl: null,
-    },
-    {
-      id: 6,
-      title: "Business Leadership Workshop",
-      description: "Develop your leadership potential",
-      date: "December 8, 2025 at 09:00",
-      location: "Business Center, Austin",
-      price: 350,
-      category: "Business",
-      registered: 180,
-      capacity: 250,
-      featured: false,
-      imageUrl: null,
-    },
-    {
-      id: 7,
-      title: "Gaming Championship 2025",
-      description: "The ultimate esports tournament with top players worldwide",
-      date: "June 10, 2025 at 16:00",
-      location: "MGM Grand, Las Vegas",
-      price: 125,
-      category: "Gaming",
-      registered: 1890,
-      capacity: 2500,
-      featured: false,
-      imageUrl: null,
-    },
-    {
-      id: 8,
-      title: "Photography Workshop",
-      description: "Master the art of landscape and portrait photography",
-      date: "July 5, 2025 at 10:00",
-      location: "Yosemite National Park",
-      price: 199,
-      category: "Education",
-      registered: 67,
-      capacity: 80,
-      featured: false,
-      imageUrl: null,
-    },
-    {
-      id: 9,
-      title: "Blockchain & Crypto Conference",
-      description: "Explore the future of decentralized finance and Web3",
-      date: "August 15, 2025 at 09:00",
-      location: "Miami Beach Convention Center",
-      price: 599,
-      category: "Technology",
-      registered: 2100,
-      capacity: 3000,
-      featured: false,
-      imageUrl: null,
-    },
-  ];
+  // Generate particles on client side only to avoid hydration issues
+  useEffect(() => {
+    const generateParticles = () => {
+      const newParticles = [...Array(50)].map((_, i) => ({
+        id: i,
+        left: Math.random() * 100,
+        top: Math.random() * 100,
+        animationDelay: Math.random() * 2,
+        animationDuration: 2 + Math.random() * 3,
+      }));
+      setParticles(newParticles);
+    };
+
+    generateParticles();
+  }, []);
+
+  // Fetch events from API
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch("/api/events");
+        if (!response.ok) {
+          throw new Error("Failed to fetch events");
+        }
+        const data = await response.json();
+        setEvents(data.events);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchEvents();
+  }, []);
 
   const categories = [
     "All Categories",
@@ -154,7 +82,7 @@ export default function EventsPage() {
   ];
 
   // Filter events based on search and category
-  const filteredEvents = allEvents.filter((event) => {
+  const filteredEvents = events.filter((event) => {
     const matchesSearch =
       event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       event.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -167,20 +95,31 @@ export default function EventsPage() {
     return matchesSearch && matchesCategory;
   });
 
+  // Format date for display
+  const formatEventDate = (dateString, timeString) => {
+    const date = new Date(dateString);
+    const options = {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    };
+    return `${date.toLocaleDateString("en-US", options)} at ${timeString}`;
+  };
+
   return (
     <div className="min-h-screen bg-linear-to-br from-gray-900 via-blue-900 to-purple-900 relative overflow-hidden">
       {/* Animated Background Elements */}
       <div className="absolute inset-0">
         {/* Floating particles */}
-        {[...Array(50)].map((_, i) => (
+        {particles.map((particle) => (
           <div
-            key={i}
+            key={particle.id}
             className="absolute w-1 h-1 bg-white rounded-full opacity-20 animate-pulse"
             style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              animationDelay: `${Math.random() * 2}s`,
-              animationDuration: `${2 + Math.random() * 3}s`,
+              left: `${particle.left}%`,
+              top: `${particle.top}%`,
+              animationDelay: `${particle.animationDelay}s`,
+              animationDuration: `${particle.animationDuration}s`,
             }}
           />
         ))}
@@ -230,20 +169,43 @@ export default function EventsPage() {
               <a href="/events" className="text-white font-medium">
                 Events
               </a>
-              <a href="#" className="hover:text-white transition-colors">
+              <a
+                href="/my-events"
+                className="hover:text-white transition-colors"
+              >
                 My Events
               </a>
-              <a href="#" className="hover:text-white transition-colors">
+              <a href="/about" className="hover:text-white transition-colors">
                 About
               </a>
-              <a href="#" className="hover:text-white transition-colors">
+              <a href="/contact" className="hover:text-white transition-colors">
                 Contact
               </a>
             </div>
 
-            <button className="bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-6 py-2 rounded-lg transition-colors">
-              Sign Up
-            </button>
+            {/* Authentication Section */}
+            {!authLoading && (
+              <>
+                {user ? (
+                  <UserMenu />
+                ) : (
+                  <div className="hidden md:flex items-center space-x-3">
+                    <button
+                      onClick={() => setShowLogin(true)}
+                      className="text-white/80 hover:text-white transition-colors font-medium"
+                    >
+                      Sign In
+                    </button>
+                    <button
+                      onClick={() => setShowSignup(true)}
+                      className="bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-6 py-2 rounded-lg transition-colors"
+                    >
+                      Sign Up
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         </div>
       </nav>
@@ -331,7 +293,31 @@ export default function EventsPage() {
         </div>
 
         {/* Events Grid */}
-        {filteredEvents.length > 0 ? (
+        {loading ? (
+          <div className="text-center py-12">
+            <div className="animate-spin w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+            <h3 className="text-xl font-semibold text-white mb-2">
+              Loading events...
+            </h3>
+            <p className="text-gray-300">
+              Please wait while we fetch the latest events
+            </p>
+          </div>
+        ) : error ? (
+          <div className="text-center py-12">
+            <div className="text-6xl mb-4">⚠️</div>
+            <h3 className="text-xl font-semibold text-white mb-2">
+              Error loading events
+            </h3>
+            <p className="text-gray-300 mb-4">{error}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-6 py-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors"
+            >
+              Try Again
+            </button>
+          </div>
+        ) : filteredEvents.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {filteredEvents.map((event, index) => (
               <div
@@ -339,7 +325,13 @@ export default function EventsPage() {
                 className="animate-fade-in-up"
                 style={{ animationDelay: `${index * 100}ms` }}
               >
-                <EventCard event={event} />
+                <EventCard
+                  event={{
+                    ...event,
+                    date: formatEventDate(event.date, event.time),
+                    registered: event._count?.bookings || 0,
+                  }}
+                />
               </div>
             ))}
           </div>
@@ -457,6 +449,27 @@ export default function EventsPage() {
           </div>
         </div>
       </footer>
+
+      {/* Authentication Modals */}
+      {showLogin && (
+        <LoginForm
+          onClose={() => setShowLogin(false)}
+          onSwitchToSignup={() => {
+            setShowLogin(false);
+            setShowSignup(true);
+          }}
+        />
+      )}
+
+      {showSignup && (
+        <SignupForm
+          onClose={() => setShowSignup(false)}
+          onSwitchToLogin={() => {
+            setShowSignup(false);
+            setShowLogin(true);
+          }}
+        />
+      )}
     </div>
   );
 }

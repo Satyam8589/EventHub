@@ -2,6 +2,9 @@
 const nextConfig = {
   /* config options here */
   reactCompiler: true,
+  experimental: {
+    optimizePackageImports: ["lucide-react", "@heroicons/react"],
+  },
 };
 
 export default nextConfig;
