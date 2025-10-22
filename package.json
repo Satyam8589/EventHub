@@ -4,10 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "npx prisma generate --skip-engine-check && next build",
+    "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "postinstall": "npx prisma generate --skip-engine-check"
+    "preinstall": "npm cache clean --force",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@prisma/client": "^6.18.0",

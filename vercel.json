@@ -1,12 +1,8 @@
 {
-  "buildCommand": "npm install && npx prisma generate && next build",
+  "buildCommand": "bash vercel-build.sh",
+  "devCommand": "next dev",
   "env": {
     "DATABASE_URL": "@database_url",
     "NODE_ENV": "production"
-  },
-  "functions": {
-    "src/app/api/**/*.js": {
-      "runtime": "nodejs20.x"
-    }
   }
 }
