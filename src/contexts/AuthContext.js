@@ -48,6 +48,7 @@ export const AuthProvider = ({ children }) => {
             const userData = await response.json();
             setUser({
               ...firebaseUser,
+              role: userData.user.role,
               dbUser: userData.user,
             });
           } else {
@@ -121,6 +122,37 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Refresh user role from database
+  const refreshUserRole = async () => {
+    if (!user) return;
+
+    try {
+      const response = await fetch("/api/auth/sync-user", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          uid: user.uid,
+          email: user.email,
+          name: user.displayName || user.email.split("@")[0],
+          avatar: user.photoURL,
+        }),
+      });
+
+      if (response.ok) {
+        const userData = await response.json();
+        setUser({
+          ...user,
+          role: userData.user.role,
+          dbUser: userData.user,
+        });
+      }
+    } catch (error) {
+      console.error("Error refreshing user role:", error);
+    }
+  };
+
   const value = {
     user,
     loading,
@@ -128,6 +160,7 @@ export const AuthProvider = ({ children }) => {
     signIn,
     signInWithGoogle,
     signOut,
+    refreshUserRole,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

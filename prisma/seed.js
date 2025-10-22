@@ -5,6 +5,38 @@ const prisma = new PrismaClient();
 async function main() {
   console.log("🌱 Starting database seeding...");
 
+  // Create Super Admin user
+  const superAdmin = await prisma.user.upsert({
+    where: { email: "admin@eventhub.com" },
+    update: {
+      role: "SUPER_ADMIN",
+    },
+    create: {
+      id: "super-admin-001",
+      email: "admin@eventhub.com",
+      name: "Super Admin",
+      role: "SUPER_ADMIN",
+    },
+  });
+
+  console.log("✅ Created Super Admin:", superAdmin.email);
+
+  // Create Event Admin user
+  const eventAdmin = await prisma.user.upsert({
+    where: { email: "eventadmin@eventhub.com" },
+    update: {
+      role: "EVENT_ADMIN",
+    },
+    create: {
+      id: "event-admin-001",
+      email: "eventadmin@eventhub.com",
+      name: "Event Admin",
+      role: "EVENT_ADMIN",
+    },
+  });
+
+  console.log("✅ Created Event Admin:", eventAdmin.email);
+
   // Create users
   const users = await Promise.all([
     prisma.user.upsert({
@@ -218,7 +250,32 @@ async function main() {
 
   console.log(`✅ Created ${createdReviews.length} reviews`);
 
+  // Assign event admin to some events
+  if (createdEvents.length > 0) {
+    const assignment = await prisma.eventAdmin.upsert({
+      where: {
+        userId_eventId: {
+          userId: eventAdmin.id,
+          eventId: createdEvents[0].id,
+        },
+      },
+      update: {},
+      create: {
+        userId: eventAdmin.id,
+        eventId: createdEvents[0].id,
+      },
+    });
+
+    console.log("✅ Assigned Event Admin to first event");
+  }
+
   console.log("🎉 Database seeding completed successfully!");
+  console.log("\n📋 Admin Credentials:");
+  console.log("Super Admin: admin@eventhub.com");
+  console.log("Event Admin: eventadmin@eventhub.com");
+  console.log(
+    "\n🔐 Note: Create these users in Firebase Authentication with any password"
+  );
 }
 
 main()

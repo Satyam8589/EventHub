@@ -83,14 +83,10 @@ export default function UserMenu() {
             <div className="px-4 py-2 border-b border-white/20">
               <p className="text-sm font-medium text-white">{displayName}</p>
               <p className="text-xs text-white/60 truncate">{user.email}</p>
+              <p className="text-xs text-yellow-400">
+                Role: {user.role || "Not Set"}
+              </p>
             </div>
-
-            <a
-              href="/profile"
-              className="block px-4 py-2 text-sm text-white/80 hover:text-white hover:bg-white/10 transition-colors"
-            >
-              Profile
-            </a>
 
             <a
               href="/my-events"
@@ -99,12 +95,15 @@ export default function UserMenu() {
               My Events
             </a>
 
-            <a
-              href="/bookings"
-              className="block px-4 py-2 text-sm text-white/80 hover:text-white hover:bg-white/10 transition-colors"
-            >
-              My Bookings
-            </a>
+            {/* Admin Panel Link - Only show for admins */}
+            {(user.role === "SUPER_ADMIN" || user.role === "EVENT_ADMIN") && (
+              <a
+                href="/admin"
+                className="block px-4 py-2 text-sm text-blue-400 hover:text-blue-300 hover:bg-white/10 transition-colors border-t border-white/20"
+              >
+                🛡️ Admin Panel
+              </a>
+            )}
 
             <div className="border-t border-white/20 mt-2 pt-2">
               <button

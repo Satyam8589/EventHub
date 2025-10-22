@@ -7,7 +7,7 @@ import BookingModal from "@/components/BookingModal";
 
 export default function Page({ params }) {
   const p = use(params);
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const [event, setEvent] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -16,6 +16,7 @@ export default function Page({ params }) {
   const [particles, setParticles] = useState([]);
   const [scrollY, setScrollY] = useState(0);
   const [showBookingModal, setShowBookingModal] = useState(false);
+  const [selectedGalleryItem, setSelectedGalleryItem] = useState(null);
 
   useEffect(() => {
     if (!p?.id) return;
@@ -230,6 +231,38 @@ export default function Page({ params }) {
               >
                 Events
               </Link>
+              
+              {/* Desktop Sign Out Icon - Always visible when logged in */}
+              {user && (
+                <button
+                  onClick={async () => {
+                    try {
+                      const result = await signOut();
+                      if (!result.error) {
+                        window.location.reload();
+                      }
+                    } catch (error) {
+                      console.error("Error signing out:", error);
+                    }
+                  }}
+                  className="text-white/80 hover:text-white transition-colors p-2 hover:bg-white/10 rounded-lg ml-2"
+                  title="Sign Out"
+                >
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                    />
+                  </svg>
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -384,23 +417,55 @@ export default function Page({ params }) {
                   <h3 className="text-2xl font-bold text-white mb-6">
                     Event Gallery
                   </h3>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                    {[1, 2, 3, 4, 5, 6].map((i) => (
-                      <div
-                        key={i}
-                        className="relative group overflow-hidden rounded-xl aspect-square border border-white/10"
-                      >
-                        <img
-                          src={`https://images.unsplash.com/photo-${
-                            1540575467063 + i
-                          }?w=300&h=300&fit=crop`}
-                          alt={`Gallery ${i}`}
-                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                      </div>
-                    ))}
-                  </div>
+                  {event.gallery && event.gallery.length > 0 ? (
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                      {event.gallery.map((media, i) => (
+                        <div
+                          key={media.id || i}
+                          className="relative group overflow-hidden rounded-xl aspect-square border border-white/10 cursor-pointer"
+                          onClick={() => setSelectedGalleryItem(media)}
+                        >
+                          {media.type === "video" ? (
+                            <video
+                              src={media.url}
+                              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                              muted
+                            />
+                          ) : (
+                            <img
+                              src={media.url}
+                              alt={media.name || `Gallery ${i + 1}`}
+                              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                            />
+                          )}
+
+                          {/* Play button for videos */}
+                          {media.type === "video" && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <div className="w-12 h-12 bg-white/80 rounded-full flex items-center justify-center">
+                                <span className="text-black text-xl ml-1">
+                                  ▶
+                                </span>
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-12">
+                      <div className="text-5xl mb-4">📸</div>
+                      <h4 className="text-xl font-semibold text-white mb-2">
+                        No Gallery Available
+                      </h4>
+                      <p className="text-gray-400">
+                        Event gallery will be updated soon with photos and
+                        videos.
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -548,7 +613,9 @@ export default function Page({ params }) {
                 </div>
                 <div>
                   <div className="font-semibold text-white text-lg">
-                    {event.organizer?.name || "TechCon Global"}
+                    {event.organizerName ||
+                      event.organizer?.name ||
+                      "TechCon Global"}
                   </div>
                   <div className="text-sm text-gray-400">Event Organizer</div>
                 </div>
@@ -556,17 +623,67 @@ export default function Page({ params }) {
               <div className="space-y-3">
                 <div className="flex items-center gap-3 text-sm text-gray-300 p-3 rounded-lg bg-white/5 border border-white/10">
                   <span className="text-lg">📧</span>
-                  <span>{event.organizer?.email || "contact@techcon.com"}</span>
+                  <span>
+                    {event.organizerEmail ||
+                      event.organizer?.email ||
+                      "contact@techcon.com"}
+                  </span>
                 </div>
-                <div className="flex items-center gap-3 text-sm text-gray-300 p-3 rounded-lg bg-white/5 border border-white/10">
-                  <span className="text-lg">📞</span>
-                  <span>{event.organizer?.phone || "+1 (555) 987-6543"}</span>
-                </div>
+                {(event.organizerPhone || event.organizer?.phone) && (
+                  <div className="flex items-center gap-3 text-sm text-gray-300 p-3 rounded-lg bg-white/5 border border-white/10">
+                    <span className="text-lg">📞</span>
+                    <span>
+                      {event.organizerPhone ||
+                        event.organizer?.phone ||
+                        "+1 (555) 987-6543"}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Gallery Popup */}
+      {selectedGalleryItem && (
+        <div
+          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
+          onClick={() => setSelectedGalleryItem(null)}
+        >
+          <div
+            className="relative max-w-4xl max-h-full"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setSelectedGalleryItem(null)}
+              className="absolute -top-10 right-0 text-white text-2xl hover:text-red-400 transition-colors"
+            >
+              ✕
+            </button>
+            {selectedGalleryItem.type === "video" ? (
+              <video
+                src={selectedGalleryItem.url}
+                controls
+                autoPlay
+                className="max-w-full max-h-[80vh] rounded-lg"
+              />
+            ) : (
+              <img
+                src={selectedGalleryItem.url}
+                alt={selectedGalleryItem.name}
+                className="max-w-full max-h-[80vh] rounded-lg object-contain"
+              />
+            )}
+            <div className="mt-4 text-center">
+              <p className="text-white text-sm opacity-80">
+                {selectedGalleryItem.name ||
+                  `Gallery ${selectedGalleryItem.type}`}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Booking Modal */}
       <BookingModal

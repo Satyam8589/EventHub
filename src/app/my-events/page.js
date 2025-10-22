@@ -13,7 +13,7 @@ export default function MyEventsPage() {
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [showTicketModal, setShowTicketModal] = useState(false);
 
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, signOut } = useAuth();
 
   useEffect(() => {
     const handleMouseMove = (e) => {
@@ -150,12 +150,46 @@ export default function MyEventsPage() {
                 </span>
               </Link>
 
-              <Link
-                href="/"
-                className="text-white/80 hover:text-white transition-colors font-medium"
-              >
-                ← Back to Home
-              </Link>
+              <div className="flex items-center space-x-4">
+                <Link
+                  href="/"
+                  className="text-white/80 hover:text-white transition-colors font-medium"
+                >
+                  ← Back to Home
+                </Link>
+                
+                {/* Desktop Sign Out Icon - Always visible when logged in */}
+                {user && (
+                  <button
+                    onClick={async () => {
+                      try {
+                        const result = await signOut();
+                        if (!result.error) {
+                          window.location.reload();
+                        }
+                      } catch (error) {
+                        console.error("Error signing out:", error);
+                      }
+                    }}
+                    className="text-white/80 hover:text-white transition-colors p-2 hover:bg-white/10 rounded-lg"
+                    title="Sign Out"
+                  >
+                    <svg
+                      className="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                      />
+                    </svg>
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </nav>
@@ -272,12 +306,27 @@ export default function MyEventsPage() {
               </span>
             </Link>
 
-            <Link
-              href="/"
-              className="text-white/80 hover:text-white transition-colors font-medium"
-            >
-              ← Back to Home
-            </Link>
+            <div className="flex items-center space-x-4">
+              {/* Admin Panel Link - Only show for admins */}
+              {!authLoading &&
+                user &&
+                (user.role === "SUPER_ADMIN" ||
+                  user.role === "EVENT_ADMIN") && (
+                  <Link
+                    href="/admin"
+                    className="text-blue-400 hover:text-blue-300 transition-colors font-medium bg-blue-600/20 px-3 py-1 rounded-lg border border-blue-500/30"
+                  >
+                    🛡️ Admin Panel
+                  </Link>
+                )}
+
+              <Link
+                href="/"
+                className="text-white/80 hover:text-white transition-colors font-medium"
+              >
+                ← Back to Home
+              </Link>
+            </div>
           </div>
         </div>
       </nav>

@@ -1,8 +1,10 @@
 "use client";
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function ContactPage() {
+  const { user, signOut } = useAuth();
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [isVisible, setIsVisible] = useState({});
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -136,7 +138,50 @@ export default function ContactPage() {
               <Link href="/contact" className="text-white font-medium">
                 Contact
               </Link>
+              {/* Admin Panel Link - Only show for admins */}
+              {user &&
+                (user.role === "SUPER_ADMIN" ||
+                  user.role === "EVENT_ADMIN") && (
+                  <Link
+                    href="/admin"
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
+                  >
+                    🛡️ Admin Panel
+                  </Link>
+                )}
             </div>
+
+            {/* Desktop Sign Out Icon - Always visible when logged in */}
+            {user && (
+              <button
+                onClick={async () => {
+                  try {
+                    const result = await signOut();
+                    if (!result.error) {
+                      window.location.reload();
+                    }
+                  } catch (error) {
+                    console.error("Error signing out:", error);
+                  }
+                }}
+                className="hidden lg:flex text-white/80 hover:text-white transition-colors p-2 hover:bg-white/10 rounded-lg"
+                title="Sign Out"
+              >
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                  />
+                </svg>
+              </button>
+            )}
 
             {/* Mobile menu button */}
             <button
@@ -197,6 +242,51 @@ export default function ContactPage() {
                 >
                   Contact
                 </Link>
+                {/* Admin Panel Link - Only show for admins */}
+                {user &&
+                  (user.role === "SUPER_ADMIN" ||
+                    user.role === "EVENT_ADMIN") && (
+                    <Link
+                      href="/admin"
+                      className="block px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors mt-2"
+                    >
+                      🛡️ Admin Panel
+                    </Link>
+                  )}
+
+                {/* Mobile Authentication - Only show on mobile screens */}
+                {user && (
+                  <div className="border-t border-white/20 mt-2 pt-2">
+                    <div className="px-3 py-2 border-b border-white/20">
+                      <p className="text-sm font-medium text-white">
+                        {user.displayName || user.email?.split("@")[0]}
+                      </p>
+                      <p className="text-xs text-white/60">{user.email}</p>
+                    </div>
+
+                    <button
+                      onClick={async () => {
+                        try {
+                          const result = await signOut();
+
+                          // Only close menu and reload if sign out was successful
+                          if (!result.error) {
+                            setMobileMenuOpen(false);
+                            window.location.reload();
+                          } else {
+                            setMobileMenuOpen(false);
+                          }
+                        } catch (error) {
+                          console.error("Error signing out:", error);
+                          setMobileMenuOpen(false);
+                        }
+                      }}
+                      className="block w-full text-left px-3 py-2 text-red-400 hover:text-red-300 transition-colors cursor-pointer"
+                    >
+                      Sign Out
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           )}

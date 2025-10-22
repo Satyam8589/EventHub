@@ -21,12 +21,13 @@ export async function POST(request) {
     });
 
     if (user) {
-      // Update existing user
+      // Update existing user (preserve existing role)
       user = await prisma.user.update({
         where: { id: user.id },
         data: {
           name: name || user.name,
           avatar: avatar || user.avatar,
+          // Don't update role here - preserve existing role from database
         },
       });
     } else {

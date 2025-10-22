@@ -18,8 +18,9 @@ export default function EventsPage() {
   const [showLogin, setShowLogin] = useState(false);
   const [showSignup, setShowSignup] = useState(false);
   const [particles, setParticles] = useState([]);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
 
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, signOut } = useAuth();
 
   useEffect(() => {
     const handleMouseMove = (e) => {
@@ -29,6 +30,18 @@ export default function EventsPage() {
     window.addEventListener("mousemove", handleMouseMove);
     return () => window.removeEventListener("mousemove", handleMouseMove);
   }, []);
+
+  // Close mobile menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showMobileMenu && !event.target.closest(".mobile-menu-container")) {
+        setShowMobileMenu(false);
+      }
+    };
+
+    document.addEventListener("click", handleClickOutside);
+    return () => document.removeEventListener("click", handleClickOutside);
+  }, [showMobileMenu]);
 
   // Generate particles on client side only to avoid hydration issues
   useEffect(() => {
@@ -82,18 +95,26 @@ export default function EventsPage() {
   ];
 
   // Filter events based on search and category
-  const filteredEvents = events.filter((event) => {
-    const matchesSearch =
-      event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      event.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      event.location.toLowerCase().includes(searchTerm.toLowerCase());
+  const filteredEvents = events
+    .filter((event) => {
+      const matchesSearch =
+        event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        event.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        event.location.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesCategory =
-      selectedCategory === "All Categories" ||
-      event.category === selectedCategory;
+      const matchesCategory =
+        selectedCategory === "All Categories" ||
+        event.category === selectedCategory;
 
-    return matchesSearch && matchesCategory;
-  });
+      return matchesSearch && matchesCategory;
+    })
+    .sort((a, b) => {
+      // Sort featured events first
+      if (a.featured && !b.featured) return -1;
+      if (!a.featured && b.featured) return 1;
+      // If both are featured or both are not featured, maintain original order
+      return 0;
+    });
 
   // Format date for display
   const formatEventDate = (dateString, timeString) => {
@@ -152,7 +173,7 @@ export default function EventsPage() {
       </div>
 
       {/* Navigation */}
-      <nav className="relative z-10 bg-black/20 backdrop-blur-md border-b border-white/10">
+      <nav className="relative z-10 bg-black/20 backdrop-blur-md border-b border-white/10 mobile-menu-container">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
@@ -181,34 +202,222 @@ export default function EventsPage() {
               <a href="/contact" className="hover:text-white transition-colors">
                 Contact
               </a>
+
+              {/* Admin Navigation - Only show for admins */}
+              {!authLoading &&
+                user &&
+                (user.role === "SUPER_ADMIN" ||
+                  user.role === "EVENT_ADMIN") && (
+                  <a
+                    href="/admin"
+                    className="hover:text-blue-400 transition-colors font-medium bg-blue-600/20 px-3 py-1 rounded-lg border border-blue-500/30"
+                  >
+                    🛡️ Admin Panel
+                  </a>
+                )}
             </div>
 
-            {/* Authentication Section */}
+            <div className="flex items-center space-x-4">
+              {/* Authentication Section */}
+              {!authLoading && (
+                <>
+                  {user ? (
+                    <div className="hidden md:flex items-center space-x-3">
+                      <UserMenu />
+                      <button
+                        onClick={async () => {
+                          try {
+                            const result = await signOut();
+                            if (!result.error) {
+                              window.location.reload();
+                            }
+                          } catch (error) {
+                            console.error("Error signing out:", error);
+                          }
+                        }}
+                        className="text-white/80 hover:text-white transition-colors p-2 hover:bg-white/10 rounded-lg"
+                        title="Sign Out"
+                      >
+                        <svg
+                          className="w-5 h-5"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                          />
+                        </svg>
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="hidden md:flex items-center space-x-3">
+                      <button
+                        onClick={() => setShowLogin(true)}
+                        className="text-white/80 hover:text-white transition-colors font-medium"
+                      >
+                        Sign In
+                      </button>
+                      <button
+                        onClick={() => setShowSignup(true)}
+                        className="bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-6 py-2 rounded-lg transition-colors"
+                      >
+                        Sign Up
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* Hamburger Menu Button */}
+              <button
+                onClick={() => setShowMobileMenu(!showMobileMenu)}
+                className="md:hidden text-white p-2 hover:bg-white/10 rounded-lg transition-colors"
+                aria-label="Toggle menu"
+              >
+                <div className="w-6 h-6 flex flex-col justify-center items-center space-y-1">
+                  <span
+                    className={`block w-5 h-0.5 bg-white transition-all duration-300 ${
+                      showMobileMenu ? "rotate-45 translate-y-1.5" : ""
+                    }`}
+                  ></span>
+                  <span
+                    className={`block w-5 h-0.5 bg-white transition-all duration-300 ${
+                      showMobileMenu ? "opacity-0" : ""
+                    }`}
+                  ></span>
+                  <span
+                    className={`block w-5 h-0.5 bg-white transition-all duration-300 ${
+                      showMobileMenu ? "-rotate-45 -translate-y-1.5" : ""
+                    }`}
+                  ></span>
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      {/* Mobile Menu */}
+      {showMobileMenu && (
+        <div className="md:hidden relative z-20 bg-black/95 backdrop-blur-md border-b border-white/10 mobile-menu-container">
+          <div className="px-6 py-4 space-y-3">
+            {/* Navigation Links */}
+            <a
+              href="/"
+              className="block text-white/80 hover:text-white transition-colors py-2"
+            >
+              Home
+            </a>
+            <a href="/events" className="block text-white font-medium py-2">
+              Events
+            </a>
+            <a
+              href="/my-events"
+              className="block text-white/80 hover:text-white transition-colors py-2"
+            >
+              My Events
+            </a>
+            <a
+              href="/about"
+              className="block text-white/80 hover:text-white transition-colors py-2"
+            >
+              About
+            </a>
+            <a
+              href="/contact"
+              className="block text-white/80 hover:text-white transition-colors py-2"
+            >
+              Contact
+            </a>
+
+            {/* Admin Navigation - Only show for admins */}
+            {!authLoading &&
+              user &&
+              (user.role === "SUPER_ADMIN" || user.role === "EVENT_ADMIN") && (
+                <a
+                  href="/admin"
+                  className="block text-blue-400 hover:text-blue-300 transition-colors font-medium bg-blue-600/20 px-3 py-2 rounded-lg border border-blue-500/30 mt-3"
+                >
+                  🛡️ Admin Panel
+                </a>
+              )}
+
+            {/* Mobile Authentication - Only show on mobile screens */}
             {!authLoading && (
-              <>
+              <div className="md:hidden border-t border-white/20 mt-2 pt-2">
                 {user ? (
-                  <UserMenu />
-                ) : (
-                  <div className="hidden md:flex items-center space-x-3">
+                  <>
+                    <div className="px-3 py-2 border-b border-white/20">
+                      <p className="text-sm font-medium text-white">
+                        {user.displayName || user.email?.split("@")[0]}
+                      </p>
+                      <p className="text-xs text-white/60">{user.email}</p>
+                    </div>
+
+                    {/* Admin Panel Link - Only show for admins */}
+                    {(user.role === "SUPER_ADMIN" ||
+                      user.role === "EVENT_ADMIN") && (
+                      <a
+                        href="/admin"
+                        className="block px-3 py-2 text-blue-400 hover:text-blue-300 transition-colors border-t border-white/20"
+                      >
+                        🛡️ Admin Panel
+                      </a>
+                    )}
+
                     <button
-                      onClick={() => setShowLogin(true)}
-                      className="text-white/80 hover:text-white transition-colors font-medium"
+                      onClick={async () => {
+                        try {
+                          const result = await signOut();
+
+                          // Only close menu and reload if sign out was successful
+                          if (!result.error) {
+                            setShowMobileMenu(false);
+                            window.location.reload();
+                          } else {
+                            setShowMobileMenu(false);
+                          }
+                        } catch (error) {
+                          console.error("Error signing out:", error);
+                          setShowMobileMenu(false);
+                        }
+                      }}
+                      className="block w-full text-left px-3 py-2 text-red-400 hover:text-red-300 transition-colors cursor-pointer"
+                    >
+                      Sign Out
+                    </button>
+                  </>
+                ) : (
+                  <div className="px-3 py-2 space-y-2">
+                    <button
+                      onClick={() => {
+                        setShowMobileMenu(false);
+                        setShowLogin(true);
+                      }}
+                      className="w-full text-white/80 hover:text-white transition-colors text-left py-2"
                     >
                       Sign In
                     </button>
                     <button
-                      onClick={() => setShowSignup(true)}
-                      className="bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-6 py-2 rounded-lg transition-colors"
+                      onClick={() => {
+                        setShowMobileMenu(false);
+                        setShowSignup(true);
+                      }}
+                      className="w-full bg-linear-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-full hover:from-blue-700 hover:to-purple-700 transition-all duration-300 text-sm"
                     >
                       Sign Up
                     </button>
                   </div>
                 )}
-              </>
+              </div>
             )}
           </div>
         </div>
-      </nav>
+      )}
 
       {/* Header Section */}
       <div className="relative z-10 py-12">

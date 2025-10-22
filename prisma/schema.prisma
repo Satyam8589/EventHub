@@ -22,9 +22,10 @@ model User {
   updatedAt   DateTime @updatedAt
 
   // Relations
-  organizedEvents Event[]     @relation("EventOrganizer")
+  organizedEvents Event[]      @relation("EventOrganizer")
   bookings        Booking[]
   reviews         Review[]
+  eventAdminFor   EventAdmin[] // Events this user is admin for
 
   @@map("users")
 }
@@ -44,14 +45,23 @@ model Event {
   imageUrl      String?
   tags          String[]    @default([])
   status        EventStatus @default(UPCOMING)
+  featured      Boolean     @default(false)
+  gallery       Json[]      @default([])
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
 
+  // Organizer contact information
+  organizerName  String?
+  organizerEmail String?
+  organizerPhone String?
+
   // Relations
-  organizerId   String
-  organizer     User        @relation("EventOrganizer", fields: [organizerId], references: [id])
-  bookings      Booking[]
-  reviews       Review[]
+  organizerId     String
+  organizer       User           @relation("EventOrganizer", fields: [organizerId], references: [id])
+  bookings        Booking[]
+  reviews         Review[]
+  eventAdmins     EventAdmin[]   // Admins assigned to this event
+  discounts       EventDiscount[] // Discounts for this event
 
   @@map("events")
 }
@@ -68,10 +78,11 @@ model Booking {
   updatedAt     DateTime      @updatedAt
 
   // Relations
-  userId        String
-  eventId       String
-  user          User          @relation(fields: [userId], references: [id])
-  event         Event         @relation(fields: [eventId], references: [id])
+  userId          String
+  eventId         String
+  user            User                   @relation(fields: [userId], references: [id])
+  event           Event                  @relation(fields: [eventId], references: [id])
+  verifications   TicketVerification[]   // Ticket verifications for this booking
 
   @@map("bookings")
 }
@@ -94,9 +105,59 @@ model Review {
   @@map("reviews")
 }
 
+// Event Admin Assignment model
+model EventAdmin {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  
+  // Relations
+  userId    String
+  eventId   String
+  user      User     @relation(fields: [userId], references: [id])
+  event     Event    @relation(fields: [eventId], references: [id])
+  
+  @@unique([userId, eventId])
+  @@map("event_admins")
+}
+
+// Ticket Verification model
+model TicketVerification {
+  id          String   @id @default(cuid())
+  scannedAt   DateTime @default(now())
+  scannedBy   String   // Admin user ID
+  
+  // Relations
+  bookingId   String
+  booking     Booking  @relation(fields: [bookingId], references: [id])
+  
+  @@map("ticket_verifications")
+}
+
+// Event Discount model
+model EventDiscount {
+  id          String    @id @default(cuid())
+  code        String    
+  description String?
+  percentage  Float     // 0-100 percentage discount
+  maxUses     Int?      // null for unlimited
+  currentUses Int       @default(0)
+  validFrom   DateTime
+  validTo     DateTime
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  
+  // Relations
+  eventId     String
+  event       Event     @relation(fields: [eventId], references: [id])
+  
+  @@unique([eventId, code])
+  @@map("event_discounts")
+}
+
 // Enums
 enum Role {
-  ADMIN
+  SUPER_ADMIN
+  EVENT_ADMIN
   ORGANIZER
   ATTENDEE
 }

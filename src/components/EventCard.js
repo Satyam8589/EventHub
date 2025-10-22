@@ -37,11 +37,33 @@ export default function EventCard({ event }) {
   };
 
   return (
-    <div className="bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02] group">
+    <div
+      className={`bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02] group relative ${
+        event.featured
+          ? "ring-2 ring-amber-400/50 shadow-amber-500/20 shadow-xl"
+          : ""
+      }`}
+    >
       {/* Featured Badge */}
       {event.featured && (
-        <div className="absolute top-3 right-3 z-10 bg-black/90 text-white px-3 py-1 rounded-md text-xs font-medium">
-          Featured
+        <div className="absolute top-2 right-2 z-20 bg-gradient-to-r from-amber-400 via-yellow-500 to-amber-600 text-white px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 shadow-lg border border-yellow-300/50 animate-pulse">
+          <span className="text-sm">⭐</span>
+          <span className="tracking-wide">FEATURED</span>
+        </div>
+      )}
+
+      {/* Featured Golden Shimmer Overlay */}
+      {event.featured && (
+        <div className="absolute inset-0 z-10 pointer-events-none">
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-amber-200/10 to-transparent animate-shimmer"></div>
+        </div>
+      )}
+
+      {/* Gallery Indicator */}
+      {event.gallery && event.gallery.length > 0 && (
+        <div className="absolute bottom-3 right-3 z-10 bg-black/70 text-white px-2 py-1 rounded-md text-xs font-medium flex items-center gap-1">
+          <span>🖼️</span>
+          {event.gallery.length}
         </div>
       )}
 
@@ -51,7 +73,12 @@ export default function EventCard({ event }) {
           className="w-full h-full bg-cover bg-center transition-transform duration-300 group-hover:scale-110"
           style={{
             backgroundImage: `url(${
-              event.imageUrl || getBackgroundImage(event.category)
+              event.imageUrl ||
+              (event.gallery &&
+              event.gallery.length > 0 &&
+              event.gallery[0].type === "image"
+                ? event.gallery[0].url
+                : getBackgroundImage(event.category))
             })`,
             backgroundSize: "cover",
             backgroundPosition: "center",

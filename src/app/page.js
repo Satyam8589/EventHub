@@ -155,6 +155,19 @@ export default function Home() {
               <a href="/contact" className="hover:text-white transition-colors">
                 Contact
               </a>
+
+              {/* Admin Navigation - Only show for admins */}
+              {!authLoading &&
+                user &&
+                (user.role === "SUPER_ADMIN" ||
+                  user.role === "EVENT_ADMIN") && (
+                  <a
+                    href="/admin"
+                    className="hover:text-blue-400 transition-colors font-medium bg-blue-600/20 px-3 py-1 rounded-lg border border-blue-500/30"
+                  >
+                    🛡️ Admin Panel
+                  </a>
+                )}
             </div>
 
             <div className="flex items-center space-x-4">
@@ -162,7 +175,37 @@ export default function Home() {
               {!authLoading && (
                 <>
                   {user ? (
-                    <UserMenu />
+                    <div className="hidden md:flex items-center space-x-3">
+                      <UserMenu />
+                      <button
+                        onClick={async () => {
+                          try {
+                            const result = await signOut();
+                            if (!result.error) {
+                              window.location.reload();
+                            }
+                          } catch (error) {
+                            console.error("Error signing out:", error);
+                          }
+                        }}
+                        className="text-white/80 hover:text-white transition-colors p-2 hover:bg-white/10 rounded-lg"
+                        title="Sign Out"
+                      >
+                        <svg
+                          className="w-5 h-5"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                          />
+                        </svg>
+                      </button>
+                    </div>
                   ) : (
                     <div className="hidden md:flex items-center space-x-3">
                       <button
@@ -254,18 +297,18 @@ export default function Home() {
                           </p>
                           <p className="text-xs text-white/60">{user.email}</p>
                         </div>
-                        <a
-                          href="/profile"
-                          className="block px-3 py-2 text-white/80 hover:text-white transition-colors"
-                        >
-                          Profile
-                        </a>
-                        <a
-                          href="/bookings"
-                          className="block px-3 py-2 text-white/80 hover:text-white transition-colors"
-                        >
-                          My Bookings
-                        </a>
+
+                        {/* Admin Panel Link - Only show for admins */}
+                        {(user.role === "SUPER_ADMIN" ||
+                          user.role === "EVENT_ADMIN") && (
+                          <a
+                            href="/admin"
+                            className="block px-3 py-2 text-blue-400 hover:text-blue-300 transition-colors border-t border-white/20"
+                          >
+                            🛡️ Admin Panel
+                          </a>
+                        )}
+
                         <button
                           onClick={async () => {
                             try {
