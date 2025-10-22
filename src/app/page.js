@@ -4,6 +4,7 @@ import EventCard from "../components/EventCard";
 
 export default function Home() {
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     const handleMouseMove = (e) => {
@@ -197,71 +198,152 @@ export default function Home() {
       </div>
 
       {/* Navigation */}
-      <nav className="relative z-10 flex items-center justify-between p-6 bg-black/20 backdrop-blur-md border-b border-white/10">
-        <div className="flex items-center space-x-2">
-          <div className="w-8 h-8 bg-linear-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold text-sm">E</span>
+      <nav className="relative z-10 bg-black/20 backdrop-blur-md border-b border-white/10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16 md:h-20">
+            {/* Logo */}
+            <div className="flex items-center space-x-2">
+              <div className="w-8 h-8 bg-linear-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                <span className="text-white font-bold text-sm">E</span>
+              </div>
+              <span className="text-white font-bold text-lg sm:text-xl">
+                EventHub
+              </span>
+            </div>
+
+            {/* Desktop Navigation */}
+            <div className="hidden lg:flex items-center space-x-6 xl:space-x-8 text-white/80">
+              <a
+                href="/"
+                className="hover:text-white transition-colors font-medium"
+              >
+                Home
+              </a>
+              <a href="/events" className="hover:text-white transition-colors">
+                Events
+              </a>
+              <a href="#" className="hover:text-white transition-colors">
+                My Events
+              </a>
+              <a href="/about" className="hover:text-white transition-colors">
+                About
+              </a>
+              <a href="/contact" className="hover:text-white transition-colors">
+                Contact
+              </a>
+            </div>
+
+            <div className="flex items-center space-x-4">
+              {/* Desktop Sign Up Button */}
+              <button className="hidden md:block bg-linear-to-r from-blue-600 to-purple-600 text-white px-4 lg:px-6 py-2 rounded-full hover:from-blue-700 hover:to-purple-700 transition-all duration-300 transform hover:scale-105 shadow-lg text-sm lg:text-base">
+                Sign Up
+              </button>
+
+              {/* Mobile menu button */}
+              <button
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="lg:hidden text-white p-2"
+              >
+                <svg
+                  className="w-6 h-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d={
+                      mobileMenuOpen
+                        ? "M6 18L18 6M6 6l12 12"
+                        : "M4 6h16M4 12h16M4 18h16"
+                    }
+                  />
+                </svg>
+              </button>
+            </div>
           </div>
-          <span className="text-white font-bold text-xl">EventHub</span>
-        </div>
 
-        <div className="hidden md:flex items-center space-x-8 text-white/80">
-          <a href="/" className="hover:text-white transition-colors">
-            Home
-          </a>
-          <a href="/events" className="hover:text-white transition-colors">
-            Events
-          </a>
-          <a href="#" className="hover:text-white transition-colors">
-            My Events
-          </a>
-          <a href="#" className="hover:text-white transition-colors">
-            About
-          </a>
-          <a href="#" className="hover:text-white transition-colors">
-            Contact
-          </a>
+          {/* Mobile Navigation Menu */}
+          {mobileMenuOpen && (
+            <div className="lg:hidden">
+              <div className="px-2 pt-2 pb-3 space-y-1 bg-black/40 backdrop-blur-md rounded-lg mt-2">
+                <a
+                  href="/"
+                  className="block px-3 py-2 text-white/80 hover:text-white transition-colors"
+                >
+                  Home
+                </a>
+                <a
+                  href="/events"
+                  className="block px-3 py-2 text-white/80 hover:text-white transition-colors"
+                >
+                  Events
+                </a>
+                <a
+                  href="#"
+                  className="block px-3 py-2 text-white/80 hover:text-white transition-colors"
+                >
+                  My Events
+                </a>
+                <a
+                  href="/about"
+                  className="block px-3 py-2 text-white/80 hover:text-white transition-colors"
+                >
+                  About
+                </a>
+                <a
+                  href="#"
+                  className="block px-3 py-2 text-white/80 hover:text-white transition-colors"
+                >
+                  Contact
+                </a>
+                <div className="px-3 py-2">
+                  <button className="w-full bg-linear-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-full hover:from-blue-700 hover:to-purple-700 transition-all duration-300 text-sm">
+                    Sign Up
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
-
-        <button className="bg-linear-to-r from-blue-600 to-purple-600 text-white px-6 py-2 rounded-full hover:from-blue-700 hover:to-purple-700 transition-all duration-300 transform hover:scale-105 shadow-lg">
-          Sign Up
-        </button>
       </nav>
 
       {/* Hero Section */}
-      <section className="relative z-10 text-center py-20 px-6">
+      <section className="relative z-10 text-center py-12 sm:py-16 md:py-20 lg:py-24 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto">
-          <h1 className="text-6xl md:text-8xl font-bold text-white mb-6 animate-fade-in-up">
+          <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-bold text-white mb-4 sm:mb-6 animate-fade-in-up leading-tight">
             Discover Amazing Events Near You
           </h1>
-          <p className="text-xl text-gray-300 mb-8 max-w-2xl mx-auto animate-fade-in-up animation-delay-300">
+          <p className="text-base sm:text-lg md:text-xl text-gray-300 mb-6 sm:mb-8 max-w-2xl mx-auto animate-fade-in-up animation-delay-300 px-4">
             Join thousands of people experiencing the best events in music,
             food, technology, and community. Book your next adventure today!
           </p>
 
           {/* Search Bar */}
-          <div className="flex flex-col md:flex-row items-center justify-center gap-4 max-w-2xl mx-auto mb-12 animate-fade-in-up animation-delay-600">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 max-w-2xl mx-auto mb-8 sm:mb-12 animate-fade-in-up animation-delay-600 px-4">
             <div className="relative flex-1 w-full">
               <input
                 type="text"
                 placeholder="Search events, artists, venues..."
-                className="w-full px-6 py-4 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                className="w-full px-4 sm:px-6 py-3 sm:py-4 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm sm:text-base"
               />
               <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400">
                 🔍
               </div>
             </div>
-            <button className="bg-linear-to-r from-blue-600 to-purple-600 text-white px-8 py-4 rounded-full hover:from-blue-700 hover:to-purple-700 transition-all duration-300 transform hover:scale-105 shadow-xl font-semibold">
+            <button className="bg-linear-to-r from-blue-600 to-purple-600 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-full hover:from-blue-700 hover:to-purple-700 transition-all duration-300 transform hover:scale-105 shadow-xl font-semibold text-sm sm:text-base w-full sm:w-auto">
               Search
             </button>
           </div>
 
           {/* Action Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fade-in-up animation-delay-900">
-            <button className="bg-white text-gray-900 px-8 py-4 rounded-full font-semibold hover:bg-gray-100 transition-all duration-300 transform hover:scale-105 shadow-xl">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center animate-fade-in-up animation-delay-900 px-4">
+            <button className="bg-white text-gray-900 px-6 sm:px-8 py-3 sm:py-4 rounded-full font-semibold hover:bg-gray-100 transition-all duration-300 transform hover:scale-105 shadow-xl text-sm sm:text-base">
               Browse Events
             </button>
-            <button className="border-2 border-white text-white px-8 py-4 rounded-full font-semibold hover:bg-white hover:text-gray-900 transition-all duration-300 transform hover:scale-105">
+            <button className="border-2 border-white text-white px-6 sm:px-8 py-3 sm:py-4 rounded-full font-semibold hover:bg-white hover:text-gray-900 transition-all duration-300 transform hover:scale-105 text-sm sm:text-base">
               Learn More
             </button>
           </div>
@@ -292,12 +374,12 @@ export default function Home() {
       </section>
 
       {/* Categories Section */}
-      <section className="relative z-10 py-16">
-        <div className="max-w-7xl mx-auto px-6">
-          <h2 className="text-4xl font-bold text-white text-center mb-12">
+      <section className="relative z-10 py-12 sm:py-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <h2 className="text-3xl sm:text-4xl font-bold text-white text-center mb-8 sm:mb-12">
             Explore by Category
           </h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
             {[
               { name: "Music", icon: "🎵", color: "from-pink-500 to-rose-500" },
               {
@@ -318,10 +400,12 @@ export default function Home() {
             ].map((category, index) => (
               <div
                 key={category.name}
-                className={`bg-linear-to-br ${category.color} rounded-2xl p-6 text-center cursor-pointer transform hover:scale-105 transition-all duration-300 hover:shadow-2xl`}
+                className={`bg-linear-to-br ${category.color} rounded-xl sm:rounded-2xl p-4 sm:p-6 text-center cursor-pointer transform hover:scale-105 transition-all duration-300 hover:shadow-2xl`}
               >
-                <div className="text-4xl mb-3">{category.icon}</div>
-                <h3 className="text-white font-semibold text-lg">
+                <div className="text-3xl sm:text-4xl mb-2 sm:mb-3">
+                  {category.icon}
+                </div>
+                <h3 className="text-white font-semibold text-sm sm:text-base lg:text-lg">
                   {category.name}
                 </h3>
               </div>
@@ -331,18 +415,18 @@ export default function Home() {
       </section>
 
       {/* Featured Events */}
-      <section className="relative z-10 py-16">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold text-white mb-4">
+      <section className="relative z-10 py-12 sm:py-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-8 sm:mb-12">
+            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-3 sm:mb-4">
               Featured Events
             </h2>
-            <p className="text-gray-300 max-w-2xl mx-auto">
+            <p className="text-gray-300 max-w-2xl mx-auto text-sm sm:text-base px-4">
               Don't miss out on these incredible experiences
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 sm:gap-8 lg:gap-10">
             {events
               .filter((event) => event.featured)
               .slice(0, 3)
@@ -360,18 +444,18 @@ export default function Home() {
       </section>
 
       {/* Upcoming Events */}
-      <section className="relative z-10 py-16 bg-black/20">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold text-white mb-4">
+      <section className="relative z-10 py-12 sm:py-16 bg-black/20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-8 sm:mb-12">
+            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-3 sm:mb-4">
               Upcoming Events
             </h2>
-            <p className="text-gray-300 max-w-2xl mx-auto">
+            <p className="text-gray-300 max-w-2xl mx-auto text-sm sm:text-base px-4">
               Discover more amazing events happening soon
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 sm:gap-8 lg:gap-10">
             {events
               .filter((event) => !event.featured)
               .slice(0, 3)

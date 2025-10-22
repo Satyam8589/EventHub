@@ -1,11 +1,11 @@
-'use client';
-import { useState, useEffect } from 'react';
-import EventCard from '../../components/EventCard';
+"use client";
+import { useState, useEffect } from "react";
+import EventCard from "../../components/EventCard";
 
 export default function EventsPage() {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('All Categories');
-  const [selectedDate, setSelectedDate] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("All Categories");
+  const [selectedDate, setSelectedDate] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
 
@@ -14,8 +14,8 @@ export default function EventsPage() {
       setMousePosition({ x: e.clientX, y: e.clientY });
     };
 
-    window.addEventListener('mousemove', handleMouseMove);
-    return () => window.removeEventListener('mousemove', handleMouseMove);
+    window.addEventListener("mousemove", handleMouseMove);
+    return () => window.removeEventListener("mousemove", handleMouseMove);
   }, []);
 
   // Extended events data
@@ -136,22 +136,34 @@ export default function EventsPage() {
       capacity: 3000,
       featured: false,
       imageUrl: null,
-    }
+    },
   ];
 
   const categories = [
-    'All Categories', 'Music', 'Technology', 'Food & Drink', 'Art & Culture', 
-    'Sports', 'Business', 'Gaming', 'Education', 'Entertainment', 'Health & Wellness'
+    "All Categories",
+    "Music",
+    "Technology",
+    "Food & Drink",
+    "Art & Culture",
+    "Sports",
+    "Business",
+    "Gaming",
+    "Education",
+    "Entertainment",
+    "Health & Wellness",
   ];
 
   // Filter events based on search and category
-  const filteredEvents = allEvents.filter(event => {
-    const matchesSearch = event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         event.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         event.location.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesCategory = selectedCategory === 'All Categories' || event.category === selectedCategory;
-    
+  const filteredEvents = allEvents.filter((event) => {
+    const matchesSearch =
+      event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      event.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      event.location.toLowerCase().includes(searchTerm.toLowerCase());
+
+    const matchesCategory =
+      selectedCategory === "All Categories" ||
+      event.category === selectedCategory;
+
     return matchesSearch && matchesCategory;
   });
 
@@ -172,24 +184,30 @@ export default function EventsPage() {
             }}
           />
         ))}
-        
+
         {/* Moving gradient orbs */}
-        <div 
+        <div
           className="absolute w-96 h-96 bg-linear-to-r from-blue-400 to-purple-600 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob"
           style={{
-            transform: `translate(${mousePosition.x * 0.02}px, ${mousePosition.y * 0.02}px)`
+            transform: `translate(${mousePosition.x * 0.02}px, ${
+              mousePosition.y * 0.02
+            }px)`,
           }}
         />
-        <div 
+        <div
           className="absolute w-96 h-96 bg-linear-to-r from-yellow-400 to-pink-600 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-2000 top-20 right-20"
           style={{
-            transform: `translate(${mousePosition.x * -0.01}px, ${mousePosition.y * -0.01}px)`
+            transform: `translate(${mousePosition.x * -0.01}px, ${
+              mousePosition.y * -0.01
+            }px)`,
           }}
         />
-        <div 
+        <div
           className="absolute w-96 h-96 bg-linear-to-r from-green-400 to-blue-600 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-4000 bottom-20 left-20"
           style={{
-            transform: `translate(${mousePosition.x * 0.015}px, ${mousePosition.y * 0.015}px)`
+            transform: `translate(${mousePosition.x * 0.015}px, ${
+              mousePosition.y * 0.015
+            }px)`,
           }}
         />
       </div>
@@ -204,13 +222,23 @@ export default function EventsPage() {
               </div>
               <span className="text-white font-bold text-xl">EventHub</span>
             </div>
-            
+
             <div className="hidden md:flex items-center space-x-8 text-white/80">
-              <a href="/" className="hover:text-white transition-colors">Home</a>
-              <a href="/events" className="text-white font-medium">Events</a>
-              <a href="#" className="hover:text-white transition-colors">My Events</a>
-              <a href="#" className="hover:text-white transition-colors">About</a>
-              <a href="#" className="hover:text-white transition-colors">Contact</a>
+              <a href="/" className="hover:text-white transition-colors">
+                Home
+              </a>
+              <a href="/events" className="text-white font-medium">
+                Events
+              </a>
+              <a href="#" className="hover:text-white transition-colors">
+                My Events
+              </a>
+              <a href="#" className="hover:text-white transition-colors">
+                About
+              </a>
+              <a href="#" className="hover:text-white transition-colors">
+                Contact
+              </a>
             </div>
 
             <button className="bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-6 py-2 rounded-lg transition-colors">
@@ -224,7 +252,9 @@ export default function EventsPage() {
       <div className="relative z-10 py-12">
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold text-white mb-4">Discover Events</h1>
+            <h1 className="text-4xl font-bold text-white mb-4">
+              Discover Events
+            </h1>
             <p className="text-gray-300 max-w-2xl mx-auto">
               Explore our calendar of amazing events
             </p>
@@ -253,8 +283,14 @@ export default function EventsPage() {
                 onChange={(e) => setSelectedCategory(e.target.value)}
                 className="px-4 py-3 border border-white/20 rounded-lg bg-white/10 backdrop-blur-md text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
               >
-                {categories.map(category => (
-                  <option key={category} value={category} className="text-gray-900 bg-white">{category}</option>
+                {categories.map((category) => (
+                  <option
+                    key={category}
+                    value={category}
+                    className="text-gray-900 bg-white"
+                  >
+                    {category}
+                  </option>
                 ))}
               </select>
 
@@ -284,7 +320,9 @@ export default function EventsPage() {
         {/* Results Count */}
         <div className="flex justify-between items-center mb-8">
           <p className="text-gray-300">
-            <span className="font-medium text-white">{filteredEvents.length} Events Found</span>
+            <span className="font-medium text-white">
+              {filteredEvents.length} Events Found
+            </span>
           </p>
           <button className="flex items-center gap-2 text-gray-300 hover:text-white transition-colors">
             <span>⚙️</span>
@@ -308,15 +346,17 @@ export default function EventsPage() {
         ) : (
           <div className="text-center py-12">
             <div className="text-6xl mb-4">🔍</div>
-            <h3 className="text-xl font-semibold text-white mb-2">No events found</h3>
+            <h3 className="text-xl font-semibold text-white mb-2">
+              No events found
+            </h3>
             <p className="text-gray-300 mb-4">
               Try adjusting your search criteria or browse all categories
             </p>
             <button
               onClick={() => {
-                setSearchTerm('');
-                setSelectedCategory('All Categories');
-                setSelectedDate('');
+                setSearchTerm("");
+                setSelectedCategory("All Categories");
+                setSelectedDate("");
               }}
               className="bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-6 py-3 rounded-lg transition-colors"
             >
@@ -347,30 +387,63 @@ export default function EventsPage() {
                 <span className="text-white font-bold text-xl">EventHub</span>
               </div>
               <p className="text-gray-400 text-sm">
-                Your premium destination for discovering and booking amazing events
+                Your premium destination for discovering and booking amazing
+                events
               </p>
             </div>
-            
+
             <div>
               <h4 className="text-white font-semibold mb-4">Quick Links</h4>
               <ul className="space-y-2 text-sm text-gray-400">
-                <li><a href="#" className="hover:text-white transition-colors">Browse Events</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">My Events</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">About Us</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Contact</a></li>
+                <li>
+                  <a href="#" className="hover:text-white transition-colors">
+                    Browse Events
+                  </a>
+                </li>
+                <li>
+                  <a href="#" className="hover:text-white transition-colors">
+                    My Events
+                  </a>
+                </li>
+                <li>
+                  <a href="#" className="hover:text-white transition-colors">
+                    About Us
+                  </a>
+                </li>
+                <li>
+                  <a href="#" className="hover:text-white transition-colors">
+                    Contact
+                  </a>
+                </li>
               </ul>
             </div>
-            
+
             <div>
               <h4 className="text-white font-semibold mb-4">Categories</h4>
               <ul className="space-y-2 text-sm text-gray-400">
-                <li><a href="#" className="hover:text-white transition-colors">Music</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Technology</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Food & Drink</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Sports</a></li>
+                <li>
+                  <a href="#" className="hover:text-white transition-colors">
+                    Music
+                  </a>
+                </li>
+                <li>
+                  <a href="#" className="hover:text-white transition-colors">
+                    Technology
+                  </a>
+                </li>
+                <li>
+                  <a href="#" className="hover:text-white transition-colors">
+                    Food & Drink
+                  </a>
+                </li>
+                <li>
+                  <a href="#" className="hover:text-white transition-colors">
+                    Sports
+                  </a>
+                </li>
               </ul>
             </div>
-            
+
             <div>
               <h4 className="text-white font-semibold mb-4">Contact Us</h4>
               <p className="text-gray-400 text-sm mb-2">📧 info@eventhub.com</p>
@@ -378,7 +451,7 @@ export default function EventsPage() {
               <p className="text-gray-400 text-sm">📍 123 Event St, NY 10001</p>
             </div>
           </div>
-          
+
           <div className="border-t border-gray-800 mt-8 pt-8 text-center text-sm text-gray-400">
             <p>&copy; 2025 EventHub. All rights reserved.</p>
           </div>
