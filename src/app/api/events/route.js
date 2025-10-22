@@ -5,6 +5,9 @@ import { uploadToCloudinary } from "@/lib/cloudinary";
 // GET /api/events - Get all events
 export async function GET() {
   try {
+    console.log("Starting GET /api/events");
+    console.log("DATABASE_URL exists:", !!process.env.DATABASE_URL);
+    
     const events = await prisma.event.findMany({
       include: {
         organizer: {
@@ -31,11 +34,14 @@ export async function GET() {
       ],
     });
 
+    console.log("Successfully fetched events:", events.length);
     return NextResponse.json({ events });
   } catch (error) {
-    console.error("Error fetching events:", error);
+    console.error("Error fetching events:", error.message);
+    console.error("Error code:", error.code);
+    console.error("Error details:", error);
     return NextResponse.json(
-      { error: "Failed to fetch events" },
+      { error: "Failed to fetch events", details: error.message },
       { status: 500 }
     );
   }

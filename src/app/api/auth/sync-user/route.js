@@ -4,6 +4,9 @@ import { prisma } from "@/lib/prisma";
 // POST /api/auth/sync-user - Sync Firebase user with our database
 export async function POST(request) {
   try {
+    console.log("Starting POST /api/auth/sync-user");
+    console.log("DATABASE_URL exists:", !!process.env.DATABASE_URL);
+    
     const { uid, email, name, avatar } = await request.json();
 
     if (!uid || !email) {
@@ -12,6 +15,8 @@ export async function POST(request) {
         { status: 400 }
       );
     }
+
+    console.log("Syncing user:", uid, email);
 
     // Check if user already exists in our database
     let user = await prisma.user.findFirst({
@@ -30,6 +35,7 @@ export async function POST(request) {
           // Don't update role here - preserve existing role from database
         },
       });
+      console.log("Updated existing user");
     } else {
       // Create new user
       user = await prisma.user.create({
@@ -41,11 +47,14 @@ export async function POST(request) {
           role: "ATTENDEE",
         },
       });
+      console.log("Created new user");
     }
 
     return NextResponse.json({ user });
   } catch (error) {
-    console.error("Error syncing user:", error);
-    return NextResponse.json({ error: "Failed to sync user" }, { status: 500 });
+    console.error("Error syncing user:", error.message);
+    console.error("Error code:", error.code);
+    console.error("Error details:", error);
+    return NextResponse.json({ error: "Failed to sync user", details: error.message }, { status: 500 });
   }
 }
