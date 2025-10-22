@@ -157,7 +157,7 @@ export default function MyEventsPage() {
                 >
                   ← Back to Home
                 </Link>
-                
+
                 {/* Desktop Sign Out Icon - Always visible when logged in */}
                 {user && (
                   <button

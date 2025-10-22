@@ -23,6 +23,7 @@ export default function AdminLayout({ children, activeTab = "dashboard" }) {
       icon: "📈",
       href: "/admin/analytics",
     },
+    { id: "qr-test", name: "QR Test", icon: "🔍", href: "/admin/qr-test" },
     { id: "settings", name: "Settings", icon: "⚙️", href: "/admin/settings" },
   ];
 

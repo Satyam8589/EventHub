@@ -3,248 +3,511 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import AdminLayout from "@/components/AdminLayout";
+import QRCameraScanner from "@/components/QRCameraScanner";
+import VerificationSuccessPopup from "@/components/VerificationSuccessPopup";
 
 export default function TicketScanner() {
-  const [ticketCode, setTicketCode] = useState("");
+  const [bookingId, setBookingId] = useState("");
   const [scanResult, setScanResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [events, setEvents] = useState([]);
   const [selectedEvent, setSelectedEvent] = useState("");
+  const [statistics, setStatistics] = useState(null);
+  const [showCamera, setShowCamera] = useState(false);
+  const [showSuccessPopup, setShowSuccessPopup] = useState(false);
+  const [successData, setSuccessData] = useState(null);
 
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
 
-  // Check admin access
+  // Check admin access and fetch events
   useEffect(() => {
-    if (
-      !authLoading &&
-      (!user || (user.role !== "SUPER_ADMIN" && user.role !== "EVENT_ADMIN"))
-    ) {
-      router.push("/");
+    if (authLoading) return;
+
+    if (!user || user.role !== "EVENT_ADMIN") {
+      router.push("/admin");
       return;
     }
+
+    fetchAdminEvents();
   }, [user, authLoading, router]);
 
-  // Fetch events user can manage
-  useEffect(() => {
-    const fetchEvents = async () => {
-      if (!user) return;
+  const fetchAdminEvents = async () => {
+    try {
+      setLoading(true);
+      // Get events where user is admin
+      const response = await fetch(`/api/admin/events?adminId=${user.uid}`);
+      if (!response.ok) throw new Error("Failed to fetch events");
 
-      try {
-        const endpoint =
-          user.role === "SUPER_ADMIN"
-            ? "/api/admin/events"
-            : `/api/admin/events?adminUserId=${user.uid}`;
+      const data = await response.json();
+      setEvents(data.events || []);
 
-        const response = await fetch(endpoint);
-        if (response.ok) {
-          const data = await response.json();
-          setEvents(data.events || []);
-
-          // Auto-select first event if only one available
-          if (data.events && data.events.length === 1) {
-            setSelectedEvent(data.events[0].id);
-          }
-        }
-      } catch (error) {
-        console.error("Error fetching events:", error);
+      // Auto-select first event if available
+      if (data.events && data.events.length > 0) {
+        const firstEvent = data.events[0];
+        setSelectedEvent(firstEvent.id);
+        await fetchEventStatistics(firstEvent.id);
       }
-    };
-
-    if (user && (user.role === "SUPER_ADMIN" || user.role === "EVENT_ADMIN")) {
-      fetchEvents();
+    } catch (error) {
+      console.error("Error fetching admin events:", error);
+    } finally {
+      setLoading(false);
     }
-  }, [user]);
+  };
 
-  const handleScanTicket = async () => {
-    if (!ticketCode.trim() || !selectedEvent) return;
+  const fetchEventStatistics = async (eventId) => {
+    try {
+      const response = await fetch(
+        `/api/admin/scan-ticket?eventId=${eventId}&scannerId=${user.uid}`
+      );
+      if (!response.ok) throw new Error("Failed to fetch statistics");
+
+      const data = await response.json();
+      setStatistics(data);
+    } catch (error) {
+      console.error("Error fetching statistics:", error);
+    }
+  };
+
+  const handleEventSelect = async (eventId) => {
+    setSelectedEvent(eventId);
+    setScanResult(null);
+    await fetchEventStatistics(eventId);
+  };
+
+  const handleScanTicket = async (scannedBookingId = null) => {
+    const idToScan = scannedBookingId || bookingId.trim();
+    if (!idToScan || !selectedEvent) return;
 
     setLoading(true);
     setScanResult(null);
 
     try {
-      const response = await fetch("/api/admin/verify-ticket", {
+      const response = await fetch("/api/admin/scan-ticket", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          ticketCode: ticketCode.trim(),
+          bookingId: idToScan,
+          scannedBy: user.uid,
           eventId: selectedEvent,
-          adminUserId: user.uid,
         }),
       });
 
       const data = await response.json();
-      setScanResult(data);
+      setScanResult({
+        success: response.ok,
+        ...data,
+      });
 
-      if (data.success) {
-        setTicketCode("");
+      if (response.ok) {
+        // Show success popup for successful scans
+        setSuccessData(data.booking);
+        setShowSuccessPopup(true);
+
+        // Clear input if manually typed
+        if (!scannedBookingId) {
+          setBookingId("");
+        }
+
+        // Refresh statistics
+        await fetchEventStatistics(selectedEvent);
+
+        // Hide camera after successful scan
+        if (showCamera) {
+          setShowCamera(false);
+        }
       }
     } catch (error) {
-      console.error("Error verifying ticket:", error);
+      console.error("Error scanning ticket:", error);
       setScanResult({
         success: false,
-        message: "Failed to verify ticket. Please try again.",
+        error: "Network error",
+        message: "Failed to connect to server",
       });
     } finally {
       setLoading(false);
     }
   };
 
-  if (authLoading || !user) {
+  // Handle QR camera scan
+  const handleQRScan = (result) => {
+    if (result && result.trim()) {
+      handleScanTicket(result.trim());
+    }
+  };
+
+  // Handle camera error
+  const handleCameraError = (error) => {
+    console.error("Camera error:", error);
+    setScanResult({
+      success: false,
+      error: "Camera error",
+      message: "Failed to access camera. Please try manual entry.",
+    });
+  };
+
+  if (authLoading || loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 flex items-center justify-center">
-        <div className="text-white">Loading...</div>
-      </div>
+      <AdminLayout activeTab="scanner">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-white">Loading...</div>
+        </div>
+      </AdminLayout>
     );
   }
 
-  if (user.role !== "SUPER_ADMIN" && user.role !== "EVENT_ADMIN") {
+  if (events.length === 0) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-white mb-4">Access Denied</h1>
+      <AdminLayout activeTab="scanner">
+        <div className="text-center py-12">
+          <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-yellow-500/20 flex items-center justify-center">
+            <span className="text-4xl">📱</span>
+          </div>
+          <h2 className="text-2xl font-bold text-white mb-4">
+            No Events Assigned
+          </h2>
           <p className="text-gray-300 mb-6">
-            You don't have permission to access the ticket scanner.
+            You are not assigned as an admin to any events yet.
           </p>
-          <button
-            onClick={() => router.push("/")}
-            className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            Go Back
-          </button>
+          <p className="text-sm text-gray-400">
+            Contact a super admin to get assigned to an event.
+          </p>
         </div>
-      </div>
+      </AdminLayout>
     );
   }
 
   return (
     <AdminLayout activeTab="scanner">
-      <div className="max-w-2xl mx-auto space-y-6">
+      <div className="space-y-6">
         {/* Header */}
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-white mb-2">Ticket Scanner</h1>
-          <p className="text-gray-300">Scan QR codes to verify event tickets</p>
+        <div>
+          <h1 className="text-2xl font-bold text-white">QR Code Scanner</h1>
+          <p className="text-gray-300 mt-1">
+            Scan tickets to verify event entry
+          </p>
         </div>
 
         {/* Event Selection */}
-        <div className="bg-white/10 backdrop-blur-md rounded-xl border border-white/20 p-6">
-          <label className="block text-white font-medium mb-3">
-            Select Event
-          </label>
-          <select
-            value={selectedEvent}
-            onChange={(e) => setSelectedEvent(e.target.value)}
-            className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">Choose an event...</option>
-            {events.map((event) => (
-              <option key={event.id} value={event.id} className="bg-slate-900">
-                {event.title} - {new Date(event.date).toLocaleDateString()}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Ticket Input */}
-        <div className="bg-white/10 backdrop-blur-md rounded-xl border border-white/20 p-6">
-          <label className="block text-white font-medium mb-3">
-            Ticket Code
-          </label>
-          <div className="flex gap-3">
-            <input
-              type="text"
-              value={ticketCode}
-              onChange={(e) => setTicketCode(e.target.value)}
-              placeholder="Scan QR code or enter ticket code manually"
-              className="flex-1 bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              onKeyDown={(e) => e.key === "Enter" && handleScanTicket()}
-            />
-            <button
-              onClick={handleScanTicket}
-              disabled={loading || !ticketCode.trim() || !selectedEvent}
-              className="bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? "Verifying..." : "Verify"}
-            </button>
+        {events.length > 1 && (
+          <div className="bg-white/5 backdrop-blur-md rounded-xl border border-white/10 p-6">
+            <h2 className="text-lg font-semibold text-white mb-4">
+              Select Event
+            </h2>
+            <div className="grid gap-3">
+              {events.map((event) => (
+                <button
+                  key={event.id}
+                  onClick={() => handleEventSelect(event.id)}
+                  className={`p-4 rounded-lg text-left transition-colors ${
+                    selectedEvent === event.id
+                      ? "bg-blue-600 text-white"
+                      : "bg-white/10 text-gray-300 hover:bg-white/20"
+                  }`}
+                >
+                  <h3 className="font-medium">{event.title}</h3>
+                  <p className="text-sm opacity-80">
+                    {new Date(event.date).toLocaleDateString()} at {event.time}
+                  </p>
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
+
+        {selectedEvent && (
+          <>
+            {/* Event Info & Statistics */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Event Info */}
+              <div className="bg-white/5 backdrop-blur-md rounded-xl border border-white/10 p-6">
+                <h2 className="text-lg font-semibold text-white mb-4">
+                  Event Details
+                </h2>
+                <div className="space-y-3">
+                  {events.find((e) => e.id === selectedEvent) && (
+                    <>
+                      <div>
+                        <span className="text-gray-400">Event:</span>
+                        <span className="text-white ml-2 font-medium">
+                          {events.find((e) => e.id === selectedEvent).title}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-gray-400">Date:</span>
+                        <span className="text-white ml-2">
+                          {new Date(
+                            events.find((e) => e.id === selectedEvent).date
+                          ).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-gray-400">Time:</span>
+                        <span className="text-white ml-2">
+                          {events.find((e) => e.id === selectedEvent).time}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-gray-400">Venue:</span>
+                        <span className="text-white ml-2">
+                          {events.find((e) => e.id === selectedEvent).venue}
+                        </span>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Statistics */}
+              {statistics && (
+                <div className="bg-white/5 backdrop-blur-md rounded-xl border border-white/10 p-6">
+                  <h2 className="text-lg font-semibold text-white mb-4">
+                    Scan Statistics
+                  </h2>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="text-center p-3 bg-blue-500/20 rounded-lg">
+                      <div className="text-2xl font-bold text-blue-300">
+                        {statistics.statistics.totalBookings}
+                      </div>
+                      <div className="text-sm text-blue-200">
+                        Total Bookings
+                      </div>
+                    </div>
+                    <div className="text-center p-3 bg-green-500/20 rounded-lg">
+                      <div className="text-2xl font-bold text-green-300">
+                        {statistics.statistics.verifiedBookings}
+                      </div>
+                      <div className="text-sm text-green-200">Verified</div>
+                    </div>
+                    <div className="text-center p-3 bg-yellow-500/20 rounded-lg">
+                      <div className="text-2xl font-bold text-yellow-300">
+                        {statistics.statistics.pendingVerification}
+                      </div>
+                      <div className="text-sm text-yellow-200">Pending</div>
+                    </div>
+                    <div className="text-center p-3 bg-purple-500/20 rounded-lg">
+                      <div className="text-2xl font-bold text-purple-300">
+                        {statistics.statistics.totalTickets}
+                      </div>
+                      <div className="text-sm text-purple-200">
+                        Total Tickets
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Scanner Interface */}
+            <div className="bg-white/5 backdrop-blur-md rounded-xl border border-white/10 p-6">
+              <h2 className="text-lg font-semibold text-white mb-4">
+                Ticket Scanner
+              </h2>
+
+              <div className="space-y-4">
+                {/* Scanner Mode Toggle */}
+                <div className="flex gap-2 mb-4">
+                  <button
+                    onClick={() => setShowCamera(false)}
+                    className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                      !showCamera
+                        ? "bg-blue-600 text-white"
+                        : "bg-white/10 text-gray-300 hover:bg-white/20"
+                    }`}
+                  >
+                    📝 Manual Entry
+                  </button>
+                  <button
+                    onClick={() => setShowCamera(true)}
+                    className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                      showCamera
+                        ? "bg-blue-600 text-white"
+                        : "bg-white/10 text-gray-300 hover:bg-white/20"
+                    }`}
+                  >
+                    📷 Camera Scanner
+                  </button>
+                </div>
+
+                {!showCamera ? (
+                  /* Manual Input */
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Enter Booking ID
+                    </label>
+                    <div className="flex space-x-3">
+                      <input
+                        type="text"
+                        value={bookingId}
+                        onChange={(e) => setBookingId(e.target.value)}
+                        placeholder="Enter booking ID to verify..."
+                        className="flex-1 px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        onKeyPress={(e) => {
+                          if (e.key === "Enter" && !loading) {
+                            handleScanTicket();
+                          }
+                        }}
+                      />
+                      <button
+                        onClick={() => handleScanTicket()}
+                        disabled={loading || !bookingId.trim()}
+                        className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {loading ? "Scanning..." : "Scan"}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  /* QR Camera Scanner */
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      QR Camera Scanner
+                    </label>
+                    <QRCameraScanner
+                      onScan={handleQRScan}
+                      onError={handleCameraError}
+                      isActive={showCamera}
+                      className="w-full"
+                    />
+                    <p className="text-xs text-gray-400 mt-2 text-center">
+                      Point your camera at the QR code to scan automatically
+                    </p>
+                  </div>
+                )}
+
+                {/* Loading indicator during scan */}
+                {loading && (
+                  <div className="flex items-center justify-center p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500 mr-3"></div>
+                    <span className="text-blue-300">Verifying ticket...</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </>
+        )}
 
         {/* Scan Result */}
         {scanResult && (
           <div
-            className={`backdrop-blur-md rounded-xl border p-6 ${
+            className={`rounded-xl border p-6 ${
               scanResult.success
-                ? "bg-green-500/20 border-green-500/30"
-                : "bg-red-500/20 border-red-500/30"
+                ? "bg-green-500/10 border-green-500/20"
+                : "bg-red-500/10 border-red-500/20"
             }`}
           >
-            <div className="flex items-start gap-4">
+            <div className="flex items-center space-x-3 mb-4">
               <div
-                className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                  scanResult.success ? "bg-green-500/20" : "bg-red-500/20"
+                className={`text-2xl ${
+                  scanResult.success ? "text-green-300" : "text-red-300"
                 }`}
               >
-                <span className="text-2xl">
-                  {scanResult.success ? "✅" : "❌"}
-                </span>
+                {scanResult.success ? "✅" : "❌"}
               </div>
-              <div className="flex-1">
-                <h3
-                  className={`text-lg font-bold mb-2 ${
-                    scanResult.success ? "text-green-400" : "text-red-400"
-                  }`}
-                >
-                  {scanResult.success ? "Valid Ticket" : "Invalid Ticket"}
-                </h3>
-                <p className="text-white mb-3">{scanResult.message}</p>
+              <h3
+                className={`text-lg font-semibold ${
+                  scanResult.success ? "text-green-300" : "text-red-300"
+                }`}
+              >
+                {scanResult.success ? "Valid Ticket" : "Invalid Ticket"}
+              </h3>
+            </div>
 
-                {scanResult.success && scanResult.booking && (
-                  <div className="bg-white/10 rounded-lg p-4 space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-gray-300">Attendee:</span>
-                      <span className="text-white font-medium">
-                        {scanResult.booking.user?.name || "Guest"}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-300">Event:</span>
-                      <span className="text-white font-medium">
-                        {scanResult.booking.event?.title}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-300">Tickets:</span>
-                      <span className="text-white font-medium">
-                        {scanResult.booking.tickets}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-300">Booking Date:</span>
-                      <span className="text-white font-medium">
-                        {new Date(
-                          scanResult.booking.createdAt
-                        ).toLocaleDateString()}
-                      </span>
-                    </div>
+            <p
+              className={`mb-4 ${
+                scanResult.success ? "text-green-200" : "text-red-200"
+              }`}
+            >
+              {scanResult.message}
+            </p>
+
+            {scanResult.booking && (
+              <div className="space-y-2 text-sm">
+                <div className="text-gray-300">
+                  <span className="font-medium">Attendee:</span>{" "}
+                  {scanResult.booking.userName}
+                </div>
+                {scanResult.booking.userEmail && (
+                  <div className="text-gray-300">
+                    <span className="font-medium">Email:</span>{" "}
+                    {scanResult.booking.userEmail}
+                  </div>
+                )}
+                <div className="text-gray-300">
+                  <span className="font-medium">Event:</span>{" "}
+                  {scanResult.booking.eventTitle}
+                </div>
+                {scanResult.booking.tickets && (
+                  <div className="text-gray-300">
+                    <span className="font-medium">Tickets:</span>{" "}
+                    {scanResult.booking.tickets}
+                  </div>
+                )}
+                {scanResult.booking.verifiedAt && (
+                  <div className="text-gray-300">
+                    <span className="font-medium">Verified:</span>{" "}
+                    {new Date(scanResult.booking.verifiedAt).toLocaleString()}
                   </div>
                 )}
               </div>
+            )}
+          </div>
+        )}
+
+        {/* Recent Verifications */}
+        {selectedEvent && statistics?.recentVerifications?.length > 0 && (
+          <div className="bg-white/5 backdrop-blur-md rounded-xl border border-white/10 p-6">
+            <h2 className="text-lg font-semibold text-white mb-4">
+              Recent Verifications
+            </h2>
+            <div className="space-y-3">
+              {statistics.recentVerifications.map((verification, index) => (
+                <div
+                  key={index}
+                  className="flex items-center justify-between p-3 bg-white/5 rounded-lg"
+                >
+                  <div>
+                    <div className="font-medium text-white">
+                      {verification.userName}
+                    </div>
+                    <div className="text-sm text-gray-400">
+                      {verification.userEmail}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-sm text-gray-300">
+                      {verification.tickets} tickets
+                    </div>
+                    <div className="text-xs text-gray-400">
+                      {new Date(verification.verifiedAt).toLocaleString()}
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}
 
         {/* Instructions */}
-        <div className="bg-white/10 backdrop-blur-md rounded-xl border border-white/20 p-6">
+        <div className="bg-white/5 backdrop-blur-md rounded-xl border border-white/10 p-6">
           <h3 className="text-white font-medium mb-3">📱 How to use:</h3>
           <ul className="space-y-2 text-gray-300 text-sm">
-            <li>1. Select the event you're managing</li>
-            <li>2. Use your phone camera to scan the QR code on the ticket</li>
-            <li>3. Or manually enter the ticket code</li>
-            <li>4. Press "Verify" to check the ticket validity</li>
+            <li>1. Your assigned events are automatically loaded</li>
+            <li>2. Toggle between manual entry and camera scanner</li>
+            <li>3. Use camera to scan QR codes or manually enter booking ID</li>
+            <li>4. Successful scans show a green confirmation popup</li>
+            <li>5. View real-time statistics and recent verifications</li>
           </ul>
         </div>
+
+        {/* Success Popup */}
+        <VerificationSuccessPopup
+          isVisible={showSuccessPopup}
+          onClose={() => setShowSuccessPopup(false)}
+          bookingData={successData}
+        />
       </div>
     </AdminLayout>
   );

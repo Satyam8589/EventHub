@@ -22,10 +22,12 @@ model User {
   updatedAt   DateTime @updatedAt
 
   // Relations
-  organizedEvents Event[]      @relation("EventOrganizer")
-  bookings        Booking[]
-  reviews         Review[]
-  eventAdminFor   EventAdmin[] // Events this user is admin for
+  organizedEvents     Event[]              @relation("EventOrganizer")
+  bookings            Booking[]
+  reviews             Review[]
+  eventAdminFor       EventAdmin[]         // Events this user is admin for
+  ticketScans         TicketVerification[] // Ticket verifications performed by this user
+  assignedEventAdmins EventAdmin[]         @relation("AssignedEventAdmins") // Event admins assigned by this user
 
   @@map("users")
 }
@@ -56,12 +58,13 @@ model Event {
   organizerPhone String?
 
   // Relations
-  organizerId     String
-  organizer       User           @relation("EventOrganizer", fields: [organizerId], references: [id])
-  bookings        Booking[]
-  reviews         Review[]
-  eventAdmins     EventAdmin[]   // Admins assigned to this event
-  discounts       EventDiscount[] // Discounts for this event
+  organizerId       String
+  organizer         User                   @relation("EventOrganizer", fields: [organizerId], references: [id])
+  bookings          Booking[]
+  reviews           Review[]
+  eventAdmins       EventAdmin[]           // Admins assigned to this event
+  discounts         EventDiscount[]        // Discounts for this event
+  ticketVerifications TicketVerification[] // Ticket verifications for this event
 
   @@map("events")
 }
@@ -107,14 +110,16 @@ model Review {
 
 // Event Admin Assignment model
 model EventAdmin {
-  id        String   @id @default(cuid())
-  createdAt DateTime @default(now())
+  id         String   @id @default(cuid())
+  assignedAt DateTime @default(now())
+  assignedBy String   // SUPER_ADMIN who assigned this admin
   
   // Relations
-  userId    String
+  userId    String   @unique // User can only be admin of one event
   eventId   String
-  user      User     @relation(fields: [userId], references: [id])
-  event     Event    @relation(fields: [eventId], references: [id])
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  assignedByUser User @relation("AssignedEventAdmins", fields: [assignedBy], references: [id])
   
   @@unique([userId, eventId])
   @@map("event_admins")
@@ -125,10 +130,15 @@ model TicketVerification {
   id          String   @id @default(cuid())
   scannedAt   DateTime @default(now())
   scannedBy   String   // Admin user ID
+  eventId     String   // Event ID for the verification
+  isValid     Boolean  @default(true) // Whether the ticket was valid when scanned
+  notes       String?  // Optional notes about the verification
   
   // Relations
-  bookingId   String
-  booking     Booking  @relation(fields: [bookingId], references: [id])
+  bookingId   String   @unique // Each booking can only be verified once
+  booking     Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  scanner     User     @relation(fields: [scannedBy], references: [id], onDelete: Cascade)
+  event       Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
   
   @@map("ticket_verifications")
 }

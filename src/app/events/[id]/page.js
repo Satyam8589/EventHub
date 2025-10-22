@@ -231,7 +231,7 @@ export default function Page({ params }) {
               >
                 Events
               </Link>
-              
+
               {/* Desktop Sign Out Icon - Always visible when logged in */}
               {user && (
                 <button
