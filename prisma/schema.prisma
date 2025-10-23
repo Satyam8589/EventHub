@@ -60,19 +60,19 @@ model Event {
 }
 
 model Booking {
-  id            String              @id @default(cuid())
-  tickets       Int                 @default(1)
+  id            String               @id @default(cuid())
+  tickets       Int                  @default(1)
   totalAmount   Float
-  status        BookingStatus       @default(PENDING)
+  status        BookingStatus        @default(PENDING)
   paymentMethod String?
   paymentId     String?
-  createdAt     DateTime            @default(now())
-  updatedAt     DateTime            @updatedAt
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
   userId        String
   eventId       String
-  event         Event               @relation(fields: [eventId], references: [id])
-  user          User                @relation(fields: [userId], references: [id])
-  verifications TicketVerification?
+  event         Event                @relation(fields: [eventId], references: [id])
+  user          User                 @relation(fields: [userId], references: [id])
+  verifications TicketVerification[]
 
   @@map("bookings")
 }
