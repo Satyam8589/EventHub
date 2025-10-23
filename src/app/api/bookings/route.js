@@ -29,6 +29,13 @@ export async function GET(request) {
             email: true,
           },
         },
+        verifications: {
+          select: {
+            id: true,
+            scannedAt: true,
+            isValid: true,
+          },
+        },
       },
       orderBy: {
         createdAt: "desc",

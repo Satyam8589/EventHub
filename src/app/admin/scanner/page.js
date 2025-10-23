@@ -358,6 +358,21 @@ export default function TicketScanner() {
                         {loading ? "Scanning..." : "Scan"}
                       </button>
                     </div>
+
+                    {/* Debug Test Button */}
+                    <div className="mt-3">
+                      <button
+                        onClick={() => {
+                          const testId = "cmh2jcw280001tvn0ku8hh78n";
+                          console.log("Testing with booking ID:", testId);
+                          setBookingId(testId);
+                          handleScanTicket(testId);
+                        }}
+                        className="w-full px-4 py-2 bg-purple-600/20 border border-purple-500/50 text-purple-300 rounded-lg hover:bg-purple-600/30 transition-colors text-sm"
+                      >
+                        🧪 Test with Known Booking ID
+                      </button>
+                    </div>
                   </div>
                 ) : (
                   /* QR Camera Scanner */
@@ -445,12 +460,35 @@ export default function TicketScanner() {
                     {scanResult.booking.tickets}
                   </div>
                 )}
+                {scanResult.booking.status && (
+                  <div className="text-gray-300">
+                    <span className="font-medium">Booking Status:</span>{" "}
+                    <span
+                      className={`font-semibold ${
+                        scanResult.booking.status === "CONFIRMED"
+                          ? "text-green-400"
+                          : scanResult.booking.status === "PENDING"
+                          ? "text-yellow-400"
+                          : "text-red-400"
+                      }`}
+                    >
+                      {scanResult.booking.status}
+                    </span>
+                  </div>
+                )}
                 {scanResult.booking.verifiedAt && (
                   <div className="text-gray-300">
                     <span className="font-medium">Verified:</span>{" "}
                     {new Date(scanResult.booking.verifiedAt).toLocaleString()}
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* Show additional details if available */}
+            {scanResult.details && (
+              <div className="mt-4 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+                <p className="text-sm text-yellow-200">{scanResult.details}</p>
               </div>
             )}
           </div>

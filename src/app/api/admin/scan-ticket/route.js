@@ -6,6 +6,13 @@ export async function POST(request) {
   try {
     const { bookingId, scannedBy, eventId } = await request.json();
 
+    console.log("=== SCAN TICKET REQUEST ===");
+    console.log("Booking ID received:", bookingId);
+    console.log("Booking ID type:", typeof bookingId);
+    console.log("Booking ID length:", bookingId?.length);
+    console.log("Scanner ID:", scannedBy);
+    console.log("Event ID:", eventId);
+
     if (!bookingId || !scannedBy || !eventId) {
       return NextResponse.json(
         { error: "Booking ID, scanner ID, and event ID are required" },
@@ -48,6 +55,16 @@ export async function POST(request) {
         verifications: true,
       },
     });
+
+    console.log("=== BOOKING LOOKUP RESULT ===");
+    console.log("Booking found:", booking ? "YES" : "NO");
+    if (booking) {
+      console.log("Booking ID in DB:", booking.id);
+      console.log("Booking Status:", booking.status);
+      console.log("Event ID in booking:", booking.eventId);
+      console.log("Event ID requested:", eventId);
+      console.log("Verifications count:", booking.verifications?.length);
+    }
 
     if (!booking) {
       return NextResponse.json(
@@ -100,16 +117,23 @@ export async function POST(request) {
 
     // Check if booking is confirmed
     if (booking.status !== "CONFIRMED") {
+      console.log("=== BOOKING NOT CONFIRMED ===");
+      console.log("Status:", booking.status);
+
       return NextResponse.json(
         {
           error: "Invalid ticket",
           isValid: false,
           message: `Booking status is ${booking.status}. Only confirmed bookings are valid.`,
+          details:
+            "Please contact the event organizer to confirm this booking before scanning.",
           booking: {
             id: booking.id,
             eventTitle: booking.event.title,
             userName: booking.user.name,
+            userEmail: booking.user.email,
             status: booking.status,
+            tickets: booking.tickets,
           },
         },
         { status: 400 }
@@ -121,6 +145,7 @@ export async function POST(request) {
       data: {
         bookingId: booking.id,
         scannedBy: scannedBy,
+        eventId: eventId,
         isValid: true,
         notes: `Verified by ${eventAdmin.user.name} for ${eventAdmin.event.title}`,
       },

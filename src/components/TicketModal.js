@@ -8,9 +8,10 @@ export default function TicketModal({ booking, isOpen, onClose }) {
 
   const generateQRCode = (ticketId) => {
     // Using a QR code API service - you can replace with your preferred service
+    // Add timestamp to prevent caching issues
     return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(
       ticketId
-    )}`;
+    )}&t=${Date.now()}`;
   };
 
   const handleDownload = () => {
@@ -211,37 +212,70 @@ export default function TicketModal({ booking, isOpen, onClose }) {
 
           {/* QR Code Section */}
           <div className="border-t border-gray-200 pt-4">
-            <div className="flex items-center justify-between mb-3">
-              <h4 className="font-semibold text-gray-800">QR Code</h4>
-              <p className="text-xs text-gray-500">Scan at venue entrance</p>
-            </div>
-
-            <div className="flex justify-center">
-              <div className="bg-white p-4 rounded-lg border-2 border-gray-200">
-                <img
-                  src={generateQRCode(
-                    `TKT-${booking.id
-                      .slice(-8)
-                      .toUpperCase()}-${booking.event.title
-                      .replace(/\s+/g, "")
-                      .substring(0, 8)
-                      .toUpperCase()}`
-                  )}
-                  alt="QR Code for ticket verification"
-                  className="w-40 h-40"
-                />
+            {booking.verifications && booking.verifications.length > 0 ? (
+              /* Ticket Already Verified */
+              <div className="text-center py-8">
+                <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-green-100 flex items-center justify-center">
+                  <svg
+                    className="w-12 h-12 text-green-600"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </div>
+                <h3 className="text-2xl font-bold text-green-600 mb-2">
+                  Ticket Verified! ✓
+                </h3>
+                <p className="text-lg text-gray-700 mb-3">
+                  Thank you for visiting!
+                </p>
+                <p className="text-gray-600 mb-4">
+                  Enjoy your event experience
+                </p>
+                <div className="bg-green-50 border border-green-200 rounded-lg p-3 mx-4">
+                  <p className="text-sm text-green-800">
+                    <strong>Verified on:</strong>{" "}
+                    {new Date(
+                      booking.verifications[0].scannedAt
+                    ).toLocaleString()}
+                  </p>
+                </div>
+                <div className="mt-4 text-sm text-gray-500">
+                  This ticket has already been scanned and cannot be used again.
+                </div>
               </div>
-            </div>
+            ) : (
+              /* Show QR Code for Unverified Tickets */
+              <>
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="font-semibold text-gray-800">QR Code</h4>
+                  <p className="text-xs text-gray-500">
+                    Scan at venue entrance
+                  </p>
+                </div>
 
-            <div className="text-center mt-3">
-              <p className="text-sm font-mono text-gray-600">
-                TKT-{booking.id.slice(-8).toUpperCase()}-
-                {booking.event.title
-                  .replace(/\s+/g, "")
-                  .substring(0, 8)
-                  .toUpperCase()}
-              </p>
-            </div>
+                <div className="flex justify-center">
+                  <div className="bg-white p-4 rounded-lg border-2 border-gray-200">
+                    <img
+                      src={generateQRCode(booking.id)}
+                      alt="QR Code for ticket verification"
+                      className="w-40 h-40"
+                    />
+                  </div>
+                </div>
+
+                <div className="text-center mt-3">
+                  <p className="text-sm font-mono text-gray-600">
+                    {booking.id}
+                  </p>
+                </div>
+              </>
+            )}
           </div>
 
           {/* Important Notice */}
