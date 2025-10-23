@@ -1,10 +1,1 @@
-{
-  "buildCommand": "bash vercel-build.sh",
-  "devCommand": "next dev",
-  "env": {},
-  "git": {
-    "deploymentEnabled": {
-      "main": true
-    }
-  }
-}
+{}
