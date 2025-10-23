@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { sendTicketEmail, generateBookingEmailHTML } from "@/lib/email";
+import { generateTicketImage } from "@/lib/generateTicketImage";
 
 // GET /api/bookings - Get all bookings (with optional user filter)
 export async function GET(request) {
@@ -122,6 +124,7 @@ export async function POST(request) {
             location: true,
             venue: true,
             imageUrl: true,
+            organizerName: true,
           },
         },
         user: {
@@ -132,6 +135,57 @@ export async function POST(request) {
           },
         },
       },
+    });
+
+    // Send ticket email (don't wait for it to avoid blocking response)
+    // Wrap in try-catch so booking still succeeds even if email fails
+    setImmediate(async () => {
+      try {
+        console.log("Sending ticket email to:", booking.user.email);
+
+        // Generate ticket image
+        const ticketImageBuffer = await generateTicketImage(
+          booking,
+          booking.event,
+          booking.user
+        );
+
+        // Generate email HTML
+        const emailHTML = generateBookingEmailHTML(
+          booking,
+          booking.event,
+          booking.user
+        );
+
+        // Send email with ticket attachment
+        const emailResult = await sendTicketEmail({
+          to: booking.user.email,
+          subject: `🎉 Your Ticket for ${booking.event.title} - Booking Confirmed!`,
+          html: emailHTML,
+          attachments: [
+            {
+              filename: `ticket-${booking.id}.png`,
+              content: ticketImageBuffer,
+              contentType: "image/png",
+            },
+          ],
+        });
+
+        if (emailResult.success) {
+          console.log(
+            "✅ Ticket email sent successfully:",
+            emailResult.messageId
+          );
+        } else {
+          console.warn(
+            "⚠️ Failed to send ticket email:",
+            emailResult.error || emailResult.message
+          );
+        }
+      } catch (emailError) {
+        console.error("❌ Error sending ticket email:", emailError);
+        // Don't throw - we don't want email errors to affect booking
+      }
     });
 
     return NextResponse.json({ booking }, { status: 201 });
