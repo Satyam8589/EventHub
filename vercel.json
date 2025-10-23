@@ -1,8 +1,4 @@
 {
   "buildCommand": "bash vercel-build.sh",
-  "devCommand": "next dev",
-  "env": {
-    "DATABASE_URL": "@database_url",
-    "NODE_ENV": "production"
-  }
+  "devCommand": "next dev"
 }
