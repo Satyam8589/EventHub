@@ -383,33 +383,33 @@ export default function AboutPage() {
       </section>
 
       {/* Our Story Section */}
-      <section className="relative z-10 py-12 sm:py-16 md:py-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 sm:gap-12 items-center">
+      <section className="relative z-10 py-12 sm:py-16 md:py-20 overflow-hidden">
+        <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 sm:gap-12 lg:gap-16 items-center">
             <div
-              className="animate-on-scroll opacity-0 translate-x-[-50px] transition-all duration-1000 delay-200"
+              className="animate-on-scroll opacity-0 transition-all duration-1000 delay-200 order-2 lg:order-1 px-2 sm:px-0"
               style={{
                 opacity: isVisible[1] ? 1 : 0,
                 transform: isVisible[1] ? "translateX(0)" : "translateX(-50px)",
               }}
             >
-              <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4 sm:mb-6">
+              <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-4 sm:mb-6 lg:mb-8 wrap-break-word">
                 Our Story
               </h2>
-              <div className="space-y-4 sm:space-y-6 text-sm sm:text-base text-white/80">
-                <p>
+              <div className="space-y-4 sm:space-y-5 lg:space-y-6 text-sm sm:text-base md:text-lg lg:text-xl text-white/80 leading-relaxed">
+                <p className="text-left wrap-break-word">
                   EventHub was founded in 2020 with a simple vision: to create a
                   platform that brings people together through amazing events.
                   What started as a small team of event enthusiasts has grown
                   into a thriving community of event organizers and attendees.
                 </p>
-                <p>
+                <p className="text-left wrap-break-word">
                   Today, we serve thousands of users across the country, helping
                   them discover everything from intimate workshops to
                   large-scale conferences. Our platform has facilitated over
                   500,000 event bookings and continues to grow every day.
                 </p>
-                <p>
+                <p className="text-left wrap-break-word">
                   We understand the importance of event experiences as growing
                   providers, providing them with the tools they need to reach
                   their audience and create successful events.
@@ -417,22 +417,22 @@ export default function AboutPage() {
               </div>
             </div>
             <div
-              className="animate-on-scroll opacity-0 translate-x-[50px] transition-all duration-1000 delay-400"
+              className="animate-on-scroll opacity-0 transition-all duration-1000 delay-400 order-1 lg:order-2 px-2 sm:px-0"
               style={{
                 opacity: isVisible[1] ? 1 : 0,
                 transform: isVisible[1] ? "translateX(0)" : "translateX(50px)",
               }}
             >
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:gap-6">
                 <img
                   src="https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=400&h=300&fit=crop"
                   alt="Conference setup"
-                  className="rounded-xl shadow-2xl"
+                  className="rounded-lg sm:rounded-xl shadow-2xl w-full h-48 sm:h-56 md:h-64 lg:h-72 object-cover hover:scale-105 transition-transform duration-300"
                 />
                 <img
                   src="https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&h=300&fit=crop"
                   alt="Event audience"
-                  className="rounded-xl shadow-2xl mt-8"
+                  className="rounded-lg sm:rounded-xl shadow-2xl mt-6 sm:mt-8 lg:mt-12 w-full h-48 sm:h-56 md:h-64 lg:h-72 object-cover hover:scale-105 transition-transform duration-300"
                 />
               </div>
             </div>

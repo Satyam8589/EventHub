@@ -15,6 +15,8 @@ export default function ContactPage() {
     message: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitStatus, setSubmitStatus] = useState(null); // null, 'success', 'error'
+  const [aiResponse, setAiResponse] = useState(null);
 
   useEffect(() => {
     const handleMouseMove = (e) => {
@@ -53,16 +55,47 @@ export default function ContactPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setSubmitStatus(null);
+    setAiResponse(null);
 
-    // Simulate form submission
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    try {
+      const response = await fetch("/api/contact", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
+      });
 
-    // Reset form and show success
-    setFormData({ name: "", email: "", subject: "", message: "" });
-    setIsSubmitting(false);
+      const data = await response.json();
 
-    // You would typically send this to your API endpoint
-    alert("Message sent successfully! We'll get back to you within 24 hours.");
+      if (response.ok) {
+        // Success!
+        setSubmitStatus("success");
+        setAiResponse(data.aiResponse);
+
+        // Reset form
+        setFormData({ name: "", email: "", subject: "", message: "" });
+
+        // Scroll to show the response
+        setTimeout(() => {
+          document.getElementById("response-section")?.scrollIntoView({
+            behavior: "smooth",
+            block: "center",
+          });
+        }, 100);
+      } else {
+        // Error from API
+        setSubmitStatus("error");
+        console.error("API error:", data.error);
+      }
+    } catch (error) {
+      // Network or other error
+      setSubmitStatus("error");
+      console.error("Error submitting form:", error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -599,12 +632,125 @@ export default function ContactPage() {
                       </div>
                     )}
                   </button>
+
+                  {/* Success Message */}
+                  {submitStatus === "success" && (
+                    <div className="mt-4 p-4 bg-green-500/20 border border-green-500/50 rounded-lg">
+                      <div className="flex items-center text-green-400">
+                        <svg
+                          className="w-5 h-5 mr-2"
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                        <span className="font-semibold">
+                          Message sent successfully!
+                        </span>
+                      </div>
+                      <p className="text-green-300 text-sm mt-2">
+                        Thank you for contacting us. We'll respond within 24
+                        hours.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Error Message */}
+                  {submitStatus === "error" && (
+                    <div className="mt-4 p-4 bg-red-500/20 border border-red-500/50 rounded-lg">
+                      <div className="flex items-center text-red-400">
+                        <svg
+                          className="w-5 h-5 mr-2"
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                        <span className="font-semibold">
+                          Failed to send message
+                        </span>
+                      </div>
+                      <p className="text-red-300 text-sm mt-2">
+                        Please try again or contact us directly at
+                        info@eventhub.com
+                      </p>
+                    </div>
+                  )}
                 </form>
               </div>
             </div>
           </div>
         </div>
       </section>
+
+      {/* AI Response Section */}
+      {aiResponse && (
+        <section id="response-section" className="relative z-10 py-8 sm:py-12">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="bg-gradient-to-br from-blue-500/10 via-purple-500/10 to-pink-500/10 backdrop-blur-md rounded-2xl border border-white/20 p-6 sm:p-8 animate-fadeIn">
+              <div className="flex items-start gap-4 mb-4">
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
+                  <svg
+                    className="w-6 h-6 text-white"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
+                    />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-xl sm:text-2xl font-bold text-white mb-2">
+                    AI-Powered Response
+                  </h3>
+                  <p className="text-white/70 text-sm">
+                    Generated by Gemini AI • Instant assistance
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-white/5 rounded-xl p-4 sm:p-6 border border-white/10">
+                <div className="prose prose-invert prose-sm sm:prose-base max-w-none">
+                  <p className="text-white/90 whitespace-pre-wrap leading-relaxed">
+                    {aiResponse}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-4 flex items-center gap-2 text-xs text-white/50">
+                <svg
+                  className="w-4 h-4"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                <span>
+                  Our team will review your message and provide a detailed
+                  response within 24 hours.
+                </span>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Footer */}
       <footer className="relative z-10 bg-slate-800/50 border-t border-white/10 py-8 sm:py-12">
