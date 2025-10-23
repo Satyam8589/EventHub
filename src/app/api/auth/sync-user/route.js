@@ -6,7 +6,7 @@ export async function POST(request) {
   try {
     console.log("Starting POST /api/auth/sync-user");
     console.log("DATABASE_URL exists:", !!process.env.DATABASE_URL);
-    
+
     const { uid, email, name, avatar } = await request.json();
 
     if (!uid || !email) {
@@ -55,6 +55,9 @@ export async function POST(request) {
     console.error("Error syncing user:", error.message);
     console.error("Error code:", error.code);
     console.error("Error details:", error);
-    return NextResponse.json({ error: "Failed to sync user", details: error.message }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to sync user", details: error.message },
+      { status: 500 }
+    );
   }
 }

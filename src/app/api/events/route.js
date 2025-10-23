@@ -7,7 +7,7 @@ export async function GET() {
   try {
     console.log("Starting GET /api/events");
     console.log("DATABASE_URL exists:", !!process.env.DATABASE_URL);
-    
+
     const events = await prisma.event.findMany({
       include: {
         organizer: {
