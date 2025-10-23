@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -10,161 +7,137 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// User model for event attendees and organizers
 model User {
-  id          String   @id @default(cuid())
-  email       String   @unique
-  name        String
-  phone       String?
-  avatar      String?
-  role        Role     @default(ATTENDEE)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Relations
-  organizedEvents     Event[]              @relation("EventOrganizer")
+  id                  String               @id @default(cuid())
+  email               String               @unique
+  name                String
+  phone               String?
+  avatar              String?
+  role                Role                 @default(ATTENDEE)
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
   bookings            Booking[]
+  assignedEventAdmins EventAdmin[]         @relation("AssignedEventAdmins")
+  eventAdminFor       EventAdmin?
+  organizedEvents     Event[]              @relation("EventOrganizer")
   reviews             Review[]
-  eventAdminFor       EventAdmin[]         // Events this user is admin for
-  ticketScans         TicketVerification[] // Ticket verifications performed by this user
-  assignedEventAdmins EventAdmin[]         @relation("AssignedEventAdmins") // Event admins assigned by this user
+  ticketScans         TicketVerification[]
 
   @@map("users")
 }
 
-// Event model for all events
 model Event {
-  id            String      @id @default(cuid())
-  title         String
-  description   String
-  category      String
-  location      String
-  venue         String
-  date          DateTime
-  time          String
-  price         Float
-  capacity      Int
-  imageUrl      String?
-  tags          String[]    @default([])
-  status        EventStatus @default(UPCOMING)
-  featured      Boolean     @default(false)
-  gallery       Json[]      @default([])
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-
-  // Organizer contact information
-  organizerName  String?
-  organizerEmail String?
-  organizerPhone String?
-
-  // Relations
-  organizerId       String
-  organizer         User                   @relation("EventOrganizer", fields: [organizerId], references: [id])
-  bookings          Booking[]
-  reviews           Review[]
-  eventAdmins       EventAdmin[]           // Admins assigned to this event
-  discounts         EventDiscount[]        // Discounts for this event
-  ticketVerifications TicketVerification[] // Ticket verifications for this event
+  id                  String               @id @default(cuid())
+  title               String
+  description         String
+  category            String
+  location            String
+  venue               String
+  date                DateTime
+  time                String
+  price               Float
+  capacity            Int
+  imageUrl            String?
+  tags                String[]             @default([])
+  status              EventStatus          @default(UPCOMING)
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  organizerId         String
+  organizerEmail      String?
+  organizerName       String?
+  organizerPhone      String?
+  featured            Boolean              @default(false)
+  gallery             Json[]               @default([])
+  bookings            Booking[]
+  eventAdmins         EventAdmin[]
+  discounts           EventDiscount[]
+  organizer           User                 @relation("EventOrganizer", fields: [organizerId], references: [id])
+  reviews             Review[]
+  ticketVerifications TicketVerification[]
 
   @@map("events")
 }
 
-// Booking model for event registrations
 model Booking {
-  id            String        @id @default(cuid())
-  tickets       Int           @default(1)
+  id            String              @id @default(cuid())
+  tickets       Int                 @default(1)
   totalAmount   Float
-  status        BookingStatus @default(PENDING)
+  status        BookingStatus       @default(PENDING)
   paymentMethod String?
   paymentId     String?
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-
-  // Relations
-  userId          String
-  eventId         String
-  user            User                   @relation(fields: [userId], references: [id])
-  event           Event                  @relation(fields: [eventId], references: [id])
-  verifications   TicketVerification[]   // Ticket verifications for this booking
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  userId        String
+  eventId       String
+  event         Event               @relation(fields: [eventId], references: [id])
+  user          User                @relation(fields: [userId], references: [id])
+  verifications TicketVerification?
 
   @@map("bookings")
 }
 
-// Review model for event feedback
 model Review {
   id        String   @id @default(cuid())
   rating    Int      @db.SmallInt
   comment   String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  // Relations
   userId    String
   eventId   String
-  user      User     @relation(fields: [userId], references: [id])
   event     Event    @relation(fields: [eventId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
 
   @@unique([userId, eventId])
   @@map("reviews")
 }
 
-// Event Admin Assignment model
 model EventAdmin {
-  id         String   @id @default(cuid())
-  assignedAt DateTime @default(now())
-  assignedBy String   // SUPER_ADMIN who assigned this admin
-  
-  // Relations
-  userId    String   @unique // User can only be admin of one event
-  eventId   String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  assignedByUser User @relation("AssignedEventAdmins", fields: [assignedBy], references: [id])
-  
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  eventId        String
+  assignedBy     String
+  assignedAt     DateTime @default(now())
+  assignedByUser User     @relation("AssignedEventAdmins", fields: [assignedBy], references: [id])
+  event          Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@unique([userId, eventId])
   @@map("event_admins")
 }
 
-// Ticket Verification model
 model TicketVerification {
-  id          String   @id @default(cuid())
-  scannedAt   DateTime @default(now())
-  scannedBy   String   // Admin user ID
-  eventId     String   // Event ID for the verification
-  isValid     Boolean  @default(true) // Whether the ticket was valid when scanned
-  notes       String?  // Optional notes about the verification
-  
-  // Relations
-  bookingId   String   @unique // Each booking can only be verified once
-  booking     Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  scanner     User     @relation(fields: [scannedBy], references: [id], onDelete: Cascade)
-  event       Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  
+  id        String   @id @default(cuid())
+  scannedAt DateTime @default(now())
+  scannedBy String
+  bookingId String   @unique
+  isValid   Boolean  @default(true)
+  notes     String?
+  eventId   String
+  booking   Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  scanner   User     @relation(fields: [scannedBy], references: [id], onDelete: Cascade)
+
   @@map("ticket_verifications")
 }
 
-// Event Discount model
 model EventDiscount {
-  id          String    @id @default(cuid())
-  code        String    
+  id          String   @id @default(cuid())
+  code        String
   description String?
-  percentage  Float     // 0-100 percentage discount
-  maxUses     Int?      // null for unlimited
-  currentUses Int       @default(0)
+  percentage  Float
+  maxUses     Int?
+  currentUses Int      @default(0)
   validFrom   DateTime
   validTo     DateTime
-  isActive    Boolean   @default(true)
-  createdAt   DateTime  @default(now())
-  
-  // Relations
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
   eventId     String
-  event       Event     @relation(fields: [eventId], references: [id])
-  
+  event       Event    @relation(fields: [eventId], references: [id])
+
   @@unique([eventId, code])
   @@map("event_discounts")
 }
 
-// Enums
 enum Role {
   SUPER_ADMIN
   EVENT_ADMIN
