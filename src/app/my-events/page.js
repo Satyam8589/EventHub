@@ -68,9 +68,24 @@ export default function MyEventsPage() {
           const data = await response.json();
           console.log("Received bookings:", data.bookings?.length || 0);
           console.log("Bookings data:", data.bookings);
+          
+          // Log each booking's event data
+          data.bookings?.forEach((booking, index) => {
+            console.log(`Booking ${index + 1}:`, {
+              id: booking.id,
+              status: booking.status,
+              hasEvent: !!booking.event,
+              eventId: booking.eventId,
+              eventDate: booking.event?.date,
+              eventName: booking.event?.name,
+            });
+          });
+          
           setBookings(data.bookings || []);
         } else {
           console.error("Failed to fetch bookings:", response.status);
+          const errorText = await response.text();
+          console.error("Error response:", errorText);
         }
       } catch (error) {
         console.error("Error fetching bookings:", error);
@@ -87,15 +102,35 @@ export default function MyEventsPage() {
   // Filter bookings by upcoming/past
   const filterBookings = (bookings, type) => {
     const now = new Date();
-    return bookings.filter((booking) => {
+    console.log(`Filtering ${bookings.length} bookings for ${type} events`);
+    
+    const filtered = bookings.filter((booking) => {
       // Safety check for event and date existence
       if (!booking.event || !booking.event.date) {
-        console.warn("Booking missing event or date:", booking);
+        console.warn("Booking missing event or date - EXCLUDING:", {
+          bookingId: booking.id,
+          hasEvent: !!booking.event,
+          eventId: booking.eventId,
+          status: booking.status,
+        });
         return false; // Skip bookings without valid event data
       }
       const eventDate = new Date(booking.event.date);
+      const isUpcoming = eventDate >= now;
+      
+      console.log(`Booking ${booking.id}:`, {
+        eventName: booking.event.name,
+        eventDate: booking.event.date,
+        isUpcoming,
+        typeFilter: type,
+        included: type === "upcoming" ? isUpcoming : !isUpcoming,
+      });
+      
       return type === "upcoming" ? eventDate >= now : eventDate < now;
     });
+    
+    console.log(`Filtered result: ${filtered.length} ${type} bookings`);
+    return filtered;
   };
 
   const upcomingBookings = filterBookings(bookings, "upcoming");
