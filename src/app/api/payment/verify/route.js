@@ -2,8 +2,25 @@ import { NextResponse } from "next/server";
 import Razorpay from "razorpay";
 import crypto from "crypto";
 import { supabase } from "@/lib/supabase";
-import { sendTicketEmail, generateBookingEmailHTML } from "@/lib/email";
-import { generateTicketImage } from "@/lib/generateTicketImage";
+
+// Import email/ticket functions with error handling
+let sendTicketEmail, generateBookingEmailHTML, generateTicketImage;
+try {
+  const emailFunctions = require("@/lib/email");
+  sendTicketEmail = emailFunctions.sendTicketEmail;
+  generateBookingEmailHTML = emailFunctions.generateBookingEmailHTML;
+  console.log("✅ Email functions loaded");
+} catch (e) {
+  console.error("⚠️ Email functions not available:", e.message);
+}
+
+try {
+  const ticketFunctions = require("@/lib/generateTicketImage");
+  generateTicketImage = ticketFunctions.generateTicketImage;
+  console.log("✅ Ticket generation function loaded");
+} catch (e) {
+  console.error("⚠️ Ticket generation not available:", e.message);
+}
 
 // Initialize Razorpay instance
 const razorpay = new Razorpay({
@@ -227,56 +244,8 @@ export async function POST(request) {
 
     console.log("✅ BOOKING CONFIRMED SUCCESSFULLY");
 
-    // Generate and send ticket email
-    try {
-      console.log("📧 GENERATING AND SENDING TICKET EMAIL...");
-
-      // Generate ticket image
-      const ticketImageBuffer = await generateTicketImage(
-        confirmedBooking,
-        event,
-        user
-      );
-
-      // Generate email HTML
-      const emailHTML = generateBookingEmailHTML(confirmedBooking, event, user);
-
-      // Send email with ticket attachment
-      const emailResult = await sendTicketEmail({
-        to: user.email,
-        subject: `🎉 Payment Successful! Your Ticket for ${event.title}`,
-        html: emailHTML,
-        attachments: [
-          {
-            filename: `ticket-${confirmedBooking.id}.png`,
-            content: ticketImageBuffer,
-            contentType: "image/png",
-          },
-        ],
-      });
-
-      if (emailResult.success) {
-        console.log(
-          "✅ TICKET EMAIL SENT SUCCESSFULLY:",
-          emailResult.messageId
-        );
-      } else {
-        console.warn(
-          "⚠️ FAILED TO SEND TICKET EMAIL:",
-          emailResult.error || emailResult.message
-        );
-      }
-    } catch (emailError) {
-      console.error("❌ ERROR SENDING TICKET EMAIL:", emailError);
-      // Don't fail the payment verification if email fails
-    }
-
-    // Return success response
-    console.log("🎉 RETURNING SUCCESS RESPONSE TO CLIENT");
-    console.log("Booking confirmed with ID:", confirmedBooking.id);
-    console.log("Payment ID:", razorpay_payment_id);
-
-    return NextResponse.json({
+    // Prepare success response FIRST before trying email
+    const successResponse = {
       success: true,
       message:
         "Payment verified successfully! Your tickets have been confirmed.",
@@ -294,7 +263,67 @@ export async function POST(request) {
           location: event.location,
         },
       },
-    });
+    };
+
+    // Try to send ticket email (but don't fail verification if this fails)
+    try {
+      console.log("📧 ATTEMPTING TO SEND TICKET EMAIL...");
+      
+      if (!generateTicketImage || !generateBookingEmailHTML || !sendTicketEmail) {
+        console.warn("⚠️ Email/ticket functions not available - skipping email");
+        console.log("generateTicketImage:", !!generateTicketImage);
+        console.log("generateBookingEmailHTML:", !!generateBookingEmailHTML);
+        console.log("sendTicketEmail:", !!sendTicketEmail);
+      } else {
+        // Generate ticket image
+        const ticketImageBuffer = await generateTicketImage(
+          confirmedBooking,
+          event,
+          user
+        );
+
+        // Generate email HTML
+        const emailHTML = generateBookingEmailHTML(confirmedBooking, event, user);
+
+        // Send email with ticket attachment
+        const emailResult = await sendTicketEmail({
+          to: user.email,
+          subject: `🎉 Payment Successful! Your Ticket for ${event.title}`,
+          html: emailHTML,
+          attachments: [
+            {
+              filename: `ticket-${confirmedBooking.id}.png`,
+              content: ticketImageBuffer,
+              contentType: "image/png",
+            },
+          ],
+        });
+
+        if (emailResult.success) {
+          console.log(
+            "✅ TICKET EMAIL SENT SUCCESSFULLY:",
+            emailResult.messageId
+          );
+        } else {
+          console.warn(
+            "⚠️ FAILED TO SEND TICKET EMAIL:",
+            emailResult.error || emailResult.message
+          );
+        }
+      }
+    } catch (emailError) {
+      console.error("❌ ERROR SENDING TICKET EMAIL:", emailError);
+      console.error("Email error details:", emailError.message);
+      console.error("Email error stack:", emailError.stack);
+      // Don't fail the payment verification if email fails
+    }
+
+    // Return success response
+    console.log("🎉 RETURNING SUCCESS RESPONSE TO CLIENT");
+    console.log("Booking confirmed with ID:", confirmedBooking.id);
+    console.log("Payment ID:", razorpay_payment_id);
+
+    return NextResponse.json(successResponse);
   } catch (error) {
     console.error("❌ PAYMENT VERIFICATION ERROR:", error);
     console.error("Error name:", error?.name);
