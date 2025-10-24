@@ -22,14 +22,14 @@ export default function Page({ params }) {
     if (!p?.id) return;
 
     console.log("Fetching event details for ID:", p.id);
-    
+
     // Add cache buster to force fresh data
     const cacheBuster = Date.now();
-    
+
     fetch(`/api/events/${p.id}?_=${cacheBuster}`, {
-      cache: 'no-store',
+      cache: "no-store",
       headers: {
-        'Cache-Control': 'no-cache',
+        "Cache-Control": "no-cache",
       },
     })
       .then((res) => {

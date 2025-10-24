@@ -50,13 +50,16 @@ export async function GET(request, { params }) {
       },
     };
 
-    return NextResponse.json({ event: eventWithCount }, {
-      headers: {
-        'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
-        'Pragma': 'no-cache',
-        'Expires': '0',
-      },
-    });
+    return NextResponse.json(
+      { event: eventWithCount },
+      {
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+          Pragma: "no-cache",
+          Expires: "0",
+        },
+      }
+    );
   } catch (error) {
     console.error("Error fetching event:", error);
     return NextResponse.json(

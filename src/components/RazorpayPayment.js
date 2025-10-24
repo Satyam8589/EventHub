@@ -85,6 +85,13 @@ const RazorpayPayment = ({
 
             if (verifyData.success) {
               console.log("Payment verified successfully!");
+              
+              // Close Razorpay modal immediately after successful verification
+              if (window.razorpayInstance) {
+                console.log("Closing Razorpay modal...");
+                window.razorpayInstance.close();
+              }
+              
               onSuccess(verifyData);
             } else {
               console.error("Payment verification failed:", verifyData.error);
@@ -116,9 +123,9 @@ const RazorpayPayment = ({
         },
       };
 
-      const razorpay = new window.Razorpay(options);
+      const razorpayInstance = new window.Razorpay(options);
 
-      razorpay.on("payment.failed", function (response) {
+      razorpayInstance.on("payment.failed", function (response) {
         console.error("Payment Failed:", response.error);
         onFailure(
           response.error.description ||
@@ -127,8 +134,11 @@ const RazorpayPayment = ({
         );
       });
 
+      // Store instance for later use in handler
+      window.razorpayInstance = razorpayInstance;
+
       // Open Razorpay payment modal
-      razorpay.open();
+      razorpayInstance.open();
     };
 
     if (orderData) {

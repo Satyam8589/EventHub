@@ -268,9 +268,15 @@ export async function POST(request) {
     // Try to send ticket email (but don't fail verification if this fails)
     try {
       console.log("📧 ATTEMPTING TO SEND TICKET EMAIL...");
-      
-      if (!generateTicketImage || !generateBookingEmailHTML || !sendTicketEmail) {
-        console.warn("⚠️ Email/ticket functions not available - skipping email");
+
+      if (
+        !generateTicketImage ||
+        !generateBookingEmailHTML ||
+        !sendTicketEmail
+      ) {
+        console.warn(
+          "⚠️ Email/ticket functions not available - skipping email"
+        );
         console.log("generateTicketImage:", !!generateTicketImage);
         console.log("generateBookingEmailHTML:", !!generateBookingEmailHTML);
         console.log("sendTicketEmail:", !!sendTicketEmail);
@@ -283,7 +289,11 @@ export async function POST(request) {
         );
 
         // Generate email HTML
-        const emailHTML = generateBookingEmailHTML(confirmedBooking, event, user);
+        const emailHTML = generateBookingEmailHTML(
+          confirmedBooking,
+          event,
+          user
+        );
 
         // Send email with ticket attachment
         const emailResult = await sendTicketEmail({
