@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 
-// GET /api/admin/users/search?q=search_term - Search users for admin assignment
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -14,43 +13,20 @@ export async function GET(request) {
       );
     }
 
-    // Search users who are not already event admins and exclude super admins
-    const users = await prisma.user.findMany({
-      where: {
-        AND: [
-          {
-            OR: [
-              { name: { contains: query.trim(), mode: "insensitive" } },
-              { email: { contains: query.trim(), mode: "insensitive" } },
-            ],
-          },
-          {
-            role: {
-              in: ["ATTENDEE", "ORGANIZER"], // Only regular users can become event admins
-            },
-          },
-          {
-            eventAdminFor: {
-              none: {}, // Users who are not already admins of any event
-            },
-          },
-        ],
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        avatar: true,
-        role: true,
-        createdAt: true,
-      },
-      take: 10,
-      orderBy: {
-        name: "asc",
-      },
-    });
+    const { data: users, error } = await supabase
+      .from("users")
+      .select("id, name, email, role, avatar")
+      .or(`name.ilike.%${query.trim()}%,email.ilike.%${query.trim()}%`)
+      .in("role", ["ATTENDEE", "ORGANIZER", "EVENT_ADMIN"])
+      .order("name", { ascending: true })
+      .limit(10);
 
-    return NextResponse.json({ users });
+    if (error) {
+      console.error("Error searching users:", error);
+      return NextResponse.json({ error: "Search failed" }, { status: 500 });
+    }
+
+    return NextResponse.json({ users: users || [] });
   } catch (error) {
     console.error("Error searching users:", error);
     return NextResponse.json(

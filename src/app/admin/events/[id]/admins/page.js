@@ -184,16 +184,12 @@ export default function EventAdminsPage() {
                   <div className="flex items-center space-x-4">
                     <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
                       <span className="text-white font-medium">
-                        {admin.user.name?.charAt(0)?.toUpperCase() || "A"}
+                        {admin.name?.charAt(0)?.toUpperCase() || "A"}
                       </span>
                     </div>
                     <div>
-                      <h3 className="font-medium text-white">
-                        {admin.user.name}
-                      </h3>
-                      <p className="text-sm text-gray-400">
-                        {admin.user.email}
-                      </p>
+                      <h3 className="font-medium text-white">{admin.name}</h3>
+                      <p className="text-sm text-gray-400">{admin.email}</p>
                       <p className="text-xs text-gray-500 mt-1">
                         Assigned on{" "}
                         {new Date(admin.createdAt).toLocaleDateString()}

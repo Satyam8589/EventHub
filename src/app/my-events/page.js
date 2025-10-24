@@ -71,6 +71,11 @@ export default function MyEventsPage() {
   const filterBookings = (bookings, type) => {
     const now = new Date();
     return bookings.filter((booking) => {
+      // Safety check for event and date existence
+      if (!booking.event || !booking.event.date) {
+        console.warn("Booking missing event or date:", booking);
+        return false; // Skip bookings without valid event data
+      }
       const eventDate = new Date(booking.event.date);
       return type === "upcoming" ? eventDate >= now : eventDate < now;
     });

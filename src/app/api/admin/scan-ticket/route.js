@@ -20,41 +20,47 @@ export async function POST(request) {
       );
     }
 
-    // Verify that the scanner is an admin of this event
-    const eventAdmin = await prisma.eventAdmin.findUnique({
-      where: { userId_eventId: { userId: scannedBy, eventId: eventId } },
-      include: { user: true, event: true },
-    });
+    // Verify that the scanner is authorized (SUPER_ADMIN or EVENT_ADMIN)
+    const { data: scanner, error: scannerError } = await supabase
+      .from("users")
+      .select("*")
+      .eq("id", scannedBy)
+      .single();
 
-    if (!eventAdmin) {
+    if (
+      scannerError ||
+      !scanner ||
+      (scanner.role !== "SUPER_ADMIN" && scanner.role !== "EVENT_ADMIN")
+    ) {
       return NextResponse.json(
         { error: "You are not authorized to scan tickets for this event" },
         { status: 403 }
       );
     }
 
+    // Get event details for validation
+    const { data: event, error: eventError } = await supabase
+      .from("events")
+      .select("*")
+      .eq("id", eventId)
+      .single();
+
+    if (eventError || !event) {
+      return NextResponse.json({ error: "Event not found" }, { status: 404 });
+    }
+
     // Get booking details
-    const booking = await prisma.booking.findUnique({
-      where: { id: bookingId },
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-        event: {
-          select: {
-            id: true,
-            title: true,
-            date: true,
-            time: true,
-          },
-        },
-        verifications: true,
-      },
-    });
+    const { data: booking, error: bookingError } = await supabase
+      .from("bookings")
+      .select(
+        `
+        *,
+        user:users(id, name, email),
+        event:events(id, title, date, time)
+      `
+      )
+      .eq("id", bookingId)
+      .single();
 
     console.log("=== BOOKING LOOKUP RESULT ===");
     console.log("Booking found:", booking ? "YES" : "NO");
@@ -63,10 +69,9 @@ export async function POST(request) {
       console.log("Booking Status:", booking.status);
       console.log("Event ID in booking:", booking.eventId);
       console.log("Event ID requested:", eventId);
-      console.log("Verifications count:", booking.verifications?.length);
     }
 
-    if (!booking) {
+    if (bookingError || !booking) {
       return NextResponse.json(
         {
           error: "Invalid ticket",
@@ -88,27 +93,6 @@ export async function POST(request) {
             id: booking.id,
             eventTitle: booking.event.title,
             userName: booking.user.name,
-          },
-        },
-        { status: 400 }
-      );
-    }
-
-    // Check if ticket has already been verified
-    if (booking.verifications.length > 0) {
-      const existingVerification = booking.verifications[0];
-      return NextResponse.json(
-        {
-          error: "Ticket already scanned",
-          isValid: false,
-          message: `This ticket was already verified on ${new Date(
-            existingVerification.scannedAt
-          ).toLocaleString()}`,
-          booking: {
-            id: booking.id,
-            eventTitle: booking.event.title,
-            userName: booking.user.name,
-            verifiedAt: existingVerification.scannedAt,
           },
         },
         { status: 400 }
@@ -140,20 +124,48 @@ export async function POST(request) {
       );
     }
 
-    // Create verification record
-    const verification = await prisma.ticketVerification.create({
-      data: {
-        bookingId: booking.id,
-        scannedBy: scannedBy,
-        eventId: eventId,
-        isValid: true,
-        notes: `Verified by ${eventAdmin.user.name} for ${eventAdmin.event.title}`,
-      },
-    });
+    // Check if this booking has already been scanned
+    // We'll use the paymentId field to store scan timestamp (creative use of existing field)
+    if (booking.paymentId && booking.paymentId.startsWith("SCANNED_")) {
+      const scannedTime = new Date(booking.paymentId.replace("SCANNED_", ""));
+      return NextResponse.json(
+        {
+          error: "Ticket already scanned",
+          isValid: false,
+          message: `This ticket was already used on ${scannedTime.toLocaleString()}. Thank you for visiting, enjoy the event!`,
+          booking: {
+            id: booking.id,
+            eventTitle: booking.event.title,
+            userName: booking.user.name,
+            usedAt: booking.paymentId.replace("SCANNED_", ""),
+          },
+        },
+        { status: 400 }
+      );
+    }
+
+    // Mark ticket as scanned by updating paymentId with scan timestamp
+    const scannedAt = new Date().toISOString();
+    const { error: scanError } = await supabase
+      .from("bookings")
+      .update({
+        paymentId: `SCANNED_${scannedAt}`,
+        updatedAt: scannedAt,
+      })
+      .eq("id", booking.id);
+
+    if (scanError) {
+      console.error("Error marking ticket as scanned:", scanError);
+      return NextResponse.json(
+        { error: "Failed to process ticket scan" },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({
       isValid: true,
-      message: "Ticket verified successfully. Entry allowed.",
+      message:
+        "Ticket verified successfully. Entry allowed. Thank you for visiting, enjoy the event!",
       booking: {
         id: booking.id,
         eventTitle: booking.event.title,
@@ -161,8 +173,10 @@ export async function POST(request) {
         userEmail: booking.user.email,
         tickets: booking.tickets,
         totalAmount: booking.totalAmount,
-        verifiedAt: verification.scannedAt,
-        verifiedBy: eventAdmin.user.name,
+        scannedAt: scannedAt,
+        scannedBy: scanner.name,
+        status: booking.status, // Keep original status
+        isScanned: true,
       },
     });
   } catch (error) {
@@ -192,53 +206,56 @@ export async function GET(request) {
       );
     }
 
-    // Verify scanner is admin of this event
-    const eventAdmin = await prisma.eventAdmin.findUnique({
-      where: { userId_eventId: { userId: scannerId, eventId: eventId } },
-    });
+    // Verify scanner is authorized (SUPER_ADMIN or EVENT_ADMIN)
+    const { data: scanner, error: scannerError } = await supabase
+      .from("users")
+      .select("*")
+      .eq("id", scannerId)
+      .single();
 
-    if (!eventAdmin) {
+    if (
+      scannerError ||
+      !scanner ||
+      (scanner.role !== "SUPER_ADMIN" && scanner.role !== "EVENT_ADMIN")
+    ) {
       return NextResponse.json(
         { error: "You are not authorized to access this event's data" },
         { status: 403 }
       );
     }
 
-    // Get event statistics
-    const event = await prisma.event.findUnique({
-      where: { id: eventId },
-      include: {
-        bookings: {
-          where: { status: "CONFIRMED" },
-          include: {
-            user: {
-              select: { id: true, name: true, email: true },
-            },
-            verifications: true,
-          },
-        },
-        _count: {
-          select: {
-            bookings: {
-              where: { status: "CONFIRMED" },
-            },
-          },
-        },
-      },
-    });
+    // Get event details
+    const { data: event, error: eventError } = await supabase
+      .from("events")
+      .select("*")
+      .eq("id", eventId)
+      .single();
 
-    if (!event) {
+    if (eventError || !event) {
       return NextResponse.json({ error: "Event not found" }, { status: 404 });
     }
 
-    const totalTickets = event.bookings.reduce(
-      (sum, booking) => sum + booking.tickets,
-      0
-    );
-    const verifiedBookings = event.bookings.filter(
-      (booking) => booking.verifications.length > 0
-    );
-    const verifiedTickets = verifiedBookings.reduce(
+    // Get all confirmed bookings for this event
+    const { data: bookings, error: bookingsError } = await supabase
+      .from("bookings")
+      .select(
+        `
+        *,
+        user:users(id, name, email)
+      `
+      )
+      .eq("eventId", eventId)
+      .eq("status", "CONFIRMED");
+
+    if (bookingsError) {
+      console.error("Error fetching bookings:", bookingsError);
+      return NextResponse.json(
+        { error: "Failed to fetch event data" },
+        { status: 500 }
+      );
+    }
+
+    const totalTickets = bookings.reduce(
       (sum, booking) => sum + booking.tickets,
       0
     );
@@ -252,18 +269,18 @@ export async function GET(request) {
         capacity: event.capacity,
       },
       statistics: {
-        totalBookings: event.bookings.length,
+        totalBookings: bookings.length,
         totalTickets,
-        verifiedBookings: verifiedBookings.length,
-        verifiedTickets,
-        pendingVerification: event.bookings.length - verifiedBookings.length,
+        confirmedBookings: bookings.length,
+        availableTickets: event.capacity - totalTickets,
       },
-      recentVerifications: verifiedBookings.slice(-10).map((booking) => ({
+      recentBookings: bookings.slice(-10).map((booking) => ({
         id: booking.id,
         userName: booking.user.name,
         userEmail: booking.user.email,
         tickets: booking.tickets,
-        verifiedAt: booking.verifications[0].scannedAt,
+        bookedAt: booking.createdAt,
+        status: booking.status,
       })),
     });
   } catch (error) {

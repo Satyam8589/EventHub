@@ -6,28 +6,23 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const eventId = searchParams.get("eventId");
 
-    let whereClause = {};
+    let query = supabase
+      .from("bookings")
+      .select(`
+        *,
+        user:users(name, email),
+        event:events(title, date)
+      `);
+
     if (eventId) {
-      whereClause.eventId = eventId;
+      query = query.eq("eventId", eventId);
     }
 
-    const bookings = await prisma.booking.findMany({
-      where: whereClause,
-      include: {
-        user: {
-          select: {
-            name: true,
-            email: true,
-          },
-        },
-        event: {
-          select: {
-            title: true,
-            date: true,
-          },
-        },
-      },
-      orderBy: {
+    const { data: bookings, error } = await query
+      .order("createdAt", { ascending: false });
+
+    if (error) {
+      throw error;
         createdAt: "desc",
       },
       take: 50, // Limit to 50 most recent bookings

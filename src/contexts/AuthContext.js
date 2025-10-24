@@ -40,6 +40,7 @@ export const AuthProvider = ({ children }) => {
               name:
                 firebaseUser.displayName || firebaseUser.email.split("@")[0],
               avatar: firebaseUser.photoURL,
+              phone: firebaseUser.phoneNumber,
             }),
           });
 
@@ -136,6 +137,7 @@ export const AuthProvider = ({ children }) => {
           email: user.email,
           name: user.displayName || user.email.split("@")[0],
           avatar: user.photoURL,
+          phone: user.phoneNumber,
         }),
       });
 

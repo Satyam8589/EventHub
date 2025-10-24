@@ -2,17 +2,30 @@ import { createCanvas, loadImage } from "canvas";
 
 export async function generateTicketImage(booking, event, user) {
   try {
-    // Create canvas with same dimensions as client-side version
-    const canvas = createCanvas(900, 1400);
+    console.log("🎫 Generating ticket with user data:", {
+      userId: user?.id,
+      userName: user?.name,
+      userEmail: user?.email,
+      userPhone: user?.phone,
+    });
+
+    // Calculate height based on ticket status (scanned tickets are shorter)
+    const canvasHeight =
+      booking.paymentId && booking.paymentId.startsWith("SCANNED_")
+        ? 1200
+        : 1400;
+
+    // Create canvas with dynamic dimensions
+    const canvas = createCanvas(900, canvasHeight);
     const ctx = canvas.getContext("2d");
 
-    // Modern gradient background - matching client-side
-    const bgGradient = ctx.createLinearGradient(0, 0, 900, 1400);
+    // Modern gradient background - using dynamic height
+    const bgGradient = ctx.createLinearGradient(0, 0, 900, canvasHeight);
     bgGradient.addColorStop(0, "#0f172a"); // slate-950
     bgGradient.addColorStop(0.5, "#1e293b"); // slate-800
     bgGradient.addColorStop(1, "#334155"); // slate-700
     ctx.fillStyle = bgGradient;
-    ctx.fillRect(0, 0, 900, 1400);
+    ctx.fillRect(0, 0, 900, canvasHeight);
 
     // Load and draw event image at the top
     let yPosition = 0;
@@ -246,11 +259,11 @@ export async function generateTicketImage(booking, event, user) {
 
     yPosition += 110;
 
-    // Attendee Information Card
+    // Attendee Info Card
     ctx.fillStyle = "rgba(59, 130, 246, 0.1)";
-    ctx.fillRect(60, yPosition, 370, 140);
+    ctx.fillRect(60, yPosition, 370, 160);
     ctx.strokeStyle = "rgba(59, 130, 246, 0.3)";
-    ctx.strokeRect(60, yPosition, 370, 140);
+    ctx.strokeRect(60, yPosition, 370, 160);
 
     ctx.fillStyle = "#60a5fa";
     ctx.font = "bold 16px Arial";
@@ -264,15 +277,19 @@ export async function generateTicketImage(booking, event, user) {
     ctx.font = "14px Arial";
     ctx.fillText("📧 " + (user.email || "No email"), 80, yPosition + 95);
 
+    ctx.fillStyle = "#94a3b8";
+    ctx.font = "14px Arial";
+    ctx.fillText("📱 " + (user.phone || "No phone"), 80, yPosition + 115);
+
     ctx.fillStyle = "#cbd5e1";
     ctx.font = "13px Arial";
-    ctx.fillText(`ID: ${user.id?.slice(-8) || "N/A"}`, 80, yPosition + 120);
+    ctx.fillText(`ID: ${user.id?.slice(-8) || "N/A"}`, 80, yPosition + 135);
 
     // Tickets & Status Card
     ctx.fillStyle = "rgba(16, 185, 129, 0.1)"; // green tint
-    ctx.fillRect(470, yPosition, 370, 140);
+    ctx.fillRect(470, yPosition, 370, 160);
     ctx.strokeStyle = "rgba(16, 185, 129, 0.3)";
-    ctx.strokeRect(470, yPosition, 370, 140);
+    ctx.strokeRect(470, yPosition, 370, 160);
 
     ctx.fillStyle = "#34d399"; // green-400
     ctx.font = "bold 16px Arial";
@@ -311,59 +328,121 @@ export async function generateTicketImage(booking, event, user) {
 
     yPosition += 50;
 
-    // QR Section Title
-    ctx.fillStyle = "#a78bfa"; // violet-400
-    ctx.font = "bold 20px Arial";
-    ctx.textAlign = "center";
-    ctx.fillText("SCAN FOR ENTRY", 450, yPosition);
+    // Check if ticket is already scanned
+    if (booking.paymentId && booking.paymentId.startsWith("SCANNED_")) {
+      // Thank you message for scanned tickets
+      ctx.fillStyle = "#10b981"; // green-500
+      ctx.font = "bold 24px Arial";
+      ctx.textAlign = "center";
+      ctx.fillText("THANK YOU FOR VISITING!", 450, yPosition);
 
-    ctx.fillStyle = "#94a3b8";
-    ctx.font = "14px Arial";
-    ctx.fillText(
-      "Present this QR code at the venue entrance",
-      450,
-      yPosition + 25
-    );
-    ctx.textAlign = "left";
+      ctx.fillStyle = "#34d399"; // green-400
+      ctx.font = "18px Arial";
+      ctx.fillText("Enjoy the Event!", 450, yPosition + 35);
 
-    // Load QR Code image - using api.qrserver.com like client-side
-    const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(
-      booking.id
-    )}`;
-    const qrImage = await loadImage(qrCodeUrl);
+      yPosition += 80;
 
-    yPosition += 60;
+      // Thank you container
+      const thankYouGradient = ctx.createLinearGradient(
+        200,
+        yPosition,
+        700,
+        yPosition + 200
+      );
+      thankYouGradient.addColorStop(0, "rgba(16, 185, 129, 0.1)");
+      thankYouGradient.addColorStop(1, "rgba(52, 211, 153, 0.2)");
+      ctx.fillStyle = thankYouGradient;
+      ctx.fillRect(200, yPosition, 500, 200);
 
-    // Modern QR container with glow effect
-    ctx.fillStyle = "rgba(255, 255, 255, 0.05)";
-    ctx.fillRect(300, yPosition, 300, 300);
+      // Border for thank you box
+      ctx.strokeStyle = "#10b981";
+      ctx.lineWidth = 3;
+      ctx.strokeRect(200, yPosition, 500, 200);
 
-    // Border with gradient
-    const qrBorderGradient = ctx.createLinearGradient(
-      300,
-      yPosition,
-      600,
-      yPosition + 300
-    );
-    qrBorderGradient.addColorStop(0, "#3b82f6");
-    qrBorderGradient.addColorStop(0.5, "#8b5cf6");
-    qrBorderGradient.addColorStop(1, "#3b82f6");
-    ctx.strokeStyle = qrBorderGradient;
-    ctx.lineWidth = 3;
-    ctx.strokeRect(300, yPosition, 300, 300);
+      // Thank you icon (checkmark)
+      ctx.fillStyle = "#10b981";
+      ctx.font = "80px Arial";
+      ctx.fillText("✓", 450, yPosition + 120);
 
-    // White background for QR
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(320, yPosition + 20, 260, 260);
+      ctx.fillStyle = "#064e3b"; // darker green
+      ctx.font = "16px Arial";
+      ctx.fillText("TICKET VERIFIED ✓", 450, yPosition + 140);
+      
+      ctx.fillStyle = "#064e3b";
+      ctx.font = "14px Arial";
+      ctx.fillText(
+        `Verified At: ${new Date(
+          booking.paymentId.replace("SCANNED_", "")
+        ).toLocaleString()}`,
+        450,
+        yPosition + 165
+      );
+      
+      // Add attendee details
+      ctx.fillStyle = "#047857";
+      ctx.font = "12px Arial";
+      ctx.fillText(`Attendee: ${user?.name || "N/A"}`, 450, yPosition + 185);
+      ctx.fillText(`Email: ${user?.email || "N/A"}`, 450, yPosition + 200);
+      ctx.fillText(`Phone: ${user?.phone || "N/A"}`, 450, yPosition + 215);
+      ctx.fillText(`Tickets: ${booking.tickets || 1}`, 450, yPosition + 230);
 
-    // Draw QR code
-    ctx.drawImage(qrImage, 320, yPosition + 20, 260, 260);
+      yPosition += 250;
+    } else {
+      // Regular QR code for unscanned tickets
+      ctx.fillStyle = "#a78bfa"; // violet-400
+      ctx.font = "bold 20px Arial";
+      ctx.textAlign = "center";
+      ctx.fillText("SCAN FOR ENTRY", 450, yPosition);
 
-    // QR Code ID below
-    ctx.fillStyle = "#64748b";
-    ctx.font = "12px monospace";
-    ctx.textAlign = "center";
-    ctx.fillText(booking.id, 450, yPosition + 330);
+      ctx.fillStyle = "#94a3b8";
+      ctx.font = "14px Arial";
+      ctx.fillText(
+        "Present this QR code at the venue entrance",
+        450,
+        yPosition + 25
+      );
+
+      yPosition += 60;
+
+      // Load QR Code image - using api.qrserver.com like client-side
+      const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(
+        booking.id
+      )}`;
+      const qrImage = await loadImage(qrCodeUrl);
+
+      // Modern QR container with glow effect
+      ctx.fillStyle = "rgba(255, 255, 255, 0.05)";
+      ctx.fillRect(300, yPosition, 300, 300);
+
+      // Border with gradient
+      const qrBorderGradient = ctx.createLinearGradient(
+        300,
+        yPosition,
+        600,
+        yPosition + 300
+      );
+      qrBorderGradient.addColorStop(0, "#3b82f6");
+      qrBorderGradient.addColorStop(0.5, "#8b5cf6");
+      qrBorderGradient.addColorStop(1, "#3b82f6");
+      ctx.strokeStyle = qrBorderGradient;
+      ctx.lineWidth = 3;
+      ctx.strokeRect(300, yPosition, 300, 300);
+
+      // White background for QR
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(320, yPosition + 20, 260, 260);
+
+      // Draw QR code
+      ctx.drawImage(qrImage, 320, yPosition + 20, 260, 260);
+
+      // QR Code ID below
+      ctx.fillStyle = "#64748b";
+      ctx.font = "12px monospace";
+      ctx.fillText(booking.id, 450, yPosition + 330);
+
+      yPosition += 350;
+    }
+
     ctx.textAlign = "left";
 
     // Footer Instructions with modern card design

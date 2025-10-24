@@ -4,24 +4,23 @@ import { supabase } from "@/lib/supabase";
 // GET /api/users - Get all users
 export async function GET() {
   try {
-    const users = await prisma.user.findMany({
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-        createdAt: true,
-        _count: {
-          select: {
-            organizedEvents: true,
-            bookings: true,
-          },
-        },
-      },
+    const { data: users, error } = await supabase
+      .from("users")
+      .select(`
+        id,
+        name,
+        email,
+        role,
+        createdAt
+      `);
       orderBy: {
         createdAt: "desc",
       },
-    });
+      `);
+
+    if (error) {
+      throw error;
+    }
 
     return NextResponse.json({ users });
   } catch (error) {
@@ -31,9 +30,7 @@ export async function GET() {
       { status: 500 }
     );
   }
-}
-
-// POST /api/users - Create a new user
+}// POST /api/users - Create a new user
 export async function POST(request) {
   try {
     const body = await request.json();
@@ -48,9 +45,11 @@ export async function POST(request) {
     }
 
     // Check if user already exists
-    const existingUser = await prisma.user.findUnique({
-      where: { email },
-    });
+    const { data: existingUser, error: checkError } = await supabase
+      .from("users")
+      .select("id")
+      .eq("email", email)
+      .single();
 
     if (existingUser) {
       return NextResponse.json(
@@ -59,14 +58,20 @@ export async function POST(request) {
       );
     }
 
-    const user = await prisma.user.create({
-      data: {
+    const { data: user, error: createError } = await supabase
+      .from("users")
+      .insert({
         name,
         email,
         phone,
         role,
-      },
-    });
+      })
+      .select()
+      .single();
+
+    if (createError) {
+      throw createError;
+    }
 
     return NextResponse.json({ user }, { status: 201 });
   } catch (error) {

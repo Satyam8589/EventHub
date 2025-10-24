@@ -9,6 +9,7 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get("userId");
 
+    // First get the bookings
     let query = supabase
       .from("bookings")
       .select("*")
@@ -24,7 +25,46 @@ export async function GET(request) {
       throw error;
     }
 
-    return NextResponse.json({ bookings });
+    // Then fetch event and user details for each booking
+    const bookingsWithEventAndUser = await Promise.all(
+      bookings.map(async (booking) => {
+        // Fetch event details
+        const { data: event, error: eventError } = await supabase
+          .from("events")
+          .select("*")
+          .eq("id", booking.eventId)
+          .single();
+
+        // Fetch user details
+        const { data: user, error: userError } = await supabase
+          .from("users")
+          .select("id, name, email, phone, avatar")
+          .eq("id", booking.userId)
+          .single();
+
+        if (eventError) {
+          console.warn(
+            `Could not fetch event for booking ${booking.id}:`,
+            eventError
+          );
+        }
+
+        if (userError) {
+          console.warn(
+            `Could not fetch user for booking ${booking.id}:`,
+            userError
+          );
+        }
+
+        return {
+          ...booking,
+          event: event || null,
+          user: user || null,
+        };
+      })
+    );
+
+    return NextResponse.json({ bookings: bookingsWithEventAndUser });
   } catch (error) {
     console.error("Error fetching bookings:", error);
     return NextResponse.json(
@@ -38,7 +78,14 @@ export async function GET(request) {
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { userId, eventId, tickets, totalAmount, paymentMethod } = body;
+    const {
+      userId,
+      eventId,
+      tickets,
+      totalAmount,
+      paymentMethod,
+      userDetails,
+    } = body;
 
     // Validate required fields
     if (!userId || !eventId || !tickets || !totalAmount) {
@@ -49,33 +96,31 @@ export async function POST(request) {
     }
 
     // Check if event exists and has capacity
-    const event = await prisma.event.findUnique({
-      where: { id: eventId },
-      include: {
-        _count: {
-          select: {
-            bookings: true,
-          },
-        },
-      },
-    });
+    const { data: event, error: eventError } = await supabase
+      .from("events")
+      .select("*")
+      .eq("id", eventId)
+      .single();
 
-    if (!event) {
+    if (eventError || !event) {
       return NextResponse.json({ error: "Event not found" }, { status: 404 });
     }
 
     // Calculate current bookings
-    const currentBookings = await prisma.booking.aggregate({
-      where: {
-        eventId,
-        status: { in: ["CONFIRMED", "PENDING"] },
-      },
-      _sum: {
-        tickets: true,
-      },
-    });
+    const { data: existingBookings, error: bookingsError } = await supabase
+      .from("bookings")
+      .select("tickets")
+      .eq("eventId", eventId)
+      .in("status", ["CONFIRMED", "PENDING"]);
 
-    const totalBookedTickets = currentBookings._sum.tickets || 0;
+    if (bookingsError) {
+      throw bookingsError;
+    }
+
+    const totalBookedTickets = existingBookings.reduce(
+      (sum, booking) => sum + booking.tickets,
+      0
+    );
 
     if (totalBookedTickets + tickets > event.capacity) {
       return NextResponse.json(
@@ -88,12 +133,15 @@ export async function POST(request) {
       .from("bookings")
       .insert([
         {
+          id: crypto.randomUUID(), // Generate a unique ID
           userId,
           eventId,
           tickets: parseInt(tickets),
           totalAmount: parseFloat(totalAmount),
           paymentMethod,
           status: "CONFIRMED", // For now, we'll auto-confirm bookings
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
         },
       ])
       .select("*")
@@ -103,56 +151,99 @@ export async function POST(request) {
       throw bookingError;
     }
 
+    // Update user profile with any new details provided during booking
+    console.log("📝 User Details from booking form:", userDetails);
+    if (userDetails && (userDetails.name || userDetails.phone)) {
+      const updateData = {};
+      if (userDetails.name) updateData.name = userDetails.name;
+      if (userDetails.phone) updateData.phone = userDetails.phone;
+      updateData.updatedAt = new Date().toISOString();
+
+      console.log(
+        "🔄 Updating user profile with:",
+        updateData,
+        "for userId:",
+        userId
+      );
+
+      const { error: userUpdateError } = await supabase
+        .from("users")
+        .update(updateData)
+        .eq("id", userId);
+
+      if (userUpdateError) {
+        console.error("❌ Could not update user profile:", userUpdateError);
+      } else {
+        console.log("✅ User profile updated successfully");
+      }
+    }
+
+    // Fetch user details for email (with updated information)
+    const { data: user, error: userError } = await supabase
+      .from("users")
+      .select("*")
+      .eq("id", userId)
+      .single();
+
+    if (userError) {
+      console.error("❌ Could not fetch user for email:", userError);
+    } else {
+      console.log("👤 Retrieved user for ticket generation:", {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+      });
+    }
+
     // Send ticket email (don't wait for it to avoid blocking response)
     // Wrap in try-catch so booking still succeeds even if email fails
-    setImmediate(async () => {
-      try {
-        console.log("Sending ticket email to:", booking.user.email);
+    if (user && user.email) {
+      setImmediate(async () => {
+        try {
+          console.log("Sending ticket email to:", user.email);
 
-        // Generate ticket image
-        const ticketImageBuffer = await generateTicketImage(
-          booking,
-          booking.event,
-          booking.user
-        );
-
-        // Generate email HTML
-        const emailHTML = generateBookingEmailHTML(
-          booking,
-          booking.event,
-          booking.user
-        );
-
-        // Send email with ticket attachment
-        const emailResult = await sendTicketEmail({
-          to: booking.user.email,
-          subject: `🎉 Your Ticket for ${booking.event.title} - Booking Confirmed!`,
-          html: emailHTML,
-          attachments: [
-            {
-              filename: `ticket-${booking.id}.png`,
-              content: ticketImageBuffer,
-              contentType: "image/png",
-            },
-          ],
-        });
-
-        if (emailResult.success) {
-          console.log(
-            "✅ Ticket email sent successfully:",
-            emailResult.messageId
+          // Generate ticket image
+          const ticketImageBuffer = await generateTicketImage(
+            booking,
+            event,
+            user
           );
-        } else {
-          console.warn(
-            "⚠️ Failed to send ticket email:",
-            emailResult.error || emailResult.message
-          );
+
+          // Generate email HTML
+          const emailHTML = generateBookingEmailHTML(booking, event, user);
+
+          // Send email with ticket attachment
+          const emailResult = await sendTicketEmail({
+            to: user.email,
+            subject: `🎉 Your Ticket for ${event.title} - Booking Confirmed!`,
+            html: emailHTML,
+            attachments: [
+              {
+                filename: `ticket-${booking.id}.png`,
+                content: ticketImageBuffer,
+                contentType: "image/png",
+              },
+            ],
+          });
+
+          if (emailResult.success) {
+            console.log(
+              "✅ Ticket email sent successfully:",
+              emailResult.messageId
+            );
+          } else {
+            console.warn(
+              "⚠️ Failed to send ticket email:",
+              emailResult.error || emailResult.message
+            );
+          }
+        } catch (emailError) {
+          console.error("❌ Error sending ticket email:", emailError);
+          // Don't throw - we don't want email errors to affect booking
         }
-      } catch (emailError) {
-        console.error("❌ Error sending ticket email:", emailError);
-        // Don't throw - we don't want email errors to affect booking
-      }
-    });
+      });
+    }
 
     return NextResponse.json({ booking }, { status: 201 });
   } catch (error) {

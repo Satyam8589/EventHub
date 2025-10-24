@@ -10,37 +10,35 @@ export async function GET(request) {
     let events;
 
     if (adminUserId) {
-      // Event Admin - get only assigned events
-      const eventAdminAssignments = await prisma.eventAdmin.findMany({
-        where: { userId: adminUserId },
-        include: {
-          event: {
-            include: {
-              _count: {
-                select: {
-                  bookings: true,
-                },
-              },
-            },
-          },
-        },
-      });
+      // Get user to check their role
+      const { data: user } = await supabase
+        .from("users")
+        .select("role")
+        .eq("id", adminUserId)
+        .single();
 
-      events = eventAdminAssignments.map((assignment) => assignment.event);
+      if (user?.role === "EVENT_ADMIN") {
+        // Event Admin - get only events they created
+        const { data: adminEvents } = await supabase
+          .from("events")
+          .select("*")
+          .eq("organizerId", adminUserId);
+
+        events = adminEvents || [];
+      } else {
+        // Super Admin - get all events
+        const { data: allEvents } = await supabase.from("events").select("*");
+
+        events = allEvents || [];
+      }
     } else {
-      // Super Admin - get all events
-      events = await prisma.event.findMany({
-        include: {
-          _count: {
-            select: {
-              bookings: true,
-            },
-          },
-        },
-        orderBy: {
-          createdAt: "desc",
-        },
-      });
+      // No admin user ID provided - get all events
+      const { data: allEvents } = await supabase
+        .from("events")
+        .select("*")
+        .order("createdAt", { ascending: false });
+
+      events = allEvents || [];
     }
 
     return NextResponse.json({ events });
@@ -81,23 +79,37 @@ export async function POST(request) {
     }
 
     // Create the event
-    const event = await prisma.event.create({
-      data: {
-        title,
-        description,
-        category: category || "General",
-        location,
-        venue: venue || location,
-        date: new Date(date),
-        time,
-        price: parseFloat(price) || 0,
-        capacity: parseInt(capacity) || 100,
-        imageUrl,
-        tags: tags || [],
-        organizerId,
-        status: "UPCOMING",
-      },
-    });
+    const { data: event, error: createError } = await supabase
+      .from("events")
+      .insert([
+        {
+          title,
+          description,
+          category: category || "CONFERENCE",
+          location,
+          venue: venue || location,
+          date: new Date(date).toISOString(),
+          time,
+          price: parseFloat(price) || 0,
+          capacity: parseInt(capacity) || 100,
+          imageUrl,
+          tags: tags || [],
+          organizerId,
+          status: "UPCOMING",
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      ])
+      .select("*")
+      .single();
+
+    if (createError) {
+      console.error("Error creating event:", createError);
+      return NextResponse.json(
+        { error: "Failed to create event" },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({ event });
   } catch (error) {

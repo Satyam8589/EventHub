@@ -6,35 +6,42 @@ export async function DELETE(request, { params }) {
   try {
     const { id, adminId } = await params;
 
-    // Check if event admin exists
-    const eventAdmin = await prisma.eventAdmin.findUnique({
-      where: { id: adminId },
-      include: { user: true },
-    });
+    // Check if user exists and is an EVENT_ADMIN
+    const { data: user, error: userError } = await supabase
+      .from("users")
+      .select("*")
+      .eq("id", adminId)
+      .single();
 
-    if (!eventAdmin) {
+    if (userError || !user) {
       return NextResponse.json(
-        { error: "Event admin not found" },
+        { error: "Admin user not found" },
         { status: 404 }
       );
     }
 
-    // Remove the admin assignment
-    await prisma.eventAdmin.delete({
-      where: { id: adminId },
-    });
+    if (user.role !== "EVENT_ADMIN") {
+      return NextResponse.json(
+        { error: "User is not an event admin" },
+        { status: 400 }
+      );
+    }
 
-    // Check if user has any other admin assignments
-    const otherAdminAssignments = await prisma.eventAdmin.findMany({
-      where: { userId: eventAdmin.userId },
-    });
+    // Revert user role to ATTENDEE (removing admin privileges)
+    const { error: updateError } = await supabase
+      .from("users")
+      .update({
+        role: "ATTENDEE",
+        updatedAt: new Date().toISOString(),
+      })
+      .eq("id", adminId);
 
-    // If no other admin assignments, revert role to ATTENDEE
-    if (otherAdminAssignments.length === 0) {
-      await prisma.user.update({
-        where: { id: eventAdmin.userId },
-        data: { role: "ATTENDEE" },
-      });
+    if (updateError) {
+      console.error("Error updating user role:", updateError);
+      return NextResponse.json(
+        { error: "Failed to remove admin privileges" },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({

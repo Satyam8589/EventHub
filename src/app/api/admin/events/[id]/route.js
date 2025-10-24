@@ -5,38 +5,43 @@ import { supabase } from "@/lib/supabase";
 export async function GET(request, { params }) {
   try {
     const { id } = await params;
-    const event = await prisma.event.findUnique({
-      where: { id },
-      include: {
-        organizer: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-        discounts: {
-          orderBy: { createdAt: "desc" },
-        },
-        _count: {
-          select: {
-            bookings: true,
-            reviews: true,
-          },
-        },
-      },
-    });
 
-    if (!event) {
+    // Get event details
+    const { data: event, error: eventError } = await supabase
+      .from("events")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (eventError || !event) {
       return NextResponse.json({ error: "Event not found" }, { status: 404 });
     }
 
-    // Add gallery field if it doesn't exist (for backward compatibility)
-    if (!event.gallery) {
-      event.gallery = [];
-    }
+    // Get organizer details
+    const { data: organizer } = await supabase
+      .from("users")
+      .select("id, name, email")
+      .eq("id", event.organizerId)
+      .single();
 
-    return NextResponse.json({ event });
+    // Get bookings count for this event
+    const { data: bookings } = await supabase
+      .from("bookings")
+      .select("id")
+      .eq("eventId", id);
+
+    // Add additional data to event object
+    const enrichedEvent = {
+      ...event,
+      organizer: organizer || null,
+      _count: {
+        bookings: bookings?.length || 0,
+        reviews: 0, // TODO: Implement reviews if needed
+      },
+      gallery: event.gallery || [],
+    };
+
+    return NextResponse.json({ event: enrichedEvent });
   } catch (error) {
     console.error("Error fetching event:", error);
     return NextResponse.json(
@@ -72,15 +77,15 @@ export async function PUT(request, { params }) {
     const eventDate = new Date(date);
     const timeString = eventDate.toTimeString().slice(0, 5); // Format: "HH:MM"
 
-    const updatedEvent = await prisma.event.update({
-      where: { id },
-      data: {
+    const { data: updatedEvent, error: updateError } = await supabase
+      .from("events")
+      .update({
         title,
         description,
         category,
         location,
         venue,
-        date: eventDate,
+        date: eventDate.toISOString(),
         time: timeString,
         capacity: parseInt(capacity),
         price: parseFloat(price),
@@ -88,11 +93,14 @@ export async function PUT(request, { params }) {
         organizerName,
         organizerEmail,
         organizerPhone,
-        gallery: gallery || [],
-      },
-      include: {
-        organizer: {
-          select: {
+        gallery: gallery || "",
+      })
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (updateError) {
+      throw updateError;
             id: true,
             name: true,
             email: true,

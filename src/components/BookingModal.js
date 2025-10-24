@@ -42,6 +42,12 @@ export default function BookingModal({ event, isOpen, onClose }) {
           tickets: parseInt(formData.numberOfTickets),
           totalAmount: calculateTotal(),
           paymentMethod: "card", // You can extend this later
+          // Include user details for profile update
+          userDetails: {
+            name: formData.fullName,
+            email: formData.email,
+            phone: formData.phoneNumber,
+          },
         }),
       });
 

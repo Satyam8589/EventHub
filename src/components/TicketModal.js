@@ -528,7 +528,7 @@ export default function TicketModal({ booking, isOpen, onClose }) {
             <div>
               <h2 className="text-lg font-bold">EventHub E-Ticket</h2>
               {/* Hide download button if ticket is verified */}
-              {!booking.verifications || booking.verifications.length === 0 ? (
+              {!(booking.paymentId && booking.paymentId.startsWith("SCANNED_")) ? (
                 <button
                   onClick={handleDownload}
                   disabled={isDownloading}
@@ -575,7 +575,7 @@ export default function TicketModal({ booking, isOpen, onClose }) {
                   )}
                 </button>
               ) : (
-                <span className="text-xs text-green-300">✓ Ticket Used</span>
+                <span className="text-xs text-green-300">✓ Ticket Verified</span>
               )}
             </div>
           </div>
@@ -593,18 +593,53 @@ export default function TicketModal({ booking, isOpen, onClose }) {
         {/* Ticket Details */}
         <div className="p-6 space-y-4">
           {/* Attendee Info */}
-          <div className="border-b border-gray-200 pb-4">
-            <h4 className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                <path
-                  fillRule="evenodd"
-                  d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
-                  clipRule="evenodd"
-                />
-              </svg>
-              Attendee Name
-            </h4>
-            <p className="text-gray-600">{booking.user?.name || "Attendee"}</p>
+          <div className="border-b border-gray-200 pb-4 space-y-3">
+            <div>
+              <h4 className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
+                <svg
+                  className="w-4 h-4"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                Attendee Details
+              </h4>
+              <div className="space-y-2">
+                <p className="text-gray-800 font-medium">
+                  {booking.user?.name || "Attendee"}
+                </p>
+                {booking.user?.email && (
+                  <p className="text-gray-600 text-sm flex items-center gap-2">
+                    <svg
+                      className="w-4 h-4"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
+                      <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
+                    </svg>
+                    {booking.user.email}
+                  </p>
+                )}
+                {booking.user?.phone && (
+                  <p className="text-gray-600 text-sm flex items-center gap-2">
+                    <svg
+                      className="w-4 h-4"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
+                    </svg>
+                    {booking.user.phone}
+                  </p>
+                )}
+              </div>
+            </div>
           </div>
 
           {/* Event Details */}
@@ -693,7 +728,7 @@ export default function TicketModal({ booking, isOpen, onClose }) {
 
           {/* QR Code Section */}
           <div className="border-t border-gray-200 pt-4">
-            {booking.verifications && booking.verifications.length > 0 ? (
+            {booking.paymentId && booking.paymentId.startsWith("SCANNED_") ? (
               /* Ticket Already Verified */
               <div className="text-center py-8">
                 <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-green-100 flex items-center justify-center">
@@ -710,24 +745,34 @@ export default function TicketModal({ booking, isOpen, onClose }) {
                   </svg>
                 </div>
                 <h3 className="text-2xl font-bold text-green-600 mb-2">
-                  Ticket Verified! ✓
+                  Thank You for Visiting! ✓
                 </h3>
-                <p className="text-lg text-gray-700 mb-3">
-                  Thank you for visiting!
-                </p>
+                <p className="text-lg text-gray-700 mb-3">Enjoy the Event!</p>
                 <p className="text-gray-600 mb-4">
-                  Enjoy your event experience
+                  Your ticket has been successfully verified
                 </p>
                 <div className="bg-green-50 border border-green-200 rounded-lg p-3 mx-4">
-                  <p className="text-sm text-green-800">
-                    <strong>Verified on:</strong>{" "}
+                  <p className="text-sm text-green-800 mb-2">
+                    <strong>Verified At:</strong>{" "}
                     {new Date(
-                      booking.verifications[0].scannedAt
+                      booking.paymentId.replace("SCANNED_", "")
                     ).toLocaleString()}
+                  </p>
+                  <p className="text-sm text-green-700">
+                    <strong>Attendee:</strong> {booking.user?.name || "N/A"}
+                  </p>
+                  <p className="text-sm text-green-700">
+                    <strong>Email:</strong> {booking.user?.email || "N/A"}
+                  </p>
+                  <p className="text-sm text-green-700">
+                    <strong>Phone:</strong> {booking.user?.phone || "N/A"}
+                  </p>
+                  <p className="text-sm text-green-700">
+                    <strong>Tickets:</strong> {booking.tickets || 1}
                   </p>
                 </div>
                 <div className="mt-4 text-sm text-gray-500">
-                  This ticket has already been scanned and cannot be used again.
+                  This ticket has been used and cannot be scanned again.
                 </div>
               </div>
             ) : (
@@ -760,7 +805,7 @@ export default function TicketModal({ booking, isOpen, onClose }) {
           </div>
 
           {/* Download Ticket Button - Hide if verified */}
-          {!booking.verifications || booking.verifications.length === 0 ? (
+          {!(booking.paymentId && booking.paymentId.startsWith("SCANNED_")) ? (
             <div className="border-t border-gray-200 pt-4">
               <button
                 onClick={handleDownload}
@@ -808,7 +853,24 @@ export default function TicketModal({ booking, isOpen, onClose }) {
                 )}
               </button>
             </div>
-          ) : null}
+          ) : (
+            <div className="border-t border-gray-200 pt-4">
+              <div className="w-full bg-green-100 border border-green-300 text-green-800 font-semibold py-3 px-4 rounded-lg flex items-center justify-center gap-2">
+                <svg
+                  className="w-5 h-5"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                Ticket Already Verified
+              </div>
+            </div>
+          )}
 
           {/* Important Notice */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">

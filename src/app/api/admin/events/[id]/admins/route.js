@@ -6,33 +6,38 @@ export async function GET(request, { params }) {
   try {
     const { id } = await params;
 
-    // Get event with its admins
-    const event = await prisma.event.findUnique({
-      where: { id },
-      include: {
-        eventAdmins: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                avatar: true,
-              },
-            },
-          },
-        },
-      },
-    });
+    // Get event details
+    const { data: event, error: eventError } = await supabase
+      .from("events")
+      .select("*")
+      .eq("id", id)
+      .single();
 
-    if (!event) {
+    if (eventError || !event) {
       return NextResponse.json({ error: "Event not found" }, { status: 404 });
     }
 
+    // Fetch all users with EVENT_ADMIN role
+    // In a more complex system, you'd have an event_admins table to track which admins are assigned to which events
+    // For now, we'll return all EVENT_ADMIN users as they can manage events
+    const { data: eventAdmins, error: adminsError } = await supabase
+      .from("users")
+      .select("id, name, email, avatar, role, createdAt")
+      .eq("role", "EVENT_ADMIN")
+      .order("createdAt", { ascending: false });
+
+    if (adminsError) {
+      console.error("Error fetching event admins:", adminsError);
+      return NextResponse.json(
+        { error: "Failed to fetch event admins" },
+        { status: 500 }
+      );
+    }
+
     return NextResponse.json({
-      admins: event.eventAdmins,
-      maxAdmins: 2,
-      currentCount: event.eventAdmins.length,
+      admins: eventAdmins || [],
+      maxAdmins: 5, // Allow up to 5 event admins
+      currentCount: eventAdmins?.length || 0,
     });
   } catch (error) {
     console.error("Error fetching event admins:", error);
@@ -57,86 +62,68 @@ export async function POST(request, { params }) {
     }
 
     // Check if event exists
-    const event = await prisma.event.findUnique({
-      where: { id },
-      include: { eventAdmins: true },
-    });
+    const { data: event, error: eventError } = await supabase
+      .from("events")
+      .select("*")
+      .eq("id", id)
+      .single();
 
-    if (!event) {
+    if (eventError || !event) {
       return NextResponse.json({ error: "Event not found" }, { status: 404 });
     }
 
-    // Check if event already has 2 admins
-    if (event.eventAdmins.length >= 2) {
-      return NextResponse.json(
-        { error: "Event already has maximum number of admins (2)" },
-        { status: 400 }
-      );
-    }
+    // Check if user exists
+    const { data: user, error: userError } = await supabase
+      .from("users")
+      .select("*")
+      .eq("id", userId)
+      .single();
 
-    // Check if user exists and is not already an admin of any event
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      include: { eventAdminFor: true },
-    });
-
-    if (!user) {
+    if (userError || !user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    // Check if user is already admin of another event
-    if (user.eventAdminFor.length > 0) {
-      const existingEvent = await prisma.event.findUnique({
-        where: { id: user.eventAdminFor[0].eventId },
-        select: { title: true },
-      });
+    // Check if user is eligible (not already SUPER_ADMIN or EVENT_ADMIN)
+    if (user.role === "SUPER_ADMIN") {
       return NextResponse.json(
-        {
-          error: `User is already admin of event: ${existingEvent?.title}. A user can only be admin of one event at a time.`,
-        },
+        { error: "Super admins cannot be assigned as event admins" },
         { status: 400 }
       );
     }
 
-    // Check if user is already admin of this event
-    const existingAdmin = await prisma.eventAdmin.findUnique({
-      where: { userId_eventId: { userId, eventId: id } },
-    });
-
-    if (existingAdmin) {
+    if (user.role === "EVENT_ADMIN") {
       return NextResponse.json(
-        { error: "User is already admin of this event" },
+        { error: "User is already an event admin" },
         { status: 400 }
       );
     }
 
-    // Create event admin assignment
-    const eventAdmin = await prisma.eventAdmin.create({
-      data: {
-        userId,
-        eventId: id,
-        assignedBy,
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            avatar: true,
-          },
-        },
-      },
-    });
+    // Update user role to EVENT_ADMIN
+    const { data: updatedUser, error: updateError } = await supabase
+      .from("users")
+      .update({
+        role: "EVENT_ADMIN",
+        updatedAt: new Date().toISOString(),
+      })
+      .eq("id", userId)
+      .select("id, name, email, avatar, role")
+      .single();
 
-    // Update user role to EVENT_ADMIN if not already
-    await prisma.user.update({
-      where: { id: userId },
-      data: { role: "EVENT_ADMIN" },
-    });
+    if (updateError) {
+      console.error("Error updating user role:", updateError);
+      return NextResponse.json(
+        { error: "Failed to assign admin role" },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({
-      eventAdmin,
+      eventAdmin: {
+        user: updatedUser,
+        eventId: id,
+        assignedBy,
+        assignedAt: new Date().toISOString(),
+      },
       message: "Admin assigned successfully",
     });
   } catch (error) {

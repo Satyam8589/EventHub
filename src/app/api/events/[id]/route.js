@@ -67,10 +67,7 @@ export async function DELETE(request, { params }) {
   try {
     const { id } = await params;
 
-    const { error } = await supabase
-      .from("events")
-      .delete()
-      .eq("id", id);
+    const { error } = await supabase.from("events").delete().eq("id", id);
 
     if (error) {
       throw error;

@@ -11,105 +11,93 @@ export async function GET(request) {
     }
 
     // Get user and check admin role
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-    });
+    const { data: user } = await supabase
+      .from("users")
+      .select("*")
+      .eq("id", userId)
+      .single();
 
     if (!user || (user.role !== "SUPER_ADMIN" && user.role !== "EVENT_ADMIN")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
-    let stats = {};
-    let recentActivity = [];
+    // Fetch real admin dashboard data
+    try {
+      let eventsQuery = supabase.from("events").select("*");
 
-    if (user.role === "SUPER_ADMIN") {
-      // Super admin sees all stats
-      const [totalEvents, totalBookings, totalRevenue, activeEvents] =
-        await Promise.all([
-          prisma.event.count(),
-          prisma.booking.count(),
-          prisma.booking.aggregate({
-            _sum: { totalAmount: true },
-            where: { status: "CONFIRMED" },
-          }),
-          prisma.event.count({
-            where: {
-              status: "UPCOMING",
-              date: { gte: new Date() },
-            },
-          }),
-        ]);
+      // If EVENT_ADMIN, only show their events
+      if (user.role === "EVENT_ADMIN") {
+        eventsQuery = eventsQuery.eq("organizerId", userId);
+      }
 
-      stats = {
-        totalEvents,
-        totalBookings,
-        totalRevenue: totalRevenue._sum.totalAmount || 0,
-        activeEvents,
-      };
+      const { data: events, error: eventsError } = await eventsQuery;
 
-      // Get recent activity for super admin
-      recentActivity = [
-        {
-          description: "New event created: Tech Conference 2025",
-          timestamp: "2 hours ago",
+      if (eventsError) {
+        console.error("Error fetching events:", eventsError);
+      }
+
+      const { data: bookings, error: bookingsError } = await supabase
+        .from("bookings")
+        .select("*");
+
+      if (bookingsError) {
+        console.error("Error fetching bookings:", bookingsError);
+      }
+
+      // Calculate stats
+      const totalEvents = events?.length || 0;
+      const totalBookings = bookings?.length || 0;
+      const totalRevenue =
+        bookings?.reduce(
+          (sum, booking) => sum + (booking.totalAmount || 0),
+          0
+        ) || 0;
+      const activeEvents =
+        events?.filter((event) => event.status === "UPCOMING").length || 0;
+
+      // Get recent activity
+      const recentActivity = (bookings || [])
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+        .slice(0, 10)
+        .map((booking) => {
+          const event = events?.find((e) => e.id === booking.eventId);
+          return {
+            id: booking.id,
+            type: "booking",
+            message: `${booking.tickets} ticket(s) booked for ${
+              event?.title || "Unknown Event"
+            } - $${booking.totalAmount}`,
+            createdAt: booking.createdAt,
+          };
+        });
+
+      return NextResponse.json({
+        stats: {
+          totalEvents,
+          totalBookings,
+          totalRevenue,
+          activeEvents,
         },
-        {
-          description: "Admin assigned to Marketing Workshop",
-          timestamp: "5 hours ago",
-        },
-        {
-          description: "Discount code applied: SAVE20",
-          timestamp: "1 day ago",
-        },
-      ];
-    } else if (user.role === "EVENT_ADMIN") {
-      // Event admin sees only their assigned events
-      const adminEvents = await prisma.eventAdmin.findMany({
-        where: { userId },
-        include: {
-          event: {
-            include: {
-              bookings: true,
-            },
-          },
-        },
+        recentActivity,
+        events: events || [], // Include events list for admin panel
       });
-
-      const eventIds = adminEvents.map((ea) => ea.event.id);
-
-      const [totalBookings] = await Promise.all([
-        prisma.booking.count({
-          where: { eventId: { in: eventIds } },
-        }),
-      ]);
-
-      stats = {
-        totalEvents: adminEvents.length,
-        totalBookings,
-        totalRevenue: 0, // Event admins don't see revenue
-        activeEvents: adminEvents.filter((ea) => ea.event.status === "UPCOMING")
-          .length,
-      };
-
-      // Get recent activity for event admin
-      recentActivity = [
-        {
-          description: "Ticket verified for Tech Conference",
-          timestamp: "1 hour ago",
+    } catch (statsError) {
+      console.error("Error fetching admin stats:", statsError);
+      return NextResponse.json({
+        stats: {
+          totalEvents: 0,
+          totalBookings: 0,
+          totalRevenue: 0,
+          activeEvents: 0,
         },
-        { description: "New booking received", timestamp: "3 hours ago" },
-      ];
+        recentActivity: [],
+        events: [],
+      });
     }
-
-    return NextResponse.json({
-      stats,
-      recentActivity,
-      userRole: user.role,
-    });
   } catch (error) {
-    console.error("Error fetching admin dashboard:", error);
+    console.error("Admin dashboard error:", error);
     return NextResponse.json(
-      { error: "Failed to fetch dashboard data" },
+      { error: "Internal server error" },
       { status: 500 }
     );
   }
