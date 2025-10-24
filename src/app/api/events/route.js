@@ -50,6 +50,15 @@ export async function GET() {
     );
 
     console.log("Successfully fetched events:", eventsWithCounts.length);
+    console.log(
+      "Events data:",
+      eventsWithCounts.map((e) => ({
+        id: e.id,
+        title: e.title,
+        date: e.date,
+        status: e.status,
+      }))
+    );
     return NextResponse.json({ events: eventsWithCounts });
   } catch (error) {
     console.error("Error fetching events:", error.message);
@@ -188,6 +197,7 @@ export async function POST(request) {
           organizerEmail,
           organizerPhone,
           featured: featured || false,
+          status: "UPCOMING",
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         },
