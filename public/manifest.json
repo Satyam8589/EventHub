@@ -1,0 +1,82 @@
+{
+  "name": "EventHub - Event Management Platform",
+  "short_name": "EventHub",
+  "description": "Discover, book, and manage events seamlessly with EventHub",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#3b82f6",
+  "orientation": "portrait-primary",
+  "categories": ["entertainment", "business", "lifestyle"],
+  "lang": "en",
+  "dir": "ltr",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/next.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/vercel.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Browse Events",
+      "short_name": "Events",
+      "description": "Browse all available events",
+      "url": "/events",
+      "icons": [
+        {
+          "src": "/next.svg",
+          "sizes": "any"
+        }
+      ]
+    },
+    {
+      "name": "My Events",
+      "short_name": "My Events",
+      "description": "View your booked events",
+      "url": "/my-events",
+      "icons": [
+        {
+          "src": "/next.svg",
+          "sizes": "any"
+        }
+      ]
+    },
+    {
+      "name": "Contact Us",
+      "short_name": "Contact",
+      "description": "Get in touch with us",
+      "url": "/contact",
+      "icons": [
+        {
+          "src": "/next.svg",
+          "sizes": "any"
+        }
+      ]
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/next.svg",
+      "sizes": "1280x720",
+      "type": "image/svg+xml",
+      "form_factor": "wide",
+      "label": "EventHub Desktop View"
+    },
+    {
+      "src": "/vercel.svg",
+      "sizes": "540x720",
+      "type": "image/svg+xml",
+      "form_factor": "narrow",
+      "label": "EventHub Mobile View"
+    }
+  ]
+}

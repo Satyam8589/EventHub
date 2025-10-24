@@ -8,6 +8,7 @@ export async function GET() {
     console.log("Starting GET /api/events");
     console.log("DATABASE_URL exists:", !!process.env.DATABASE_URL);
 
+    // First get all events
     const { data: events, error } = await supabase
       .from("events")
       .select("*")
@@ -18,8 +19,38 @@ export async function GET() {
       throw error;
     }
 
-    console.log("Successfully fetched events:", events.length);
-    return NextResponse.json({ events });
+    // Get booking counts for each event
+    const eventsWithCounts = await Promise.all(
+      events.map(async (event) => {
+        // Get all bookings for this event to sum up total tickets
+        const { data: bookings, error: bookingsError } = await supabase
+          .from("bookings")
+          .select("tickets")
+          .eq("eventId", event.id);
+
+        if (bookingsError) {
+          console.error(
+            `Error fetching bookings for event ${event.id}:`,
+            bookingsError
+          );
+        }
+
+        // Sum up all tickets from all bookings for this event
+        const totalTickets =
+          bookings?.reduce((sum, booking) => sum + (booking.tickets || 0), 0) ||
+          0;
+
+        return {
+          ...event,
+          _count: {
+            bookings: totalTickets, // This represents total attendees, not just booking count
+          },
+        };
+      })
+    );
+
+    console.log("Successfully fetched events:", eventsWithCounts.length);
+    return NextResponse.json({ events: eventsWithCounts });
   } catch (error) {
     console.error("Error fetching events:", error.message);
     console.error("Error code:", error.code);

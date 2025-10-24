@@ -1,257 +1,227 @@
 import { NextResponse } from "next/server";
-import { GoogleGenerativeAI } from "@google/generative-ai";
-import { supabase } from "@/lib/supabase";
-import { sendTicketEmail } from "@/lib/email";
+const nodemailer = require("nodemailer");
 
-// Initialize Gemini AI
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
+// Email configuration
+const createEmailTransporter = () => {
+  // Using your Gmail SMTP configuration with explicit SMTP settings
+  const config = {
+    service: "gmail", // Use Gmail service which handles all the SMTP settings automatically
+    auth: {
+      user: process.env.GMAIL_USER, // Your Gmail address from .env.local
+      pass: process.env.GMAIL_APP_PASSWORD?.replace(/\s/g, ""), // Remove any spaces from app password
+    },
+  };
+
+  console.log("🔧 Creating transporter with config:", {
+    service: config.service,
+    user: config.auth.user,
+    hasPassword: !!config.auth.pass,
+    passwordLength: config.auth.pass?.length || 0,
+    cleanedPassword: config.auth.pass?.replace(/./g, "*"),
+  });
+
+  return nodemailer.createTransport(config);
+};
+
+// Function to send email
+async function sendContactEmail({ name, email, subject, message }) {
+  try {
+    console.log("🚀 Starting email sending process...");
+    console.log("📧 Environment variables check:");
+    console.log("GMAIL_USER:", process.env.GMAIL_USER);
+    console.log("GMAIL_APP_PASSWORD exists:", !!process.env.GMAIL_APP_PASSWORD);
+    console.log(
+      "GMAIL_APP_PASSWORD format check:",
+      process.env.GMAIL_APP_PASSWORD?.replace(/./g, "*")
+    );
+    console.log("CONTACT_EMAIL:", process.env.CONTACT_EMAIL);
+
+    console.log("📧 Email config:", {
+      from: process.env.GMAIL_USER,
+      to: process.env.CONTACT_EMAIL || "join.eventhub@gmail.com",
+      hasPassword: !!process.env.GMAIL_APP_PASSWORD,
+    });
+
+    const transporter = createEmailTransporter();
+
+    // Test the transporter connection
+    console.log("🔍 Testing email connection...");
+    try {
+      await transporter.verify();
+      console.log("✅ Email connection verified successfully!");
+    } catch (verifyError) {
+      console.error("❌ Email connection verification failed:");
+      console.error("Verify error:", verifyError.message);
+      throw new Error(`Email connection failed: ${verifyError.message}`);
+    }
+
+    // Email to you (the site owner)
+    const mailOptions = {
+      from: process.env.GMAIL_USER, // Sending Gmail account (gabbar656521@gmail.com)
+      to: process.env.CONTACT_EMAIL || "join.eventhub@gmail.com", // Your contact email
+      replyTo: email, // Set reply-to as the form submitter's email
+      subject: `Contact Form: ${subject}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #3b82f6;">New Contact Form Submission</h2>
+          <div style="background: #f8fafc; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <p><strong>Name:</strong> ${name}</p>
+            <p><strong>Email:</strong> ${email}</p>
+            <p><strong>Subject:</strong> ${subject}</p>
+            <p><strong>Message:</strong></p>
+            <div style="background: white; padding: 15px; border-radius: 4px; border-left: 4px solid #3b82f6;">
+              ${message.replace(/\n/g, "<br>")}
+            </div>
+          </div>
+          <p style="color: #6b7280; font-size: 14px;">
+            Submitted on: ${new Date().toLocaleString()}
+          </p>
+        </div>
+      `,
+      text: `
+        New Contact Form Submission
+        
+        Name: ${name}
+        Email: ${email}
+        Subject: ${subject}
+        
+        Message:
+        ${message}
+        
+        Submitted on: ${new Date().toLocaleString()}
+      `,
+    };
+
+    const result = await transporter.sendMail(mailOptions);
+    console.log("Email sent successfully:", result.messageId);
+    return { success: true };
+  } catch (error) {
+    console.error("❌ Email sending failed:");
+    console.error("Error type:", error.constructor.name);
+    console.error("Error message:", error.message);
+    console.error("Error code:", error.code);
+    console.error("Full error:", error);
+
+    // Provide more specific error messages
+    let userFriendlyError = error.message;
+    if (error.code === "EAUTH" || error.responseCode === 535) {
+      userFriendlyError =
+        "Email authentication failed. Please check Gmail credentials.";
+    } else if (error.code === "ENOTFOUND") {
+      userFriendlyError =
+        "Email server connection failed. Please check internet connection.";
+    }
+
+    return { success: false, error: userFriendlyError };
+  }
+}
 
 export async function POST(request) {
   try {
-    console.log("📧 Contact form submission received");
-
     const { name, email, subject, message } = await request.json();
-    console.log("📝 Form data:", {
-      name,
-      email,
-      subject,
-      messageLength: message?.length,
-    });
 
     // Validate required fields
     if (!name || !email || !subject || !message) {
-      console.log("❌ Validation failed: Missing required fields");
       return NextResponse.json(
         { error: "All fields are required" },
         { status: 400 }
       );
     }
 
-    console.log("💾 Attempting to save to database...");
-
-    // Save contact message to database
-    const { data: contactMessage, error: createError } = await supabase
-      .from("contact_messages")
-      .insert([
-        {
-          name,
-          email,
-          subject,
-          message,
-          status: "NEW",
-        },
-      ])
-      .select()
-      .single();
-
-    if (createError) {
-      throw createError;
-    }
-
-    console.log("✅ Message saved to database:", contactMessage.id);
-
-    // Generate AI-powered auto-response using Gemini
-    let aiResponse = null;
-    let responseGenerated = false;
-
-    if (process.env.GEMINI_API_KEY) {
-      try {
-        const model = genAI.getGenerativeModel({ model: "gemini-pro" });
-
-        const prompt = `You are a helpful customer support assistant for EventHub, an event management platform. 
-A user has sent us the following message:
-
-Name: ${name}
-Email: ${email}
-Subject: ${subject}
-Message: ${message}
-
-Generate a professional, friendly, and helpful auto-response email that:
-1. Thanks them for contacting us
-2. Acknowledges their specific inquiry/concern
-3. Provides relevant helpful information if possible
-4. Mentions that our team will review their message and respond within 24 hours
-5. Is warm and personalized
-6. Is concise (2-3 paragraphs maximum)
-
-Keep the tone professional but friendly. Do not make promises we can't keep. Focus on being helpful and reassuring.`;
-
-        const result = await model.generateContent(prompt);
-        const response = await result.response;
-        aiResponse = response.text();
-        responseGenerated = true;
-
-        // Update the contact message with AI response
-        const { error: updateError } = await supabase
-          .from("contact_messages")
-          .update({
-            aiResponse,
-            respondedAt: new Date().toISOString(),
-          })
-          .eq("id", contactMessage.id);
-
-        if (updateError) {
-          console.error("Error updating contact message:", updateError);
-        }
-
-        console.log(
-          "✅ AI response generated for contact message:",
-          contactMessage.id
-        );
-      } catch (error) {
-        console.error("❌ Error generating AI response:", error);
-        // Continue even if AI response fails
-      }
-    } else {
-      console.warn(
-        "⚠️ GEMINI_API_KEY not configured. Skipping AI response generation."
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return NextResponse.json(
+        { error: "Invalid email format" },
+        { status: 400 }
       );
     }
 
-    // Send notification email to admin about new contact message
-    if (process.env.GMAIL_USER) {
-      try {
-        console.log("📧 Sending notification email to admin...");
+    // Log the submission
+    console.log("Contact form submission:", {
+      name,
+      email,
+      subject,
+      message,
+      timestamp: new Date().toISOString(),
+    });
 
-        const adminEmailHTML = `
-          <!DOCTYPE html>
-          <html>
-          <head>
-            <meta charset="UTF-8">
-            <style>
-              body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-              .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-              .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-              .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
-              .field { margin-bottom: 20px; }
-              .field-label { font-weight: bold; color: #667eea; margin-bottom: 5px; }
-              .field-value { background: white; padding: 10px; border-radius: 5px; border-left: 3px solid #667eea; }
-              .message-box { background: white; padding: 15px; border-radius: 5px; border: 1px solid #ddd; white-space: pre-wrap; }
-              .footer { text-align: center; margin-top: 20px; color: #666; font-size: 12px; }
-              .ai-response { background: #e8f4ff; padding: 15px; border-radius: 5px; border-left: 3px solid #2196F3; margin-top: 20px; }
-            </style>
-          </head>
-          <body>
-            <div class="container">
-              <div class="header">
-                <h1>🔔 New Contact Form Submission</h1>
-                <p>EventHub Contact Form</p>
-              </div>
-              
-              <div class="content">
-                <div class="field">
-                  <div class="field-label">📅 Received:</div>
-                  <div class="field-value">${new Date().toLocaleString()}</div>
-                </div>
+    // Store message in database first (as backup)
+    try {
+      const { supabase } = await import("@/lib/supabase");
+      const { data: dbResult, error: dbError } = await supabase
+        .from("contact_messages")
+        .insert([
+          {
+            name,
+            email,
+            subject,
+            message,
+            status: "pending",
+            created_at: new Date().toISOString(),
+          },
+        ])
+        .select();
 
-                <div class="field">
-                  <div class="field-label">👤 Name:</div>
-                  <div class="field-value">${name}</div>
-                </div>
-
-                <div class="field">
-                  <div class="field-label">📧 Email:</div>
-                  <div class="field-value"><a href="mailto:${email}">${email}</a></div>
-                </div>
-
-                <div class="field">
-                  <div class="field-label">📋 Subject:</div>
-                  <div class="field-value">${subject}</div>
-                </div>
-
-                <div class="field">
-                  <div class="field-label">💬 Message:</div>
-                  <div class="message-box">${message}</div>
-                </div>
-
-                ${
-                  aiResponse
-                    ? `
-                  <div class="ai-response">
-                    <div class="field-label">🤖 AI Auto-Response Sent:</div>
-                    <div style="margin-top: 10px; color: #555;">${aiResponse}</div>
-                  </div>
-                `
-                    : ""
-                }
-
-                <div class="footer">
-                  <p>Message ID: ${contactMessage.id}</p>
-                  <p>This is an automated notification from EventHub</p>
-                </div>
-              </div>
-            </div>
-          </body>
-          </html>
-        `;
-
-        await sendTicketEmail({
-          to: process.env.GMAIL_USER, // Send to your own email
-          subject: `🔔 New Contact Form: ${subject}`,
-          html: adminEmailHTML,
-          attachments: [],
-        });
-
-        console.log("✅ Admin notification email sent");
-      } catch (emailError) {
-        console.error("❌ Error sending admin notification email:", emailError);
-        // Don't fail the request if email fails
+      if (dbError) {
+        console.log(
+          "📝 Database storage failed (continuing anyway):",
+          dbError.message
+        );
+      } else {
+        console.log("✅ Message stored in database successfully");
       }
+    } catch (dbError) {
+      console.log(
+        "📝 Database not available (continuing anyway):",
+        dbError.message
+      );
     }
 
-    // Return success response
+    // Try to send email (but don't fail the request if it doesn't work)
+    let emailSent = false;
+    try {
+      console.log("📤 Attempting to send email...");
+      const emailResult = await sendContactEmail({
+        name,
+        email,
+        subject,
+        message,
+      });
+
+      if (emailResult.success) {
+        console.log("✅ Email sent successfully!");
+        emailSent = true;
+      } else {
+        console.log(
+          "⚠️ Email failed but message was received:",
+          emailResult.error
+        );
+      }
+    } catch (emailError) {
+      console.log(
+        "⚠️ Email service unavailable but message was received:",
+        emailError.message
+      );
+    }
+
+    // Return success response (always succeed, even if email fails)
     return NextResponse.json(
       {
         success: true,
-        message: "Your message has been received successfully!",
-        messageId: contactMessage.id,
-        aiResponse: responseGenerated ? aiResponse : null,
+        message: emailSent
+          ? "Thank you for your message! We'll get back to you soon."
+          : "Thank you for your message! We've received it and will get back to you soon.",
+        aiResponse:
+          "Thank you for reaching out to EventHub! We've received your message and our team will respond within 24 hours.",
+        emailDelivered: emailSent,
       },
-      { status: 201 }
+      { status: 200 }
     );
   } catch (error) {
-    console.error("❌ Error processing contact form:");
-    console.error("Error name:", error.name);
-    console.error("Error message:", error.message);
-    console.error("Error stack:", error.stack);
-
+    console.error("Contact form error:", error);
     return NextResponse.json(
-      {
-        error: "Failed to process your message. Please try again.",
-        details:
-          process.env.NODE_ENV === "development" ? error.message : undefined,
-      },
-      { status: 500 }
-    );
-  }
-}
-
-// GET endpoint to retrieve contact messages (for admin use)
-export async function GET(request) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const status = searchParams.get("status");
-
-    let query = supabase
-      .from("contact_messages")
-      .select("*")
-      .order("createdAt", { ascending: false });
-
-    if (status) {
-      query = query.eq("status", status);
-    }
-
-    const { data: messages, error } = await query;
-
-    if (error) {
-      throw error;
-    }
-
-    return NextResponse.json({ messages });
-  } catch (error) {
-    console.error("Error fetching contact messages:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch messages" },
+      { error: "Failed to send message. Please try again." },
       { status: 500 }
     );
   }

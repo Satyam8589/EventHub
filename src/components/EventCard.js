@@ -2,11 +2,12 @@
 import Link from "next/link";
 
 export default function EventCard({ event }) {
-  const capacityPercentage = (
-    (event.registered / event.capacity) *
-    100
-  ).toFixed(0);
-  const spotsLeft = event.capacity - event.registered;
+  const registered = event.registered || 0;
+  const capacity = event.capacity || 0;
+
+  const capacityPercentage =
+    capacity > 0 ? Math.min((registered / capacity) * 100, 100).toFixed(0) : 0;
+  const spotsLeft = Math.max(capacity - registered, 0);
 
   // Define background images for different categories
   const getBackgroundImage = (category) => {
@@ -123,20 +124,30 @@ export default function EventCard({ event }) {
           <div className="flex justify-between items-center text-sm text-gray-600 mb-3">
             <span className="flex items-center gap-1">
               <span className="text-gray-400">👥</span>
-              <span>{event.registered} registered</span>
+              <span>{event.registered || 0} attendees</span>
             </span>
-            <span>{spotsLeft} spots left</span>
+            <span>
+              {spotsLeft > 0 ? `${spotsLeft} spots left` : "Sold out"}
+            </span>
           </div>
 
           {/* Capacity Bar */}
           <div>
             <div className="flex justify-between items-center text-xs text-gray-500 mb-2">
-              <span>Capacity</span>
-              <span>{capacityPercentage}%</span>
+              <span>
+                Capacity: {registered}/{capacity}
+              </span>
+              <span>{capacityPercentage}% full</span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2">
               <div
-                className="bg-linear-to-r from-blue-500 to-purple-600 h-2 rounded-full transition-all duration-500"
+                className={`h-2 rounded-full transition-all duration-500 ${
+                  spotsLeft === 0
+                    ? "bg-red-500"
+                    : spotsLeft <= capacity * 0.1
+                    ? "bg-orange-500"
+                    : "bg-linear-to-r from-blue-500 to-purple-600"
+                }`}
                 style={{ width: `${capacityPercentage}%` }}
               ></div>
             </div>

@@ -10,6 +10,8 @@ export default function Home() {
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [events, setEvents] = useState([]);
+  const [featuredEvents, setFeaturedEvents] = useState([]);
+  const [upcomingEvents, setUpcomingEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showLogin, setShowLogin] = useState(false);
   const [showSignup, setShowSignup] = useState(false);
@@ -46,11 +48,29 @@ export default function Home() {
   useEffect(() => {
     const fetchEvents = async () => {
       try {
-        setLoading(true);
         const response = await fetch("/api/events");
         if (response.ok) {
           const data = await response.json();
-          setEvents(data.events.slice(0, 6)); // Show only first 6 events on homepage
+          const allEvents = data.events || [];
+          setEvents(allEvents);
+
+          // Filter featured events (max 3, actual featured events)
+          const featured = allEvents
+            .filter((event) => event.featured === true)
+            .slice(0, 3);
+
+          // If less than 3 featured events, fill with latest non-featured events
+          const nonFeatured = allEvents.filter(
+            (event) => event.featured !== true
+          );
+          const neededCount = Math.max(0, 3 - featured.length);
+          const additionalEvents = nonFeatured.slice(0, neededCount);
+
+          setFeaturedEvents([...featured, ...additionalEvents]);
+
+          // For upcoming events, show latest non-featured events (excluding those used in featured)
+          const remainingNonFeatured = nonFeatured.slice(neededCount);
+          setUpcomingEvents(remainingNonFeatured.slice(0, 3));
         }
       } catch (error) {
         console.error("Error fetching events:", error);
@@ -486,7 +506,7 @@ export default function Home() {
                       <div className="bg-white/10 backdrop-blur-md rounded-2xl h-96 border border-white/20"></div>
                     </div>
                   ))
-              : events.slice(0, 3).map((event, index) => (
+              : featuredEvents.map((event, index) => (
                   <div
                     key={event.id}
                     style={{ animationDelay: `${index * 200}ms` }}
@@ -527,7 +547,7 @@ export default function Home() {
                       <div className="bg-white/10 backdrop-blur-md rounded-2xl h-96 border border-white/20"></div>
                     </div>
                   ))
-              : events.slice(3, 6).map((event, index) => (
+              : upcomingEvents.map((event, index) => (
                   <div
                     key={event.id}
                     style={{ animationDelay: `${index * 200}ms` }}
