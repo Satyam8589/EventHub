@@ -90,8 +90,33 @@ export default function BookingModal({ event, isOpen, onClose }) {
   };
 
   const handlePaymentFailure = (error) => {
-    console.error("Payment failed:", error);
-    setErrorMessage(error || "Payment failed. Please try again.");
+    console.error("=== PAYMENT FAILURE IN BOOKING MODAL ===");
+    console.error("Payment failed (raw):", error);
+
+    // Extract a friendly message from possible error shapes
+    let message = "Payment failed. Please try again.";
+
+    try {
+      if (!error) {
+        message = "Payment failed. Please try again.";
+      } else if (typeof error === "string") {
+        message = error;
+      } else if (typeof error === "object") {
+        // Common shapes from server or Razorpay
+        if (error.error) message = error.error;
+        else if (error.message) message = error.message;
+        else if (error.details) message = error.details;
+        else {
+          // Fallback to JSON string
+          message = JSON.stringify(error);
+        }
+      }
+    } catch (e) {
+      console.error("Error parsing failure object:", e);
+    }
+
+    console.error("Final error message shown to user:", message);
+    setErrorMessage(message);
     setPaymentStep("failed");
   };
 
@@ -168,16 +193,16 @@ export default function BookingModal({ event, isOpen, onClose }) {
                 </svg>
               </div>
               <h3 className="text-2xl font-bold text-green-600 mb-2">
-                🎉 Payment Successful!
+                🎉 Booking Complete!
               </h3>
               <p className="text-gray-700 mb-2">
-                Your tickets have been confirmed successfully.
+                Your payment has been verified and your tickets are confirmed.
               </p>
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-gray-600 mb-1">
                 📧 Ticket details have been sent to your email.
               </p>
-              <p className="text-xs text-gray-500 mt-3">
-                Redirecting you back...
+              <p className="text-sm text-blue-600 font-medium mt-4">
+                Redirecting to My Events page...
               </p>
             </div>
           ) : paymentStep === "failed" ? (
@@ -198,10 +223,10 @@ export default function BookingModal({ event, isOpen, onClose }) {
                 </svg>
               </div>
               <h3 className="text-2xl font-bold text-red-600 mb-2">
-                ❌ Payment Failed
+                ❌ Booking Not Completed
               </h3>
               <p className="text-gray-700 mb-4">
-                {errorMessage || "Something went wrong with your payment."}
+                {errorMessage || "Your payment could not be processed. Please try again."}
               </p>
               <div className="flex gap-3 justify-center">
                 <button

@@ -11,6 +11,14 @@ const razorpay = new Razorpay({
   key_secret: process.env.RAZORPAY_KEY_SECRET,
 });
 
+// Log presence of Razorpay environment variables (helps debug misconfiguration)
+console.log(
+  "RAZORPAY ENV CHECK - key present:",
+  !!process.env.RAZORPAY_KEY_ID,
+  "secret present:",
+  !!process.env.RAZORPAY_KEY_SECRET
+);
+
 // POST /api/payment/verify - Verify Razorpay payment
 export async function POST(request) {
   try {
@@ -26,6 +34,13 @@ export async function POST(request) {
     console.log("Order ID:", razorpay_order_id);
     console.log("Payment ID:", razorpay_payment_id);
     console.log("Booking ID:", bookingId);
+    console.log("Signature present:", !!razorpay_signature);
+    console.log("Full request body:", JSON.stringify({
+      razorpay_order_id,
+      razorpay_payment_id,
+      bookingId,
+      signatureLength: razorpay_signature?.length
+    }, null, 2));
 
     // Validate required fields
     if (
@@ -80,15 +95,14 @@ export async function POST(request) {
     console.log("Booking ID to find:", bookingId);
     console.log("Expected paymentId:", `PENDING_${razorpay_order_id}`);
 
-    const { data: booking, error: bookingError } = await supabase
+    // First, try to find by bookingId alone
+    let { data: booking, error: bookingError } = await supabase
       .from("bookings")
       .select("*")
       .eq("id", bookingId)
-      .eq("paymentId", `PENDING_${razorpay_order_id}`)
-      .eq("status", "PENDING")
       .single();
 
-    console.log("=== BOOKING QUERY RESULT ===");
+    console.log("=== BOOKING QUERY RESULT (by ID) ===");
     console.log("Booking found:", !!booking);
     console.log("Booking error:", bookingError);
     if (booking) {
@@ -100,11 +114,44 @@ export async function POST(request) {
     }
 
     if (bookingError || !booking) {
-      console.error("❌ BOOKING NOT FOUND OR ALREADY PROCESSED");
+      console.error("❌ BOOKING NOT FOUND");
       console.error("Error details:", bookingError);
       return NextResponse.json(
-        { success: false, error: "Booking not found or already processed" },
+        { success: false, error: "Booking not found" },
         { status: 404 }
+      );
+    }
+
+    // Check if booking is already confirmed
+    if (booking.status === "CONFIRMED") {
+      console.log("⚠️ BOOKING ALREADY CONFIRMED - Duplicate verification attempt");
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: "This payment has already been verified" 
+        },
+        { status: 400 }
+      );
+    }
+
+    // Check if booking status is PENDING and paymentId matches
+    if (booking.status !== "PENDING") {
+      console.error("❌ BOOKING STATUS IS NOT PENDING:", booking.status);
+      return NextResponse.json(
+        { success: false, error: "Booking is not in pending state" },
+        { status: 400 }
+      );
+    }
+
+    // Verify that the order ID matches
+    const expectedPaymentId = `PENDING_${razorpay_order_id}`;
+    if (booking.paymentId !== expectedPaymentId) {
+      console.error("❌ PAYMENT ID MISMATCH");
+      console.error("Expected:", expectedPaymentId);
+      console.error("Got:", booking.paymentId);
+      return NextResponse.json(
+        { success: false, error: "Payment ID mismatch - possible fraud attempt" },
+        { status: 400 }
       );
     }
 
@@ -207,6 +254,10 @@ export async function POST(request) {
     }
 
     // Return success response
+    console.log("🎉 RETURNING SUCCESS RESPONSE TO CLIENT");
+    console.log("Booking confirmed with ID:", confirmedBooking.id);
+    console.log("Payment ID:", razorpay_payment_id);
+    
     return NextResponse.json({
       success: true,
       message:

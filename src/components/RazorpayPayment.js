@@ -41,6 +41,12 @@ const RazorpayPayment = ({
 
           try {
             // Verify payment on server
+            console.log("Sending verification request with:", {
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              bookingId: orderData.bookingId,
+            });
+
             const verifyResponse = await fetch("/api/payment/verify", {
               method: "POST",
               headers: {
@@ -54,13 +60,16 @@ const RazorpayPayment = ({
               }),
             });
 
+            console.log("Verify response status:", verifyResponse.status);
             const verifyData = await verifyResponse.json();
+            console.log("Verify response data:", verifyData);
 
             if (verifyData.success) {
               console.log("Payment verified successfully!");
               onSuccess(verifyData);
             } else {
               console.error("Payment verification failed:", verifyData.error);
+              console.error("Full error details:", verifyData);
               onFailure(verifyData.error || "Payment verification failed");
             }
           } catch (error) {

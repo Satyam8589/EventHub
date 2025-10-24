@@ -9,6 +9,14 @@ const razorpay = new Razorpay({
   key_secret: process.env.RAZORPAY_KEY_SECRET,
 });
 
+// Log presence of Razorpay environment variables (helps debug misconfiguration)
+console.log(
+  "RAZORPAY ENV CHECK - key present:",
+  !!process.env.RAZORPAY_KEY_ID,
+  "secret present:",
+  !!process.env.RAZORPAY_KEY_SECRET
+);
+
 // POST /api/payment/create-order - Create Razorpay order
 export async function POST(request) {
   try {
