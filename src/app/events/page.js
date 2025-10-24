@@ -80,6 +80,18 @@ export default function EventsPage() {
           "Events page: Total events fetched:",
           data.events?.length || 0
         );
+        console.log(
+          "Events page: Event details:",
+          data.events?.map((e) => ({
+            id: e.id,
+            title: e.title,
+            category: e.category,
+            status: e.status,
+            featured: e.featured,
+            hasDescription: !!e.description,
+            hasLocation: !!e.location,
+          }))
+        );
 
         setEvents(data.events || []);
       } catch (err) {
@@ -121,19 +133,19 @@ export default function EventsPage() {
           event.category === selectedCategory;
 
         const result = matchesSearch && matchesCategory;
-        
-        if (process.env.NODE_ENV === 'development') {
-          console.log('Event filter:', {
+
+        if (process.env.NODE_ENV === "development") {
+          console.log("Event filter:", {
             title: event.title,
             matchesSearch,
             matchesCategory,
-            result
+            result,
           });
         }
-        
+
         return result;
       } catch (err) {
-        console.error('Error filtering event:', event, err);
+        console.error("Error filtering event:", event, err);
         return false; // Exclude events that cause errors
       }
     })
@@ -145,8 +157,8 @@ export default function EventsPage() {
       return 0;
     });
 
-  console.log('Events page - Total events:', events.length);
-  console.log('Events page - Filtered events:', filteredEvents.length);
+  console.log("Events page - Total events:", events.length);
+  console.log("Events page - Filtered events:", filteredEvents.length);
 
   // Format date for display
   const formatEventDate = (dateString, timeString) => {

@@ -5,6 +5,7 @@ import { uploadToCloudinary } from "@/lib/cloudinary";
 // GET /api/events - Get all events
 export async function GET() {
   try {
+    console.log("=== MAIN EVENTS API v2.0 - CACHE BUST ===");
     console.log("Starting GET /api/events");
     console.log("DATABASE_URL exists:", !!process.env.DATABASE_URL);
 
@@ -92,7 +93,16 @@ export async function GET() {
         status: e.status,
       }))
     );
-    return NextResponse.json({ events: eventsWithCounts });
+
+    const response = NextResponse.json({ events: eventsWithCounts });
+    // Prevent caching
+    response.headers.set(
+      "Cache-Control",
+      "no-store, no-cache, must-revalidate"
+    );
+    response.headers.set("Pragma", "no-cache");
+    response.headers.set("Expires", "0");
+    return response;
   } catch (error) {
     console.error("Error fetching events:", error.message);
     console.error("Error code:", error.code);
