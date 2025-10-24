@@ -30,7 +30,10 @@ export async function GET(request) {
           .select("*")
           .eq("organizerId", adminUserId);
 
-        console.log("EVENT_ADMIN events result:", { adminEvents, error: eventsError });
+        console.log("EVENT_ADMIN events result:", {
+          adminEvents,
+          error: eventsError,
+        });
         events = adminEvents || [];
       } else {
         // Super Admin - get all events
@@ -39,7 +42,10 @@ export async function GET(request) {
           .from("events")
           .select("*");
 
-        console.log("SUPER_ADMIN events result:", { allEvents, error: allEventsError });
+        console.log("SUPER_ADMIN events result:", {
+          allEvents,
+          error: allEventsError,
+        });
         events = allEvents || [];
       }
     } else {

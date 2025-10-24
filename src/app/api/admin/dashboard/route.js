@@ -24,8 +24,11 @@ export async function GET(request) {
     if (userError) {
       console.log("ERROR fetching user:", userError);
     }
-    
-    console.log("User found:", user ? `${user.name} (${user.role})` : "No user");
+
+    console.log(
+      "User found:",
+      user ? `${user.name} (${user.role})` : "No user"
+    );
 
     if (!user || (user.role !== "SUPER_ADMIN" && user.role !== "EVENT_ADMIN")) {
       console.log("UNAUTHORIZED: User not found or invalid role");
@@ -56,7 +59,11 @@ export async function GET(request) {
       if (bookingsError) {
         console.error("Error fetching bookings:", bookingsError);
       } else {
-        console.log("Dashboard bookings fetched:", bookings?.length || 0, "bookings");
+        console.log(
+          "Dashboard bookings fetched:",
+          bookings?.length || 0,
+          "bookings"
+        );
       }
 
       // Calculate stats

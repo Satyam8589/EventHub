@@ -6,13 +6,15 @@ export async function GET() {
   try {
     const { data: users, error } = await supabase
       .from("users")
-      .select(`
+      .select(
+        `
         id,
         name,
         email,
         role,
         createdAt
-      `)
+      `
+      )
       .order("createdAt", { ascending: false });
 
     if (error) {
@@ -27,7 +29,7 @@ export async function GET() {
       { status: 500 }
     );
   }
-}// POST /api/users - Create a new user
+} // POST /api/users - Create a new user
 export async function POST(request) {
   try {
     const body = await request.json();

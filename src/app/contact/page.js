@@ -385,7 +385,7 @@ export default function ContactPage() {
                         Email
                       </h3>
                       <p className="text-white/80 text-sm sm:text-base break-all">
-                        info@eventhub.com
+                        join.eventhub@gmail.com
                       </p>
                     </div>
                   </div>
@@ -414,7 +414,7 @@ export default function ContactPage() {
                         Phone
                       </h3>
                       <p className="text-white/80 text-sm sm:text-base">
-                        +1 (555) 123-4567
+                        +91 9263472616
                       </p>
                     </div>
                   </div>
@@ -680,7 +680,7 @@ export default function ContactPage() {
                       </div>
                       <p className="text-red-300 text-sm mt-2">
                         Please try again or contact us directly at
-                        info@eventhub.com
+                        join.eventhub@gmail.com
                       </p>
                     </div>
                   )}
@@ -751,6 +751,118 @@ export default function ContactPage() {
           </div>
         </section>
       )}
+
+      {/* Terms and Conditions Section */}
+      <section id="terms" className="relative z-10 py-12 bg-slate-900/30">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="bg-slate-800/50 backdrop-blur-md rounded-xl border border-white/10 p-8">
+            <h2 className="text-3xl font-bold text-white mb-6 text-center">
+              Terms and Conditions
+            </h2>
+
+            <div className="space-y-6 text-white/80 leading-relaxed">
+              <div>
+                <h3 className="text-xl font-semibold text-white mb-3">
+                  1. Acceptance of Terms
+                </h3>
+                <p>
+                  By accessing and using EventHub, you accept and agree to be
+                  bound by the terms and provision of this agreement.
+                </p>
+              </div>
+
+              <div>
+                <h3 className="text-xl font-semibold text-white mb-3">
+                  2. Event Booking and Payment
+                </h3>
+                <p>
+                  All event bookings are subject to availability. Payment must
+                  be made in full at the time of booking. We accept all major
+                  credit cards and digital payment methods.
+                </p>
+              </div>
+
+              <div>
+                <h3 className="text-xl font-semibold text-white mb-3">
+                  3. Cancellation and Refund Policy
+                </h3>
+                <p className="text-red-300 font-medium">
+                  ⚠️ Important: All ticket sales are final. No cancellations or
+                  refunds are allowed once a booking is confirmed. Please review
+                  your booking details carefully before completing your
+                  purchase.
+                </p>
+              </div>
+
+              <div>
+                <h3 className="text-xl font-semibold text-white mb-3">
+                  4. Event Changes
+                </h3>
+                <p>
+                  Event organizers reserve the right to modify event details
+                  including date, time, venue, or cancel events. In case of
+                  cancellation by the organizer, full refunds will be provided.
+                </p>
+              </div>
+
+              <div>
+                <h3 className="text-xl font-semibold text-white mb-3">
+                  5. User Conduct
+                </h3>
+                <p>
+                  Users must provide accurate information and comply with all
+                  event rules and regulations. Inappropriate behavior may result
+                  in account suspension.
+                </p>
+              </div>
+
+              <div>
+                <h3 className="text-xl font-semibold text-white mb-3">
+                  6. Privacy Policy
+                </h3>
+                <p>
+                  We respect your privacy and are committed to protecting your
+                  personal data. We collect only necessary information for
+                  booking and communication purposes. Your data will not be
+                  shared with third parties without consent.
+                </p>
+              </div>
+
+              <div>
+                <h3 className="text-xl font-semibold text-white mb-3">
+                  7. Limitation of Liability
+                </h3>
+                <p>
+                  EventHub acts as a platform connecting users with event
+                  organizers. We are not liable for any damages or issues
+                  arising from events themselves.
+                </p>
+              </div>
+
+              <div>
+                <h3 className="text-xl font-semibold text-white mb-3">
+                  8. Contact Information
+                </h3>
+                <p>
+                  For any questions regarding these terms, please contact us at{" "}
+                  <a
+                    href="mailto:legal@eventhub.com"
+                    className="text-blue-400 hover:text-blue-300"
+                  >
+                    legal@eventhub.com
+                  </a>
+                </p>
+              </div>
+
+              <div className="text-center pt-4 border-t border-white/10">
+                <p className="text-sm text-white/60">
+                  Last updated: October 24, 2025
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* Footer */}
       <footer className="relative z-10 bg-slate-800/50 border-t border-white/10 py-8 sm:py-12">
@@ -878,7 +990,7 @@ export default function ContactPage() {
                       d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
                     />
                   </svg>
-                  info@eventhub.com
+                  join.eventhub@gmail.com
                 </li>
                 <li className="flex items-center text-white/60">
                   <svg
@@ -894,7 +1006,7 @@ export default function ContactPage() {
                       d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
                     />
                   </svg>
-                  +1 (555) 123-4567
+                  +91 9263472616
                 </li>
               </ul>
             </div>

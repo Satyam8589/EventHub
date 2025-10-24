@@ -6,9 +6,7 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const eventId = searchParams.get("eventId");
 
-    let query = supabase
-      .from("bookings")
-      .select(`
+    let query = supabase.from("bookings").select(`
         *,
         user:users(name, email),
         event:events(title, date)
@@ -18,8 +16,9 @@ export async function GET(request) {
       query = query.eq("eventId", eventId);
     }
 
-    const { data: bookings, error } = await query
-      .order("createdAt", { ascending: false });
+    const { data: bookings, error } = await query.order("createdAt", {
+      ascending: false,
+    });
 
     if (error) {
       throw error;

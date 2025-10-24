@@ -575,7 +575,7 @@ export default function Home() {
       {/* Footer */}
       <footer className="relative z-10 bg-black/30 backdrop-blur-md border-t border-white/10 py-12">
         <div className="max-w-7xl mx-auto px-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 text-gray-300">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-8 text-gray-300">
             <div>
               <div className="flex items-center space-x-2 mb-4">
                 <div className="w-8 h-8 bg-linear-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
@@ -646,14 +646,47 @@ export default function Home() {
 
             <div>
               <h4 className="text-white font-semibold mb-4">Contact Us</h4>
-              <p className="text-sm mb-2">📧 hello@eventhub.com</p>
-              <p className="text-sm mb-2">📞 +1 (555) 123-4567</p>
+              <p className="text-sm mb-2">📧 join.eventhub@gmail.com</p>
+              <p className="text-sm mb-2">📞 +91 9263472616</p>
               <p className="text-sm">📍 123 Event St, NY 10001</p>
+            </div>
+
+            <div>
+              <h4 className="text-white font-semibold mb-4">Legal</h4>
+              <ul className="space-y-2 text-sm">
+                <li>
+                  <a
+                    href="/contact#terms"
+                    className="hover:text-white transition-colors"
+                  >
+                    Terms & Conditions
+                  </a>
+                </li>
+                <li>
+                  <div className="text-gray-300">
+                    <span className="font-medium text-white">Privacy:</span>
+                    <p className="text-xs mt-1">
+                      We protect your personal data and only use it for booking
+                      and communication purposes.
+                    </p>
+                  </div>
+                </li>
+                <li>
+                  <div className="text-gray-300">
+                    <span className="font-medium text-white">
+                      Cancellation & Refunds:
+                    </span>
+                    <p className="text-xs mt-1 text-red-300">
+                      ❌ No cancellations allowed. All sales are final.
+                    </p>
+                  </div>
+                </li>
+              </ul>
             </div>
           </div>
 
           <div className="border-t border-white/10 mt-8 pt-8 text-center text-sm text-gray-400">
-            <p>&copy; 2024 EventHub. All rights reserved.</p>
+            <p>&copy; 2025 EventHub. All rights reserved.</p>
           </div>
         </div>
       </footer>
