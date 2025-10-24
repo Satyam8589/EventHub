@@ -67,8 +67,19 @@ export default function MyEventsPage() {
         console.log("Fetch response status:", response.status);
         console.log("Fetch response ok:", response.ok);
 
+        // Always try to parse response, even if not ok
+        let data;
+        try {
+          data = await response.json();
+        } catch (parseError) {
+          console.error("Failed to parse response:", parseError);
+          const textResponse = await response.text();
+          console.error("Raw response:", textResponse);
+          setBookings([]);
+          return;
+        }
+
         if (response.ok) {
-          const data = await response.json();
           console.log("API Response:", data);
           console.log("Received bookings:", data.bookings?.length || 0);
           console.log("Bookings data:", data.bookings);
@@ -88,11 +99,13 @@ export default function MyEventsPage() {
           setBookings(data.bookings || []);
         } else {
           console.error("Failed to fetch bookings:", response.status);
-          const errorText = await response.text();
-          console.error("Error response:", errorText);
+          console.error("Error response:", data);
+          // Even on error, use bookings array if provided
+          setBookings(data.bookings || []);
         }
       } catch (error) {
         console.error("Error fetching bookings:", error);
+        setBookings([]); // Set empty array on error
       } finally {
         setLoading(false);
       }

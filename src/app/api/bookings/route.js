@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
-import { sendTicketEmail, generateBookingEmailHTML } from "@/lib/email";
-import { generateTicketImage } from "@/lib/generateTicketImage";
 
 // GET /api/bookings - Get all bookings (with optional user filter)
 export async function GET(request) {
@@ -39,12 +37,31 @@ export async function GET(request) {
     console.log(`Found ${bookings?.length || 0} bookings`);
     console.log(
       "Booking statuses:",
-      bookings?.map((b) => ({ id: b.id, status: b.status, userId: b.userId, eventId: b.eventId }))
+      bookings?.map((b) => ({
+        id: b.id,
+        status: b.status,
+        userId: b.userId,
+        eventId: b.eventId,
+      }))
     );
 
     if (!bookings || bookings.length === 0) {
       console.log("⚠️ NO BOOKINGS FOUND FOR THIS QUERY");
-      console.log("Check: 1) userId exists in database, 2) bookings exist for this user, 3) status matches filter");
+      console.log(
+        "Check: 1) userId exists in database, 2) bookings exist for this user, 3) status matches filter"
+      );
+      
+      // Return empty array if no bookings found
+      return NextResponse.json(
+        { bookings: [] },
+        {
+          headers: {
+            "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+            Pragma: "no-cache",
+            Expires: "0",
+          },
+        }
+      );
     }
 
     // Then fetch event and user details for each booking
@@ -101,9 +118,17 @@ export async function GET(request) {
       }
     );
   } catch (error) {
-    console.error("Error fetching bookings:", error);
+    console.error("❌ Error fetching bookings:", error);
+    console.error("Error name:", error?.name);
+    console.error("Error message:", error?.message);
+    console.error("Error stack:", error?.stack);
+    
     return NextResponse.json(
-      { error: "Failed to fetch bookings" },
+      { 
+        error: "Failed to fetch bookings",
+        details: error?.message || "Unknown error",
+        bookings: [] // Return empty array to prevent frontend crash
+      },
       { status: 500 }
     );
   }
