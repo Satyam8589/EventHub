@@ -50,10 +50,27 @@ export default function MyEventsPage() {
 
       try {
         setLoading(true);
-        const response = await fetch(`/api/bookings?userId=${user.uid}`);
+        console.log("Fetching bookings for user:", user.uid);
+
+        // Add cache buster
+        const cacheBuster = Date.now();
+        const response = await fetch(
+          `/api/bookings?userId=${user.uid}&_=${cacheBuster}`,
+          {
+            cache: "no-store",
+            headers: {
+              "Cache-Control": "no-cache",
+            },
+          }
+        );
+
         if (response.ok) {
           const data = await response.json();
+          console.log("Received bookings:", data.bookings?.length || 0);
+          console.log("Bookings data:", data.bookings);
           setBookings(data.bookings || []);
+        } else {
+          console.error("Failed to fetch bookings:", response.status);
         }
       } catch (error) {
         console.error("Error fetching bookings:", error);

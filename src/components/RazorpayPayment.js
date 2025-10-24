@@ -132,7 +132,7 @@ const RazorpayPayment = ({
       };
 
       const razorpayInstance = new window.Razorpay(options);
-      
+
       // Store instance in ref for later use
       razorpayInstanceRef.current = razorpayInstance;
 

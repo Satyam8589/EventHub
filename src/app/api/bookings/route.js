@@ -9,6 +9,9 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get("userId");
 
+    console.log("=== FETCHING BOOKINGS ===");
+    console.log("User ID filter:", userId);
+
     // First get the bookings
     let query = supabase
       .from("bookings")
@@ -22,8 +25,15 @@ export async function GET(request) {
     const { data: bookings, error } = await query;
 
     if (error) {
+      console.error("Error fetching bookings:", error);
       throw error;
     }
+
+    console.log(`Found ${bookings?.length || 0} bookings`);
+    console.log(
+      "Booking statuses:",
+      bookings?.map((b) => ({ id: b.id, status: b.status }))
+    );
 
     // Then fetch event and user details for each booking
     const bookingsWithEventAndUser = await Promise.all(
@@ -64,7 +74,20 @@ export async function GET(request) {
       })
     );
 
-    return NextResponse.json({ bookings: bookingsWithEventAndUser });
+    console.log(
+      `Returning ${bookingsWithEventAndUser.length} bookings with event data`
+    );
+
+    return NextResponse.json(
+      { bookings: bookingsWithEventAndUser },
+      {
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+          Pragma: "no-cache",
+          Expires: "0",
+        },
+      }
+    );
   } catch (error) {
     console.error("Error fetching bookings:", error);
     return NextResponse.json(
