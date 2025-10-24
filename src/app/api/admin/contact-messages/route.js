@@ -18,7 +18,11 @@ export async function GET(request) {
       .eq("id", userId)
       .single();
 
-    if (userError || !user || (user.role !== "SUPER_ADMIN" && user.role !== "EVENT_ADMIN")) {
+    if (
+      userError ||
+      !user ||
+      (user.role !== "SUPER_ADMIN" && user.role !== "EVENT_ADMIN")
+    ) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
@@ -36,17 +40,16 @@ export async function GET(request) {
     return NextResponse.json({
       success: true,
       messages: messages || [],
-      total: messages?.length || 0
+      total: messages?.length || 0,
     });
-
   } catch (error) {
     console.error("Contact messages fetch error:", error);
     return NextResponse.json(
-      { 
-        error: "Failed to fetch contact messages", 
+      {
+        error: "Failed to fetch contact messages",
         details: error.message,
         messages: [],
-        total: 0
+        total: 0,
       },
       { status: 500 }
     );

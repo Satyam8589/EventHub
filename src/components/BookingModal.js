@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import RazorpayPayment from "./RazorpayPayment";
 
 export default function BookingModal({ event, isOpen, onClose }) {
   const { user } = useAuth();
@@ -13,6 +14,9 @@ export default function BookingModal({ event, isOpen, onClose }) {
   });
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [paymentStep, setPaymentStep] = useState("form"); // "form", "payment", "success", "failed"
+  const [orderData, setOrderData] = useState(null);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -29,9 +33,11 @@ export default function BookingModal({ event, isOpen, onClose }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setErrorMessage("");
 
     try {
-      const response = await fetch("/api/bookings", {
+      // Create Razorpay order
+      const response = await fetch("/api/payment/create-order", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -41,39 +47,68 @@ export default function BookingModal({ event, isOpen, onClose }) {
           eventId: event.id,
           tickets: parseInt(formData.numberOfTickets),
           totalAmount: calculateTotal(),
-          paymentMethod: "card", // You can extend this later
-          // Include user details for profile update
           userDetails: {
-            name: formData.fullName,
+            fullName: formData.fullName,
             email: formData.email,
-            phone: formData.phoneNumber,
+            phoneNumber: formData.phoneNumber,
           },
         }),
       });
 
-      if (response.ok) {
-        setSuccess(true);
-        setTimeout(() => {
-          onClose();
-          setSuccess(false);
-          // Reset form
-          setFormData({
-            fullName: user?.displayName || user?.email?.split("@")[0] || "",
-            email: user?.email || "",
-            phoneNumber: "",
-            numberOfTickets: 1,
-            specialRequests: "",
-          });
-        }, 2000);
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        console.log("Payment order created:", data);
+        setOrderData(data);
+        setPaymentStep("payment");
       } else {
-        throw new Error("Failed to create booking");
+        throw new Error(data.error || "Failed to create payment order");
       }
     } catch (error) {
-      console.error("Booking error:", error);
-      alert("Failed to create booking. Please try again.");
+      console.error("Order creation error:", error);
+      setErrorMessage(
+        error.message || "Failed to proceed to payment. Please try again."
+      );
+      setPaymentStep("failed");
     } finally {
       setLoading(false);
     }
+  };
+
+  const handlePaymentSuccess = (paymentData) => {
+    console.log("Payment successful:", paymentData);
+    setPaymentStep("success");
+
+    // Auto-close after showing success message
+    setTimeout(() => {
+      resetModal();
+      onClose();
+    }, 3000);
+  };
+
+  const handlePaymentFailure = (error) => {
+    console.error("Payment failed:", error);
+    setErrorMessage(error || "Payment failed. Please try again.");
+    setPaymentStep("failed");
+  };
+
+  const handlePaymentClose = () => {
+    setPaymentStep("form");
+    setOrderData(null);
+  };
+
+  const resetModal = () => {
+    setPaymentStep("form");
+    setOrderData(null);
+    setSuccess(false);
+    setErrorMessage("");
+    setFormData({
+      fullName: user?.displayName || user?.email?.split("@")[0] || "",
+      email: user?.email || "",
+      phoneNumber: "",
+      numberOfTickets: 1,
+      specialRequests: "",
+    });
   };
 
   if (!isOpen) return null;
@@ -112,7 +147,7 @@ export default function BookingModal({ event, isOpen, onClose }) {
 
         {/* Content */}
         <div className="relative z-10 p-6">
-          {success ? (
+          {paymentStep === "success" ? (
             <div className="text-center py-8">
               <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <svg
@@ -129,12 +164,62 @@ export default function BookingModal({ event, isOpen, onClose }) {
                   />
                 </svg>
               </div>
-              <h3 className="text-2xl font-bold text-gray-800 mb-2">
-                Booking Confirmed!
+              <h3 className="text-2xl font-bold text-green-600 mb-2">
+                🎉 Payment Successful!
               </h3>
-              <p className="text-gray-600">
-                Your tickets have been reserved successfully.
+              <p className="text-gray-700 mb-2">
+                Your tickets have been confirmed successfully.
               </p>
+              <p className="text-sm text-gray-600">
+                📧 Ticket details have been sent to your email.
+              </p>
+              <p className="text-xs text-gray-500 mt-3">
+                Redirecting you back...
+              </p>
+            </div>
+          ) : paymentStep === "failed" ? (
+            <div className="text-center py-8">
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg
+                  className="w-8 h-8 text-red-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </div>
+              <h3 className="text-2xl font-bold text-red-600 mb-2">
+                ❌ Payment Failed
+              </h3>
+              <p className="text-gray-700 mb-4">
+                {errorMessage || "Something went wrong with your payment."}
+              </p>
+              <div className="flex gap-3 justify-center">
+                <button
+                  onClick={() => {
+                    setPaymentStep("form");
+                    setErrorMessage("");
+                  }}
+                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Try Again
+                </button>
+                <button
+                  onClick={() => {
+                    resetModal();
+                    onClose();
+                  }}
+                  className="px-6 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors"
+                >
+                  Close
+                </button>
+              </div>
             </div>
           ) : (
             <>
@@ -225,7 +310,7 @@ export default function BookingModal({ event, isOpen, onClose }) {
                       Total Amount:
                     </span>
                     <span className="text-xl font-bold text-gray-800">
-                      ${calculateTotal().toFixed(2)}
+                      ₹{calculateTotal().toLocaleString("en-IN")}
                     </span>
                   </div>
                 </div>
@@ -265,6 +350,17 @@ export default function BookingModal({ event, isOpen, onClose }) {
           )}
         </div>
       </div>
+
+      {/* Razorpay Payment Component */}
+      {paymentStep === "payment" && orderData && (
+        <RazorpayPayment
+          orderData={orderData}
+          userDetails={formData}
+          onSuccess={handlePaymentSuccess}
+          onFailure={handlePaymentFailure}
+          onClose={handlePaymentClose}
+        />
+      )}
     </div>
   );
 }

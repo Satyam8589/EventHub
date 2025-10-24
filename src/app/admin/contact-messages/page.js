@@ -18,7 +18,9 @@ export default function ContactMessagesAdmin() {
     setError("");
 
     try {
-      const response = await fetch(`/api/admin/contact-messages?userId=${userId}`);
+      const response = await fetch(
+        `/api/admin/contact-messages?userId=${userId}`
+      );
       const data = await response.json();
 
       if (response.ok) {
@@ -44,16 +46,25 @@ export default function ContactMessagesAdmin() {
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Contact Messages Admin</h1>
-          <p className="mt-2 text-gray-600">View and manage contact form submissions</p>
+          <h1 className="text-3xl font-bold text-gray-900">
+            Contact Messages Admin
+          </h1>
+          <p className="mt-2 text-gray-600">
+            View and manage contact form submissions
+          </p>
         </div>
 
         {/* User ID Input */}
         <div className="bg-white shadow rounded-lg p-6 mb-6">
-          <h2 className="text-lg font-medium text-gray-900 mb-4">Authentication</h2>
+          <h2 className="text-lg font-medium text-gray-900 mb-4">
+            Authentication
+          </h2>
           <div className="flex gap-4 items-end">
             <div className="flex-1">
-              <label htmlFor="userId" className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="userId"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 User ID (Admin Only)
               </label>
               <input
@@ -103,13 +114,13 @@ export default function ContactMessagesAdmin() {
                           New
                         </span>
                       </div>
-                      
+
                       <div className="space-y-2 text-sm text-gray-600 mb-4">
                         <div className="flex items-center space-x-4">
                           <div className="flex items-center space-x-2">
                             <span className="font-medium">Email:</span>
-                            <a 
-                              href={`mailto:${message.email}`} 
+                            <a
+                              href={`mailto:${message.email}`}
                               className="text-blue-600 hover:text-blue-500"
                             >
                               {message.email}
@@ -118,8 +129,8 @@ export default function ContactMessagesAdmin() {
                           {message.phone && (
                             <div className="flex items-center space-x-2">
                               <span className="font-medium">Phone:</span>
-                              <a 
-                                href={`tel:${message.phone}`} 
+                              <a
+                                href={`tel:${message.phone}`}
                                 className="text-blue-600 hover:text-blue-500"
                               >
                                 {message.phone}
@@ -134,8 +145,12 @@ export default function ContactMessagesAdmin() {
                       </div>
 
                       <div className="bg-gray-50 rounded-md p-4">
-                        <h4 className="font-medium text-gray-900 mb-2">Message:</h4>
-                        <p className="text-gray-700 whitespace-pre-wrap">{message.message}</p>
+                        <h4 className="font-medium text-gray-900 mb-2">
+                          Message:
+                        </h4>
+                        <p className="text-gray-700 whitespace-pre-wrap">
+                          {message.message}
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -149,7 +164,9 @@ export default function ContactMessagesAdmin() {
         {messages.length === 0 && !loading && !error && userId && (
           <div className="text-center py-12">
             <p className="text-gray-500 text-lg">No contact messages found</p>
-            <p className="text-gray-400 text-sm mt-2">Messages will appear here when users submit the contact form</p>
+            <p className="text-gray-400 text-sm mt-2">
+              Messages will appear here when users submit the contact form
+            </p>
           </div>
         )}
 
@@ -159,8 +176,13 @@ export default function ContactMessagesAdmin() {
             <h3 className="font-medium text-blue-900 mb-2">Instructions:</h3>
             <ul className="text-blue-800 text-sm space-y-1">
               <li>• Enter your admin user ID to view contact messages</li>
-              <li>• Only SUPER_ADMIN and EVENT_ADMIN users can access this page</li>
-              <li>• Messages are automatically stored when users submit the contact form</li>
+              <li>
+                • Only SUPER_ADMIN and EVENT_ADMIN users can access this page
+              </li>
+              <li>
+                • Messages are automatically stored when users submit the
+                contact form
+              </li>
               <li>• This page shows the most recent 50 messages</li>
             </ul>
           </div>

@@ -150,7 +150,10 @@ export default function AdminDashboard() {
                   <div>
                     <p className="text-gray-300 text-sm">Total Revenue</p>
                     <p className="text-2xl font-bold text-white">
-                      ${loading ? "..." : stats.totalRevenue.toLocaleString()}
+                      ₹
+                      {loading
+                        ? "..."
+                        : stats.totalRevenue.toLocaleString("en-IN")}
                     </p>
                   </div>
                   <div className="w-12 h-12 bg-purple-500/20 rounded-lg flex items-center justify-center">

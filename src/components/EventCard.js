@@ -156,7 +156,9 @@ export default function EventCard({ event }) {
 
         {/* Price and Action */}
         <div className="flex items-center justify-between pt-2">
-          <div className="text-xl font-bold text-gray-900">${event.price}</div>
+          <div className="text-xl font-bold text-gray-900">
+            ₹{event.price?.toLocaleString("en-IN")}
+          </div>
           <Link
             href={`/events/${event.id}`}
             className="bg-gray-900 hover:bg-gray-800 text-white px-6 py-2.5 rounded-lg text-sm font-medium transition-all duration-300 transform hover:scale-105 inline-block text-center"

@@ -489,7 +489,7 @@ export default function Page({ params }) {
             <div className="sticky top-28 backdrop-blur-xl bg-white/5 rounded-2xl p-6 border border-black/40 shadow-2xl">
               <div className="text-center mb-6 pb-6 border-b border-white/10">
                 <div className="text-5xl font-bold text-white mb-2">
-                  ${event.price || 499}
+                  ₹{(event.price || 499).toLocaleString("en-IN")}
                 </div>
                 <div className="text-sm text-gray-400">per ticket</div>
               </div>

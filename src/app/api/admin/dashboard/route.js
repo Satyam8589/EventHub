@@ -88,7 +88,7 @@ export async function GET(request) {
             type: "booking",
             message: `${booking.tickets} ticket(s) booked for ${
               event?.title || "Unknown Event"
-            } - $${booking.totalAmount}`,
+            } - ₹${booking.totalAmount?.toLocaleString("en-IN")}`,
             createdAt: booking.createdAt,
           };
         });
