@@ -1,7 +1,10 @@
 "use client";
 import Link from "next/link";
+import { useState } from "react";
 
 export default function EventCard({ event }) {
+  const [imageError, setImageError] = useState(false);
+  const [imageLoading, setImageLoading] = useState(true);
   const registered = event.registered || 0;
   const capacity = event.capacity || 0;
 
@@ -10,13 +13,13 @@ export default function EventCard({ event }) {
   const spotsLeft = Math.max(capacity - registered, 0);
 
   // Debug logging for image URL
-  if (process.env.NODE_ENV === 'development') {
-    console.log('EventCard Debug:', {
+  if (process.env.NODE_ENV === "development") {
+    console.log("EventCard Debug:", {
       eventId: event.id,
       eventTitle: event.title,
       imageUrl: event.imageUrl,
       gallery: event.gallery,
-      category: event.category
+      category: event.category,
     });
   }
 
@@ -51,18 +54,40 @@ export default function EventCard({ event }) {
   // Determine the best image URL to use
   const getImageUrl = () => {
     // Priority: event.imageUrl -> gallery[0].url -> category background
-    if (event.imageUrl && event.imageUrl.trim() !== '') {
-      console.log('Using event.imageUrl:', event.imageUrl);
-      return event.imageUrl;
+    if (event.imageUrl && event.imageUrl.trim() !== "") {
+      // Check if it's a valid URL
+      try {
+        new URL(event.imageUrl);
+        if (process.env.NODE_ENV === "development") {
+          console.log("Using event.imageUrl:", event.imageUrl);
+        }
+        return event.imageUrl;
+      } catch (e) {
+        console.error("Invalid imageUrl format:", event.imageUrl);
+      }
     }
-    
-    if (event.gallery && event.gallery.length > 0 && event.gallery[0].type === "image" && event.gallery[0].url) {
-      console.log('Using gallery image:', event.gallery[0].url);
+
+    if (
+      event.gallery &&
+      event.gallery.length > 0 &&
+      event.gallery[0].type === "image" &&
+      event.gallery[0].url
+    ) {
+      if (process.env.NODE_ENV === "development") {
+        console.log("Using gallery image:", event.gallery[0].url);
+      }
       return event.gallery[0].url;
     }
-    
+
     const fallbackImage = getBackgroundImage(event.category);
-    console.log('Using fallback image for category', event.category, ':', fallbackImage);
+    if (process.env.NODE_ENV === "development") {
+      console.log(
+        "Using fallback image for category",
+        event.category,
+        ":",
+        fallbackImage
+      );
+    }
     return fallbackImage;
   };
 
@@ -101,18 +126,26 @@ export default function EventCard({ event }) {
 
       {/* Event Image */}
       <div className="relative h-48 overflow-hidden">
+        {imageLoading && (
+          <div className="absolute inset-0 bg-gray-300 animate-pulse"></div>
+        )}
         <img
-          src={imageUrl}
+          src={imageError ? getBackgroundImage(event.category) : imageUrl}
           alt={event.title}
           className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
           onError={(e) => {
-            console.error('Image failed to load:', imageUrl);
-            // Try fallback image
-            e.target.src = getBackgroundImage(event.category);
+            console.error("Image failed to load:", imageUrl);
+            setImageError(true);
+            setImageLoading(false);
+            // Prevent infinite loop by checking if already using fallback
+            if (!imageError) {
+              e.target.src = getBackgroundImage(event.category);
+            }
           }}
           onLoad={() => {
-            if (process.env.NODE_ENV === 'development') {
-              console.log('Image loaded successfully:', imageUrl);
+            setImageLoading(false);
+            if (process.env.NODE_ENV === "development") {
+              console.log("Image loaded successfully:", imageUrl);
             }
           }}
         />

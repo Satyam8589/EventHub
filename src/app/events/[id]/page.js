@@ -27,11 +27,11 @@ export default function Page({ params }) {
         return res.json();
       })
       .then((data) => {
-        console.log('Event Detail Page - Event data:', {
+        console.log("Event Detail Page - Event data:", {
           eventId: data.event?.id,
           title: data.event?.title,
           imageUrl: data.event?.imageUrl,
-          gallery: data.event?.gallery
+          gallery: data.event?.gallery,
         });
         setEvent(data.event);
         setLoading(false);

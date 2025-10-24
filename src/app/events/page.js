@@ -64,13 +64,23 @@ export default function EventsPage() {
     const fetchEvents = async () => {
       try {
         setLoading(true);
+        console.log("Events page: Fetching events from /api/events...");
         const response = await fetch("/api/events");
+        console.log("Events page: Response status:", response.status);
+        
         if (!response.ok) {
-          throw new Error("Failed to fetch events");
+          const errorText = await response.text();
+          console.error("Events page: API Error Response:", errorText);
+          throw new Error(`Failed to fetch events: ${response.status}`);
         }
+        
         const data = await response.json();
-        setEvents(data.events);
+        console.log("Events page: Events data received:", data);
+        console.log("Events page: Total events fetched:", data.events?.length || 0);
+        
+        setEvents(data.events || []);
       } catch (err) {
+        console.error("Events page: Error fetching events:", err);
         setError(err.message);
       } finally {
         setLoading(false);

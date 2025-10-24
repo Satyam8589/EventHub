@@ -48,32 +48,54 @@ export default function Home() {
   useEffect(() => {
     const fetchEvents = async () => {
       try {
+        console.log("Fetching events from /api/events...");
         const response = await fetch("/api/events");
-        if (response.ok) {
-          const data = await response.json();
-          const allEvents = data.events || [];
-          setEvents(allEvents);
-
-          // Filter featured events (max 3, actual featured events)
-          const featured = allEvents
-            .filter((event) => event.featured === true)
-            .slice(0, 3);
-
-          // If less than 3 featured events, fill with latest non-featured events
-          const nonFeatured = allEvents.filter(
-            (event) => event.featured !== true
-          );
-          const neededCount = Math.max(0, 3 - featured.length);
-          const additionalEvents = nonFeatured.slice(0, neededCount);
-
-          setFeaturedEvents([...featured, ...additionalEvents]);
-
-          // For upcoming events, show latest non-featured events (excluding those used in featured)
-          const remainingNonFeatured = nonFeatured.slice(neededCount);
-          setUpcomingEvents(remainingNonFeatured.slice(0, 3));
+        console.log("Response status:", response.status);
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error("API Error Response:", errorText);
+          throw new Error(`Failed to fetch events: ${response.status} - ${errorText}`);
         }
+        
+        const data = await response.json();
+        console.log("Events data received:", data);
+        const allEvents = data.events || [];
+        console.log("Total events fetched:", allEvents.length);
+        
+        if (allEvents.length === 0) {
+          console.warn("No events found in database. This might be a deployment issue.");
+        }
+        
+        setEvents(allEvents);
+
+        // Filter featured events (max 3, actual featured events)
+        const featured = allEvents
+          .filter((event) => event.featured === true)
+          .slice(0, 3);
+        console.log("Featured events:", featured.length);
+
+        // If less than 3 featured events, fill with latest non-featured events
+        const nonFeatured = allEvents.filter(
+          (event) => event.featured !== true
+        );
+        const neededCount = Math.max(0, 3 - featured.length);
+        const additionalEvents = nonFeatured.slice(0, neededCount);
+
+        setFeaturedEvents([...featured, ...additionalEvents]);
+        console.log("Total featured events to display:", [...featured, ...additionalEvents].length);
+
+        // For upcoming events, show latest non-featured events (excluding those used in featured)
+        const remainingNonFeatured = nonFeatured.slice(neededCount);
+        setUpcomingEvents(remainingNonFeatured.slice(0, 3));
+        console.log("Upcoming events to display:", remainingNonFeatured.slice(0, 3).length);
       } catch (error) {
         console.error("Error fetching events:", error);
+        console.error("Error details:", error.message);
+        console.error("This error occurred in production. Please check:");
+        console.error("1. /api/events endpoint is accessible");
+        console.error("2. Environment variables are set correctly");
+        console.error("3. Database connection is working");
       } finally {
         setLoading(false);
       }
@@ -506,7 +528,8 @@ export default function Home() {
                       <div className="bg-white/10 backdrop-blur-md rounded-2xl h-96 border border-white/20"></div>
                     </div>
                   ))
-              : featuredEvents.map((event, index) => (
+              : featuredEvents.length > 0
+              ? featuredEvents.map((event, index) => (
                   <div
                     key={event.id}
                     style={{ animationDelay: `${index * 200}ms` }}
@@ -521,7 +544,18 @@ export default function Home() {
                       }}
                     />
                   </div>
-                ))}
+                ))
+              : (
+                  <div className="col-span-full text-center py-12">
+                    <div className="text-6xl mb-4">📅</div>
+                    <h3 className="text-xl font-semibold text-white mb-2">
+                      No featured events available
+                    </h3>
+                    <p className="text-gray-300">
+                      Check back soon for exciting events!
+                    </p>
+                  </div>
+                )}
           </div>
         </div>
       </section>
@@ -547,7 +581,8 @@ export default function Home() {
                       <div className="bg-white/10 backdrop-blur-md rounded-2xl h-96 border border-white/20"></div>
                     </div>
                   ))
-              : upcomingEvents.map((event, index) => (
+              : upcomingEvents.length > 0
+              ? upcomingEvents.map((event, index) => (
                   <div
                     key={event.id}
                     style={{ animationDelay: `${index * 200}ms` }}
@@ -562,7 +597,18 @@ export default function Home() {
                       }}
                     />
                   </div>
-                ))}
+                ))
+              : (
+                  <div className="col-span-full text-center py-12">
+                    <div className="text-6xl mb-4">📅</div>
+                    <h3 className="text-xl font-semibold text-white mb-2">
+                      No upcoming events available
+                    </h3>
+                    <p className="text-gray-300">
+                      Check back soon for exciting events!
+                    </p>
+                  </div>
+                )}
           </div>
 
           <div className="text-center mt-12">
