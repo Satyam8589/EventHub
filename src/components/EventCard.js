@@ -9,6 +9,17 @@ export default function EventCard({ event }) {
     capacity > 0 ? Math.min((registered / capacity) * 100, 100).toFixed(0) : 0;
   const spotsLeft = Math.max(capacity - registered, 0);
 
+  // Debug logging for image URL
+  if (process.env.NODE_ENV === 'development') {
+    console.log('EventCard Debug:', {
+      eventId: event.id,
+      eventTitle: event.title,
+      imageUrl: event.imageUrl,
+      gallery: event.gallery,
+      category: event.category
+    });
+  }
+
   // Define background images for different categories
   const getBackgroundImage = (category) => {
     const images = {
@@ -36,6 +47,26 @@ export default function EventCard({ event }) {
       "https://images.unsplash.com/photo-1540575467063-178a50c2df87?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80"
     );
   };
+
+  // Determine the best image URL to use
+  const getImageUrl = () => {
+    // Priority: event.imageUrl -> gallery[0].url -> category background
+    if (event.imageUrl && event.imageUrl.trim() !== '') {
+      console.log('Using event.imageUrl:', event.imageUrl);
+      return event.imageUrl;
+    }
+    
+    if (event.gallery && event.gallery.length > 0 && event.gallery[0].type === "image" && event.gallery[0].url) {
+      console.log('Using gallery image:', event.gallery[0].url);
+      return event.gallery[0].url;
+    }
+    
+    const fallbackImage = getBackgroundImage(event.category);
+    console.log('Using fallback image for category', event.category, ':', fallbackImage);
+    return fallbackImage;
+  };
+
+  const imageUrl = getImageUrl();
 
   return (
     <div
@@ -70,28 +101,27 @@ export default function EventCard({ event }) {
 
       {/* Event Image */}
       <div className="relative h-48 overflow-hidden">
-        <div
-          className="w-full h-full bg-cover bg-center transition-transform duration-300 group-hover:scale-110"
-          style={{
-            backgroundImage: `url(${
-              event.imageUrl ||
-              (event.gallery &&
-              event.gallery.length > 0 &&
-              event.gallery[0].type === "image"
-                ? event.gallery[0].url
-                : getBackgroundImage(event.category))
-            })`,
-            backgroundSize: "cover",
-            backgroundPosition: "center",
+        <img
+          src={imageUrl}
+          alt={event.title}
+          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+          onError={(e) => {
+            console.error('Image failed to load:', imageUrl);
+            // Try fallback image
+            e.target.src = getBackgroundImage(event.category);
           }}
-        >
-          {/* Dark overlay for better text readability */}
-          <div className="absolute inset-0 bg-black/40"></div>
+          onLoad={() => {
+            if (process.env.NODE_ENV === 'development') {
+              console.log('Image loaded successfully:', imageUrl);
+            }
+          }}
+        />
+        {/* Dark overlay for better text readability */}
+        <div className="absolute inset-0 bg-black/40"></div>
 
-          {/* Category Badge */}
-          <div className="absolute top-3 left-3 bg-white/95 backdrop-blur-sm text-gray-800 px-2 py-1 rounded-md text-xs font-medium">
-            {event.category}
-          </div>
+        {/* Category Badge */}
+        <div className="absolute top-3 left-3 bg-white/95 backdrop-blur-sm text-gray-800 px-2 py-1 rounded-md text-xs font-medium">
+          {event.category}
         </div>
       </div>
 
