@@ -1,23 +1,6 @@
 {
-  "build": {
-    "env": {
-      "PRISMA_SKIP_VALIDATION_WARNING": "true",
-      "PRISMA_SKIP_ENGINE_CHECK": "true",
-      "PRISMA_CLI_QUERY_ENGINE_TYPE": "library",
-      "PRISMA_CLIENT_ENGINE_TYPE": "library"
-    }
-  },
-  "env": {
-    "PRISMA_SKIP_VALIDATION_WARNING": "true",
-    "PRISMA_SKIP_ENGINE_CHECK": "true",
-    "PRISMA_CLI_QUERY_ENGINE_TYPE": "library",
-    "PRISMA_CLIENT_ENGINE_TYPE": "library"
-  },
   "functions": {
-    "pages/api/**/*.js": {
-      "maxDuration": 30
-    },
-    "app/**/*.js": {
+    "app/api/**/*.js": {
       "maxDuration": 30
     }
   }
