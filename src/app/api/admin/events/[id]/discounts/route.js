@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { supabase } from "@/lib/supabase";
 
 // POST /api/admin/events/[id]/discounts - Create new discount
 export async function POST(request, { params }) {

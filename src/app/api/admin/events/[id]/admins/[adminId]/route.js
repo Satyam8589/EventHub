@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { supabase } from "@/lib/supabase";
 
 // DELETE /api/admin/events/[id]/admins/[adminId] - Remove admin from event
 export async function DELETE(request, { params }) {

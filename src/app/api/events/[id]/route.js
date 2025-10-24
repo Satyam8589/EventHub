@@ -7,47 +7,17 @@ export async function GET(request, { params }) {
     const { id } = await params;
 
     const { data: event, error } = await supabase
-      .from('events')
-      .select(`
-        *,
-        organizer:User!Event_organizerId_fkey (
-          id,
-          name,
-          email,
-          phone
-        ),
-        bookings:Booking (
-          *,
-          user:User (
-            id,
-            name,
-            email
-          )
-        )
-        reviews: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-              },
-            },
-          },
-          orderBy: {
-            createdAt: "desc",
-          },
-        },
-        _count: {
-          select: {
-            bookings: true,
-            reviews: true,
-          },
-        },
-      },
-    });
+      .from("events")
+      .select("*")
+      .eq("id", id)
+      .single();
 
-    if (!event) {
+    if (error && error.code === "PGRST116") {
       return NextResponse.json({ error: "Event not found" }, { status: 404 });
+    }
+
+    if (error) {
+      throw error;
     }
 
     return NextResponse.json({ event });
@@ -66,24 +36,21 @@ export async function PUT(request, { params }) {
     const { id } = await params;
     const body = await request.json();
 
-    const event = await prisma.event.update({
-      where: { id },
-      data: {
+    const { data: event, error } = await supabase
+      .from("events")
+      .update({
         ...body,
         price: body.price ? parseFloat(body.price) : undefined,
         capacity: body.capacity ? parseInt(body.capacity) : undefined,
-        date: body.date ? new Date(body.date) : undefined,
-      },
-      include: {
-        organizer: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-      },
-    });
+        date: body.date ? new Date(body.date).toISOString() : undefined,
+      })
+      .eq("id", id)
+      .select("*")
+      .single();
+
+    if (error) {
+      throw error;
+    }
 
     return NextResponse.json({ event });
   } catch (error) {
@@ -100,9 +67,14 @@ export async function DELETE(request, { params }) {
   try {
     const { id } = await params;
 
-    await prisma.event.delete({
-      where: { id },
-    });
+    const { error } = await supabase
+      .from("events")
+      .delete()
+      .eq("id", id);
+
+    if (error) {
+      throw error;
+    }
 
     return NextResponse.json({ message: "Event deleted successfully" });
   } catch (error) {

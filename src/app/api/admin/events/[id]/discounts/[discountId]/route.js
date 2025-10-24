@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { supabase } from "@/lib/supabase";
 
 // PATCH /api/admin/events/[id]/discounts/[discountId] - Update discount status
 export async function PATCH(request, { params }) {
