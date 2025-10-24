@@ -21,41 +21,64 @@ export async function GET() {
     }
 
     console.log("Raw events from database:", events?.length || 0);
-    console.log("Events details:", events?.map(e => ({ 
-      id: e.id, 
-      title: e.title, 
-      status: e.status,
-      featured: e.featured,
-      date: e.date 
-    })));
+    console.log(
+      "Events details:",
+      events?.map((e) => ({
+        id: e.id,
+        title: e.title,
+        status: e.status,
+        featured: e.featured,
+        date: e.date,
+      }))
+    );
 
     // Get booking counts for each event
     const eventsWithCounts = await Promise.all(
       events.map(async (event) => {
-        // Get all bookings for this event to sum up total tickets
-        const { data: bookings, error: bookingsError } = await supabase
-          .from("bookings")
-          .select("tickets")
-          .eq("eventId", event.id);
+        try {
+          // Get all bookings for this event to sum up total tickets
+          const { data: bookings, error: bookingsError } = await supabase
+            .from("bookings")
+            .select("tickets")
+            .eq("eventId", event.id);
 
-        if (bookingsError) {
-          console.error(
-            `Error fetching bookings for event ${event.id}:`,
-            bookingsError
-          );
+          if (bookingsError) {
+            console.error(
+              `Error fetching bookings for event ${event.id}:`,
+              bookingsError
+            );
+            // Return event with 0 bookings if query fails
+            return {
+              ...event,
+              _count: {
+                bookings: 0,
+              },
+            };
+          }
+
+          // Sum up all tickets from all bookings for this event
+          const totalTickets =
+            bookings?.reduce(
+              (sum, booking) => sum + (booking.tickets || 0),
+              0
+            ) || 0;
+
+          return {
+            ...event,
+            _count: {
+              bookings: totalTickets,
+            },
+          };
+        } catch (err) {
+          console.error(`Exception processing event ${event.id}:`, err);
+          // Return event with 0 bookings if exception occurs
+          return {
+            ...event,
+            _count: {
+              bookings: 0,
+            },
+          };
         }
-
-        // Sum up all tickets from all bookings for this event
-        const totalTickets =
-          bookings?.reduce((sum, booking) => sum + (booking.tickets || 0), 0) ||
-          0;
-
-        return {
-          ...event,
-          _count: {
-            bookings: totalTickets, // This represents total attendees, not just booking count
-          },
-        };
       })
     );
 

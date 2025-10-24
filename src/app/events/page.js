@@ -110,16 +110,32 @@ export default function EventsPage() {
   // Filter events based on search and category
   const filteredEvents = events
     .filter((event) => {
-      const matchesSearch =
-        event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        event.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        event.location.toLowerCase().includes(searchTerm.toLowerCase());
+      try {
+        const matchesSearch =
+          event.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          event.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          event.location?.toLowerCase().includes(searchTerm.toLowerCase());
 
-      const matchesCategory =
-        selectedCategory === "All Categories" ||
-        event.category === selectedCategory;
+        const matchesCategory =
+          selectedCategory === "All Categories" ||
+          event.category === selectedCategory;
 
-      return matchesSearch && matchesCategory;
+        const result = matchesSearch && matchesCategory;
+        
+        if (process.env.NODE_ENV === 'development') {
+          console.log('Event filter:', {
+            title: event.title,
+            matchesSearch,
+            matchesCategory,
+            result
+          });
+        }
+        
+        return result;
+      } catch (err) {
+        console.error('Error filtering event:', event, err);
+        return false; // Exclude events that cause errors
+      }
     })
     .sort((a, b) => {
       // Sort featured events first
@@ -128,6 +144,9 @@ export default function EventsPage() {
       // If both are featured or both are not featured, maintain original order
       return 0;
     });
+
+  console.log('Events page - Total events:', events.length);
+  console.log('Events page - Filtered events:', filteredEvents.length);
 
   // Format date for display
   const formatEventDate = (dateString, timeString) => {
