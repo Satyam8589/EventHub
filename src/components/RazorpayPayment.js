@@ -1,5 +1,5 @@
 "use client";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 const RazorpayPayment = ({
   orderData,
@@ -8,6 +8,8 @@ const RazorpayPayment = ({
   onFailure,
   onClose,
 }) => {
+  const razorpayInstanceRef = useRef(null);
+
   useEffect(() => {
     // Load Razorpay script
     const loadRazorpay = async () => {
@@ -85,13 +87,19 @@ const RazorpayPayment = ({
 
             if (verifyData.success) {
               console.log("Payment verified successfully!");
-              
+
               // Close Razorpay modal immediately after successful verification
-              if (window.razorpayInstance) {
+              if (razorpayInstanceRef.current) {
                 console.log("Closing Razorpay modal...");
-                window.razorpayInstance.close();
+                try {
+                  razorpayInstanceRef.current.close();
+                } catch (closeError) {
+                  console.error("Error closing Razorpay modal:", closeError);
+                }
               }
-              
+
+              // Call onSuccess which will show the success popup
+              console.log("Calling onSuccess callback...");
               onSuccess(verifyData);
             } else {
               console.error("Payment verification failed:", verifyData.error);
@@ -124,6 +132,9 @@ const RazorpayPayment = ({
       };
 
       const razorpayInstance = new window.Razorpay(options);
+      
+      // Store instance in ref for later use
+      razorpayInstanceRef.current = razorpayInstance;
 
       razorpayInstance.on("payment.failed", function (response) {
         console.error("Payment Failed:", response.error);
@@ -133,9 +144,6 @@ const RazorpayPayment = ({
             "Payment failed. Please try again."
         );
       });
-
-      // Store instance for later use in handler
-      window.razorpayInstance = razorpayInstance;
 
       // Open Razorpay payment modal
       razorpayInstance.open();

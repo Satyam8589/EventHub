@@ -78,11 +78,15 @@ export default function BookingModal({ event, isOpen, onClose }) {
   };
 
   const handlePaymentSuccess = (paymentData) => {
+    console.log("=== PAYMENT SUCCESS IN BOOKING MODAL ===");
     console.log("Payment successful:", paymentData);
+    console.log("Setting payment step to 'success'...");
     setPaymentStep("success");
 
     // Redirect to My Events page after 3 seconds
+    console.log("Will redirect to /my-events in 3 seconds...");
     setTimeout(() => {
+      console.log("Redirecting now...");
       resetModal();
       onClose();
       router.push("/my-events");
