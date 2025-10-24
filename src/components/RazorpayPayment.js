@@ -61,8 +61,22 @@ const RazorpayPayment = ({
             });
 
             console.log("Verify response status:", verifyResponse.status);
-            const verifyData = await verifyResponse.json();
-            console.log("Verify response data:", verifyData);
+            console.log("Verify response ok:", verifyResponse.ok);
+            console.log("Verify response headers:", Object.fromEntries(verifyResponse.headers.entries()));
+            
+            // Check if response has content before trying to parse JSON
+            const responseText = await verifyResponse.text();
+            console.log("Verify response text:", responseText);
+            
+            let verifyData;
+            try {
+              verifyData = JSON.parse(responseText);
+              console.log("Verify response data (parsed):", verifyData);
+            } catch (parseError) {
+              console.error("Failed to parse response as JSON:", parseError);
+              console.error("Raw response was:", responseText);
+              throw new Error("Server returned invalid response. Please check server logs.");
+            }
 
             if (verifyData.success) {
               console.log("Payment verified successfully!");

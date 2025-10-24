@@ -21,8 +21,14 @@ console.log(
 
 // POST /api/payment/verify - Verify Razorpay payment
 export async function POST(request) {
+  console.log("🚀 VERIFY ROUTE CALLED");
+  let body = null;
+  
   try {
-    const body = await request.json();
+    console.log("📥 Attempting to parse request body...");
+    body = await request.json();
+    console.log("✅ Request body parsed successfully");
+    
     const {
       razorpay_order_id,
       razorpay_payment_id,
@@ -35,12 +41,19 @@ export async function POST(request) {
     console.log("Payment ID:", razorpay_payment_id);
     console.log("Booking ID:", bookingId);
     console.log("Signature present:", !!razorpay_signature);
-    console.log("Full request body:", JSON.stringify({
-      razorpay_order_id,
-      razorpay_payment_id,
-      bookingId,
-      signatureLength: razorpay_signature?.length
-    }, null, 2));
+    console.log(
+      "Full request body:",
+      JSON.stringify(
+        {
+          razorpay_order_id,
+          razorpay_payment_id,
+          bookingId,
+          signatureLength: razorpay_signature?.length,
+        },
+        null,
+        2
+      )
+    );
 
     // Validate required fields
     if (
@@ -124,11 +137,13 @@ export async function POST(request) {
 
     // Check if booking is already confirmed
     if (booking.status === "CONFIRMED") {
-      console.log("⚠️ BOOKING ALREADY CONFIRMED - Duplicate verification attempt");
+      console.log(
+        "⚠️ BOOKING ALREADY CONFIRMED - Duplicate verification attempt"
+      );
       return NextResponse.json(
-        { 
-          success: false, 
-          error: "This payment has already been verified" 
+        {
+          success: false,
+          error: "This payment has already been verified",
         },
         { status: 400 }
       );
@@ -150,7 +165,10 @@ export async function POST(request) {
       console.error("Expected:", expectedPaymentId);
       console.error("Got:", booking.paymentId);
       return NextResponse.json(
-        { success: false, error: "Payment ID mismatch - possible fraud attempt" },
+        {
+          success: false,
+          error: "Payment ID mismatch - possible fraud attempt",
+        },
         { status: 400 }
       );
     }
@@ -257,7 +275,7 @@ export async function POST(request) {
     console.log("🎉 RETURNING SUCCESS RESPONSE TO CLIENT");
     console.log("Booking confirmed with ID:", confirmedBooking.id);
     console.log("Payment ID:", razorpay_payment_id);
-    
+
     return NextResponse.json({
       success: true,
       message:
@@ -279,6 +297,9 @@ export async function POST(request) {
     });
   } catch (error) {
     console.error("❌ PAYMENT VERIFICATION ERROR:", error);
+    console.error("Error name:", error?.name);
+    console.error("Error message:", error?.message);
+    console.error("Error stack:", error?.stack);
 
     // Try to mark booking as failed if we have bookingId
     if (body?.bookingId) {
@@ -287,7 +308,7 @@ export async function POST(request) {
           .from("bookings")
           .update({
             status: "FAILED",
-            failureReason: error.message,
+            failureReason: error.message || "Unknown error",
             updatedAt: new Date().toISOString(),
           })
           .eq("id", body.bookingId);
@@ -300,7 +321,8 @@ export async function POST(request) {
       {
         success: false,
         error: "Payment verification failed",
-        details: error.message,
+        details: error?.message || "Unknown error occurred",
+        errorType: error?.name || "Error",
       },
       { status: 500 }
     );

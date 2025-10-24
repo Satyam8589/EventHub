@@ -85,7 +85,7 @@ export default function BookingModal({ event, isOpen, onClose }) {
     setTimeout(() => {
       resetModal();
       onClose();
-      router.push('/my-events');
+      router.push("/my-events");
     }, 3000);
   };
 
@@ -226,7 +226,8 @@ export default function BookingModal({ event, isOpen, onClose }) {
                 ❌ Booking Not Completed
               </h3>
               <p className="text-gray-700 mb-4">
-                {errorMessage || "Your payment could not be processed. Please try again."}
+                {errorMessage ||
+                  "Your payment could not be processed. Please try again."}
               </p>
               <div className="flex gap-3 justify-center">
                 <button
