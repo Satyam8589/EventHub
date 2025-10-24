@@ -3,16 +3,15 @@
     "env": {
       "PRISMA_SKIP_VALIDATION_WARNING": "true",
       "PRISMA_SKIP_ENGINE_CHECK": "true",
-      "PRISMA_GENERATE_DATAPROXY": "true",
-      "PRISMA_CLI_QUERY_ENGINE_TYPE": "binary",
-      "PRISMA_CLIENT_ENGINE_TYPE": "binary"
+      "PRISMA_CLI_QUERY_ENGINE_TYPE": "library",
+      "PRISMA_CLIENT_ENGINE_TYPE": "library"
     }
   },
   "env": {
     "PRISMA_SKIP_VALIDATION_WARNING": "true",
     "PRISMA_SKIP_ENGINE_CHECK": "true",
-    "PRISMA_CLI_QUERY_ENGINE_TYPE": "binary",
-    "PRISMA_CLIENT_ENGINE_TYPE": "binary"
+    "PRISMA_CLI_QUERY_ENGINE_TYPE": "library",
+    "PRISMA_CLIENT_ENGINE_TYPE": "library"
   },
   "functions": {
     "pages/api/**/*.js": {

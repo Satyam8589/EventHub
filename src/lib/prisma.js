@@ -38,12 +38,6 @@ function createPrismaClient() {
       const client = new PrismaClient({
         adapter,
         log: ["error", "warn"],
-        // Ensure correct engine path for Vercel
-        __internal: {
-          engine: {
-            binaryTarget: "rhel-openssl-3.0.x",
-          },
-        },
       });
 
       console.log("✅ Neon adapter created successfully");
