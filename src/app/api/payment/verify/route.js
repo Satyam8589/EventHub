@@ -76,6 +76,10 @@ export async function POST(request) {
 
     // Get the pending booking
     // Temporarily using paymentId field where order ID is stored with PENDING_ prefix
+    console.log("=== LOOKING FOR PENDING BOOKING ===");
+    console.log("Booking ID to find:", bookingId);
+    console.log("Expected paymentId:", `PENDING_${razorpay_order_id}`);
+    
     const { data: booking, error: bookingError } = await supabase
       .from("bookings")
       .select("*")
@@ -84,8 +88,20 @@ export async function POST(request) {
       .eq("status", "PENDING")
       .single();
 
+    console.log("=== BOOKING QUERY RESULT ===");
+    console.log("Booking found:", !!booking);
+    console.log("Booking error:", bookingError);
+    if (booking) {
+      console.log("Booking details:", {
+        id: booking.id,
+        paymentId: booking.paymentId,
+        status: booking.status
+      });
+    }
+
     if (bookingError || !booking) {
       console.error("❌ BOOKING NOT FOUND OR ALREADY PROCESSED");
+      console.error("Error details:", bookingError);
       return NextResponse.json(
         { success: false, error: "Booking not found or already processed" },
         { status: 404 }
