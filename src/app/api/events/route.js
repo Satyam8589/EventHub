@@ -16,8 +16,18 @@ export async function GET() {
       .order("date", { ascending: true });
 
     if (error) {
+      console.error("Supabase query error:", error);
       throw error;
     }
+
+    console.log("Raw events from database:", events?.length || 0);
+    console.log("Events details:", events?.map(e => ({ 
+      id: e.id, 
+      title: e.title, 
+      status: e.status,
+      featured: e.featured,
+      date: e.date 
+    })));
 
     // Get booking counts for each event
     const eventsWithCounts = await Promise.all(

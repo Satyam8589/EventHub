@@ -51,22 +51,26 @@ export default function Home() {
         console.log("Fetching events from /api/events...");
         const response = await fetch("/api/events");
         console.log("Response status:", response.status);
-        
+
         if (!response.ok) {
           const errorText = await response.text();
           console.error("API Error Response:", errorText);
-          throw new Error(`Failed to fetch events: ${response.status} - ${errorText}`);
+          throw new Error(
+            `Failed to fetch events: ${response.status} - ${errorText}`
+          );
         }
-        
+
         const data = await response.json();
         console.log("Events data received:", data);
         const allEvents = data.events || [];
         console.log("Total events fetched:", allEvents.length);
-        
+
         if (allEvents.length === 0) {
-          console.warn("No events found in database. This might be a deployment issue.");
+          console.warn(
+            "No events found in database. This might be a deployment issue."
+          );
         }
-        
+
         setEvents(allEvents);
 
         // Filter featured events (max 3, actual featured events)
@@ -83,12 +87,18 @@ export default function Home() {
         const additionalEvents = nonFeatured.slice(0, neededCount);
 
         setFeaturedEvents([...featured, ...additionalEvents]);
-        console.log("Total featured events to display:", [...featured, ...additionalEvents].length);
+        console.log(
+          "Total featured events to display:",
+          [...featured, ...additionalEvents].length
+        );
 
         // For upcoming events, show latest non-featured events (excluding those used in featured)
         const remainingNonFeatured = nonFeatured.slice(neededCount);
         setUpcomingEvents(remainingNonFeatured.slice(0, 3));
-        console.log("Upcoming events to display:", remainingNonFeatured.slice(0, 3).length);
+        console.log(
+          "Upcoming events to display:",
+          remainingNonFeatured.slice(0, 3).length
+        );
       } catch (error) {
         console.error("Error fetching events:", error);
         console.error("Error details:", error.message);
@@ -520,42 +530,42 @@ export default function Home() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 sm:gap-8 lg:gap-10">
-            {loading
-              ? Array(3)
-                  .fill()
-                  .map((_, index) => (
-                    <div key={index} className="animate-pulse">
-                      <div className="bg-white/10 backdrop-blur-md rounded-2xl h-96 border border-white/20"></div>
-                    </div>
-                  ))
-              : featuredEvents.length > 0
-              ? featuredEvents.map((event, index) => (
-                  <div
-                    key={event.id}
-                    style={{ animationDelay: `${index * 200}ms` }}
-                    className="animate-fade-in-up"
-                  >
-                    <EventCard
-                      event={{
-                        ...event,
-                        date: formatEventDate(event.date, event.time),
-                        registered: event._count?.bookings || 0,
-                        featured: true,
-                      }}
-                    />
+            {loading ? (
+              Array(3)
+                .fill()
+                .map((_, index) => (
+                  <div key={index} className="animate-pulse">
+                    <div className="bg-white/10 backdrop-blur-md rounded-2xl h-96 border border-white/20"></div>
                   </div>
                 ))
-              : (
-                  <div className="col-span-full text-center py-12">
-                    <div className="text-6xl mb-4">📅</div>
-                    <h3 className="text-xl font-semibold text-white mb-2">
-                      No featured events available
-                    </h3>
-                    <p className="text-gray-300">
-                      Check back soon for exciting events!
-                    </p>
-                  </div>
-                )}
+            ) : featuredEvents.length > 0 ? (
+              featuredEvents.map((event, index) => (
+                <div
+                  key={event.id}
+                  style={{ animationDelay: `${index * 200}ms` }}
+                  className="animate-fade-in-up"
+                >
+                  <EventCard
+                    event={{
+                      ...event,
+                      date: formatEventDate(event.date, event.time),
+                      registered: event._count?.bookings || 0,
+                      featured: true,
+                    }}
+                  />
+                </div>
+              ))
+            ) : (
+              <div className="col-span-full text-center py-12">
+                <div className="text-6xl mb-4">📅</div>
+                <h3 className="text-xl font-semibold text-white mb-2">
+                  No featured events available
+                </h3>
+                <p className="text-gray-300">
+                  Check back soon for exciting events!
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </section>
@@ -573,42 +583,42 @@ export default function Home() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 sm:gap-8 lg:gap-10">
-            {loading
-              ? Array(3)
-                  .fill()
-                  .map((_, index) => (
-                    <div key={index} className="animate-pulse">
-                      <div className="bg-white/10 backdrop-blur-md rounded-2xl h-96 border border-white/20"></div>
-                    </div>
-                  ))
-              : upcomingEvents.length > 0
-              ? upcomingEvents.map((event, index) => (
-                  <div
-                    key={event.id}
-                    style={{ animationDelay: `${index * 200}ms` }}
-                    className="animate-fade-in-up"
-                  >
-                    <EventCard
-                      event={{
-                        ...event,
-                        date: formatEventDate(event.date, event.time),
-                        registered: event._count?.bookings || 0,
-                        featured: false,
-                      }}
-                    />
+            {loading ? (
+              Array(3)
+                .fill()
+                .map((_, index) => (
+                  <div key={index} className="animate-pulse">
+                    <div className="bg-white/10 backdrop-blur-md rounded-2xl h-96 border border-white/20"></div>
                   </div>
                 ))
-              : (
-                  <div className="col-span-full text-center py-12">
-                    <div className="text-6xl mb-4">📅</div>
-                    <h3 className="text-xl font-semibold text-white mb-2">
-                      No upcoming events available
-                    </h3>
-                    <p className="text-gray-300">
-                      Check back soon for exciting events!
-                    </p>
-                  </div>
-                )}
+            ) : upcomingEvents.length > 0 ? (
+              upcomingEvents.map((event, index) => (
+                <div
+                  key={event.id}
+                  style={{ animationDelay: `${index * 200}ms` }}
+                  className="animate-fade-in-up"
+                >
+                  <EventCard
+                    event={{
+                      ...event,
+                      date: formatEventDate(event.date, event.time),
+                      registered: event._count?.bookings || 0,
+                      featured: false,
+                    }}
+                  />
+                </div>
+              ))
+            ) : (
+              <div className="col-span-full text-center py-12">
+                <div className="text-6xl mb-4">📅</div>
+                <h3 className="text-xl font-semibold text-white mb-2">
+                  No upcoming events available
+                </h3>
+                <p className="text-gray-300">
+                  Check back soon for exciting events!
+                </p>
+              </div>
+            )}
           </div>
 
           <div className="text-center mt-12">

@@ -5,10 +5,12 @@
 Visit these URLs in order and note results:
 
 1. **Health Check** → `https://your-site.com/api/health`
+
    - ✅ Should return `"status": "healthy"`
    - ❌ If not, check environment variables
 
 2. **Events API** → `https://your-site.com/api/events`
+
    - ✅ Should return `{"events": [...]}`
    - ❌ If empty `[]`, add events in admin panel
    - ❌ If error, check database connection
@@ -21,9 +23,11 @@ Visit these URLs in order and note results:
 ## 🎯 Most Common Fixes
 
 ### Fix #1: Missing Environment Variables (90% of issues)
+
 **Check your deployment platform → Settings → Environment Variables**
 
 Required variables:
+
 ```
 NEXT_PUBLIC_SUPABASE_URL
 NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -33,24 +37,26 @@ DATABASE_URL
 After adding, **REDEPLOY**.
 
 ### Fix #2: No Events in Database
+
 **Go to:** `/admin/create-event`
 **Create:** One test event
 **Refresh:** Home page
 
 ### Fix #3: Wrong Database URL
+
 **Check:** Deployment uses PRODUCTION database
 **Not:** Local development database
 **Fix:** Update DATABASE_URL in deployment settings
 
 ## 🚨 Error → Solution Map
 
-| Error in Console | Cause | Fix |
-|-----------------|-------|-----|
-| `Response status: 404` | API routes not deployed | Rebuild & redeploy |
-| `Response status: 500` | Database connection failed | Check environment vars |
-| `Total events fetched: 0` | No events in DB | Add events via admin |
-| `CORS error` | Cross-origin issue | Add CORS headers |
-| `Network error` | Can't reach API | Check deployment URL |
+| Error in Console          | Cause                      | Fix                    |
+| ------------------------- | -------------------------- | ---------------------- |
+| `Response status: 404`    | API routes not deployed    | Rebuild & redeploy     |
+| `Response status: 500`    | Database connection failed | Check environment vars |
+| `Total events fetched: 0` | No events in DB            | Add events via admin   |
+| `CORS error`              | Cross-origin issue         | Add CORS headers       |
+| `Network error`           | Can't reach API            | Check deployment URL   |
 
 ## 📊 Decision Tree
 
@@ -88,6 +94,7 @@ Events not showing?
 ## ⚡ Emergency Quick Fixes
 
 ### If completely broken:
+
 ```bash
 # 1. Clear cache
 rm -rf .next
@@ -105,19 +112,22 @@ git push origin main
 ```
 
 ### If events exist but don't show:
+
 ```sql
 -- Run in Supabase SQL Editor
-UPDATE events 
-SET status = 'UPCOMING' 
+UPDATE events
+SET status = 'UPCOMING'
 WHERE status IS NULL;
 ```
 
 ### If images don't show:
+
 Check `imageUrl` field in database is not null and is valid URL.
 
 ## 📱 Contact Support Checklist
 
 Before asking for help, have these ready:
+
 1. ✅ Screenshot of `/api/health` response
 2. ✅ Screenshot of `/api/events` response
 3. ✅ Screenshot of browser console errors
