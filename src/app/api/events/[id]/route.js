@@ -6,6 +6,10 @@ export async function GET(request, { params }) {
   try {
     const { id } = await params;
 
+    console.log("=== FETCHING EVENT DETAILS ===");
+    console.log("Event ID:", id);
+
+    // Fetch event with bookings count
     const { data: event, error } = await supabase
       .from("events")
       .select("*")
@@ -13,14 +17,40 @@ export async function GET(request, { params }) {
       .single();
 
     if (error && error.code === "PGRST116") {
+      console.log("Event not found:", id);
       return NextResponse.json({ error: "Event not found" }, { status: 404 });
     }
 
     if (error) {
+      console.error("Error fetching event:", error);
       throw error;
     }
 
-    return NextResponse.json({ event });
+    // Count confirmed and pending bookings for this event
+    const { count: bookingsCount, error: countError } = await supabase
+      .from("bookings")
+      .select("*", { count: "exact", head: true })
+      .eq("eventId", id)
+      .in("status", ["CONFIRMED", "PENDING"]);
+
+    if (countError) {
+      console.error("Error counting bookings:", countError);
+    }
+
+    console.log("Event found:", event.title);
+    console.log("Bookings count:", bookingsCount);
+    console.log("Capacity:", event.capacity);
+    console.log("Available spots:", event.capacity - (bookingsCount || 0));
+
+    // Add bookings count to event object
+    const eventWithCount = {
+      ...event,
+      _count: {
+        bookings: bookingsCount || 0,
+      },
+    };
+
+    return NextResponse.json({ event: eventWithCount });
   } catch (error) {
     console.error("Error fetching event:", error);
     return NextResponse.json(

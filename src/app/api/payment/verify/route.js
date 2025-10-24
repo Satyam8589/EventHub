@@ -23,12 +23,12 @@ console.log(
 export async function POST(request) {
   console.log("🚀 VERIFY ROUTE CALLED");
   let body = null;
-  
+
   try {
     console.log("📥 Attempting to parse request body...");
     body = await request.json();
     console.log("✅ Request body parsed successfully");
-    
+
     const {
       razorpay_order_id,
       razorpay_payment_id,
