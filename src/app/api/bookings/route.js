@@ -8,9 +8,11 @@ export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get("userId");
+    const status = searchParams.get("status"); // Optional status filter
 
     console.log("=== FETCHING BOOKINGS ===");
     console.log("User ID filter:", userId);
+    console.log("Status filter:", status);
 
     // First get the bookings
     let query = supabase
@@ -20,6 +22,11 @@ export async function GET(request) {
 
     if (userId) {
       query = query.eq("userId", userId);
+    }
+
+    // Filter by status if provided (e.g., "CONFIRMED", "PENDING", "FAILED")
+    if (status) {
+      query = query.eq("status", status);
     }
 
     const { data: bookings, error } = await query;
@@ -32,8 +39,13 @@ export async function GET(request) {
     console.log(`Found ${bookings?.length || 0} bookings`);
     console.log(
       "Booking statuses:",
-      bookings?.map((b) => ({ id: b.id, status: b.status }))
+      bookings?.map((b) => ({ id: b.id, status: b.status, userId: b.userId, eventId: b.eventId }))
     );
+
+    if (!bookings || bookings.length === 0) {
+      console.log("⚠️ NO BOOKINGS FOUND FOR THIS QUERY");
+      console.log("Check: 1) userId exists in database, 2) bookings exist for this user, 3) status matches filter");
+    }
 
     // Then fetch event and user details for each booking
     const bookingsWithEventAndUser = await Promise.all(

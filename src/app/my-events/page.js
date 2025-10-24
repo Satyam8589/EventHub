@@ -52,10 +52,10 @@ export default function MyEventsPage() {
         setLoading(true);
         console.log("Fetching bookings for user:", user.uid);
 
-        // Add cache buster
+        // Add cache buster and fetch only CONFIRMED bookings
         const cacheBuster = Date.now();
         const response = await fetch(
-          `/api/bookings?userId=${user.uid}&_=${cacheBuster}`,
+          `/api/bookings?userId=${user.uid}&status=CONFIRMED&_=${cacheBuster}`,
           {
             cache: "no-store",
             headers: {
@@ -64,11 +64,15 @@ export default function MyEventsPage() {
           }
         );
 
+        console.log("Fetch response status:", response.status);
+        console.log("Fetch response ok:", response.ok);
+
         if (response.ok) {
           const data = await response.json();
+          console.log("API Response:", data);
           console.log("Received bookings:", data.bookings?.length || 0);
           console.log("Bookings data:", data.bookings);
-          
+
           // Log each booking's event data
           data.bookings?.forEach((booking, index) => {
             console.log(`Booking ${index + 1}:`, {
@@ -80,7 +84,7 @@ export default function MyEventsPage() {
               eventName: booking.event?.name,
             });
           });
-          
+
           setBookings(data.bookings || []);
         } else {
           console.error("Failed to fetch bookings:", response.status);
@@ -99,11 +103,48 @@ export default function MyEventsPage() {
     }
   }, [user, authLoading]);
 
+  // Refresh bookings when page becomes visible (e.g., returning from payment)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden && user) {
+        console.log("Page became visible - refreshing bookings...");
+        const fetchBookings = async () => {
+          try {
+            const cacheBuster = Date.now();
+            const response = await fetch(
+              `/api/bookings?userId=${user.uid}&status=CONFIRMED&_=${cacheBuster}`,
+              {
+                cache: "no-store",
+                headers: {
+                  "Cache-Control": "no-cache",
+                },
+              }
+            );
+
+            if (response.ok) {
+              const data = await response.json();
+              console.log("Refreshed bookings:", data.bookings?.length || 0);
+              setBookings(data.bookings || []);
+            }
+          } catch (error) {
+            console.error("Error refreshing bookings:", error);
+          }
+        };
+
+        fetchBookings();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () =>
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, [user]);
+
   // Filter bookings by upcoming/past
   const filterBookings = (bookings, type) => {
     const now = new Date();
     console.log(`Filtering ${bookings.length} bookings for ${type} events`);
-    
+
     const filtered = bookings.filter((booking) => {
       // Safety check for event and date existence
       if (!booking.event || !booking.event.date) {
@@ -117,7 +158,7 @@ export default function MyEventsPage() {
       }
       const eventDate = new Date(booking.event.date);
       const isUpcoming = eventDate >= now;
-      
+
       console.log(`Booking ${booking.id}:`, {
         eventName: booking.event.name,
         eventDate: booking.event.date,
@@ -125,10 +166,10 @@ export default function MyEventsPage() {
         typeFilter: type,
         included: type === "upcoming" ? isUpcoming : !isUpcoming,
       });
-      
+
       return type === "upcoming" ? eventDate >= now : eventDate < now;
     });
-    
+
     console.log(`Filtered result: ${filtered.length} ${type} bookings`);
     return filtered;
   };

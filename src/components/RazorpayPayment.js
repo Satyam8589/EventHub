@@ -41,8 +41,27 @@ const RazorpayPayment = ({
         handler: async function (response) {
           console.log("Payment Success Response:", response);
 
+          // Close Razorpay modal IMMEDIATELY
+          if (razorpayInstanceRef.current) {
+            console.log("Closing Razorpay modal immediately...");
+            try {
+              razorpayInstanceRef.current.close();
+            } catch (closeError) {
+              console.error("Error closing Razorpay modal:", closeError);
+            }
+          }
+
+          // Show success popup IMMEDIATELY before verification
+          console.log("Showing success popup immediately...");
+          onSuccess({
+            success: true,
+            message: "Payment successful! Verifying...",
+            immediate: true, // Flag to indicate this is immediate feedback
+          });
+
+          // Verify payment in background
           try {
-            // Verify payment on server
+            console.log("Verifying payment in background...");
             console.log("Sending verification request with:", {
               razorpay_order_id: response.razorpay_order_id,
               razorpay_payment_id: response.razorpay_payment_id,
@@ -64,10 +83,6 @@ const RazorpayPayment = ({
 
             console.log("Verify response status:", verifyResponse.status);
             console.log("Verify response ok:", verifyResponse.ok);
-            console.log(
-              "Verify response headers:",
-              Object.fromEntries(verifyResponse.headers.entries())
-            );
 
             // Check if response has content before trying to parse JSON
             const responseText = await verifyResponse.text();
@@ -86,29 +101,25 @@ const RazorpayPayment = ({
             }
 
             if (verifyData.success) {
-              console.log("Payment verified successfully!");
-
-              // Close Razorpay modal immediately after successful verification
-              if (razorpayInstanceRef.current) {
-                console.log("Closing Razorpay modal...");
-                try {
-                  razorpayInstanceRef.current.close();
-                } catch (closeError) {
-                  console.error("Error closing Razorpay modal:", closeError);
-                }
-              }
-
-              // Call onSuccess which will show the success popup
-              console.log("Calling onSuccess callback...");
-              onSuccess(verifyData);
+              console.log("Payment verified successfully in background!");
+              // Verification succeeded - user already sees success popup
             } else {
-              console.error("Payment verification failed:", verifyData.error);
+              console.error(
+                "Background verification failed:",
+                verifyData.error
+              );
               console.error("Full error details:", verifyData);
-              onFailure(verifyData.error || "Payment verification failed");
+              // Show error after a moment if verification fails
+              setTimeout(() => {
+                onFailure(verifyData.error || "Payment verification failed");
+              }, 500);
             }
           } catch (error) {
-            console.error("Payment verification error:", error);
-            onFailure("Payment verification failed. Please contact support.");
+            console.error("Background payment verification error:", error);
+            // Show error after a moment if verification fails
+            setTimeout(() => {
+              onFailure("Payment verification failed. Please contact support.");
+            }, 500);
           }
         },
         prefill: {
