@@ -1,10 +1,12 @@
 "use client";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import RazorpayPayment from "./RazorpayPayment";
 
 export default function BookingModal({ event, isOpen, onClose }) {
   const { user } = useAuth();
+  const router = useRouter();
   const [formData, setFormData] = useState({
     fullName: user?.displayName || user?.email?.split("@")[0] || "",
     email: user?.email || "",
@@ -79,10 +81,11 @@ export default function BookingModal({ event, isOpen, onClose }) {
     console.log("Payment successful:", paymentData);
     setPaymentStep("success");
 
-    // Auto-close after showing success message
+    // Redirect to My Events page after 3 seconds
     setTimeout(() => {
       resetModal();
       onClose();
+      router.push('/my-events');
     }, 3000);
   };
 

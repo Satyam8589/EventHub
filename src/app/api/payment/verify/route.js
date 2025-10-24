@@ -79,7 +79,7 @@ export async function POST(request) {
     console.log("=== LOOKING FOR PENDING BOOKING ===");
     console.log("Booking ID to find:", bookingId);
     console.log("Expected paymentId:", `PENDING_${razorpay_order_id}`);
-    
+
     const { data: booking, error: bookingError } = await supabase
       .from("bookings")
       .select("*")
@@ -95,7 +95,7 @@ export async function POST(request) {
       console.log("Booking details:", {
         id: booking.id,
         paymentId: booking.paymentId,
-        status: booking.status
+        status: booking.status,
       });
     }
 
