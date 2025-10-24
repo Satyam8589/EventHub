@@ -142,13 +142,17 @@ export async function POST(request) {
       );
     }
 
-    // Handle image - use provided URL or upload to Cloudinary
+    // Handle image - use provided URL, upload to Cloudinary, or use default
     let imageUrl =
-      providedImageUrl ||
       "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&h=600&fit=crop&crop=center";
 
-    // Only upload if imageFile exists (FormData) and no imageUrl provided
-    if (imageFile && imageFile.size > 0 && !providedImageUrl) {
+    // If imageUrl is provided in JSON body, use it
+    if (providedImageUrl) {
+      imageUrl = providedImageUrl;
+      console.log("Using provided image URL:", imageUrl);
+    }
+    // If imageFile exists (FormData), upload it
+    else if (imageFile && imageFile.size > 0) {
       try {
         // Convert file to buffer
         const bytes = await imageFile.arrayBuffer();
