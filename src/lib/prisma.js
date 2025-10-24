@@ -8,22 +8,30 @@ const globalForPrisma = globalThis;
 function createPrismaClient() {
   const isVercel = process.env.VERCEL || process.env.VERCEL_ENV;
   const isProduction = process.env.NODE_ENV === "production";
-  
+
   console.log("🔧 Prisma Client Setup:", {
     isVercel: !!isVercel,
     isProduction,
     hasDatabaseUrl: !!process.env.DATABASE_URL,
     hasDirectUrl: !!process.env.DIRECT_URL,
-    databaseUrlType: process.env.DATABASE_URL ? (process.env.DATABASE_URL.includes("neon") ? "neon" : "other") : "none"
+    databaseUrlType: process.env.DATABASE_URL
+      ? process.env.DATABASE_URL.includes("neon")
+        ? "neon"
+        : "other"
+      : "none",
   });
 
   // Use Neon adapter ONLY for Vercel deployments
-  if (isVercel && process.env.DATABASE_URL && process.env.DATABASE_URL.includes("neon")) {
+  if (
+    isVercel &&
+    process.env.DATABASE_URL &&
+    process.env.DATABASE_URL.includes("neon")
+  ) {
     try {
       console.log("🌐 Creating Neon adapter for Vercel...");
-      const pool = new Pool({ 
+      const pool = new Pool({
         connectionString: process.env.DATABASE_URL,
-        ssl: { rejectUnauthorized: false }
+        ssl: { rejectUnauthorized: false },
       });
       const adapter = new PrismaNeon(pool);
 
@@ -33,11 +41,11 @@ function createPrismaClient() {
         // Ensure correct engine path for Vercel
         __internal: {
           engine: {
-            binaryTarget: "rhel-openssl-3.0.x"
-          }
-        }
+            binaryTarget: "rhel-openssl-3.0.x",
+          },
+        },
       });
-      
+
       console.log("✅ Neon adapter created successfully");
       return client;
     } catch (error) {
@@ -49,7 +57,10 @@ function createPrismaClient() {
   // Standard Prisma client for local development or fallback
   console.log("🔧 Creating standard Prisma client...");
   return new PrismaClient({
-    log: process.env.NODE_ENV === "development" ? ["query", "error", "warn"] : ["error"],
+    log:
+      process.env.NODE_ENV === "development"
+        ? ["query", "error", "warn"]
+        : ["error"],
   });
 }
 

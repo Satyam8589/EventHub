@@ -1,6 +1,4 @@
 {
-  "buildCommand": "prisma generate && npm run build",
-  "installCommand": "npm install && prisma generate",
   "build": {
     "env": {
       "PRISMA_SKIP_VALIDATION_WARNING": "true",

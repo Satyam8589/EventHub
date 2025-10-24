@@ -1,0 +1,3 @@
+# Don't ignore these Prisma files - they're needed for deployment
+!node_modules/.prisma/client/**
+!prisma/**
