@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { supabase } from "@/lib/supabase";
 import { uploadToCloudinary } from "@/lib/cloudinary";
 
 // GET /api/events - Get all events
@@ -8,31 +8,15 @@ export async function GET() {
     console.log("Starting GET /api/events");
     console.log("DATABASE_URL exists:", !!process.env.DATABASE_URL);
 
-    const events = await prisma.event.findMany({
-      include: {
-        organizer: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-        _count: {
-          select: {
-            bookings: true,
-            reviews: true,
-          },
-        },
-      },
-      orderBy: [
-        {
-          featured: "desc", // Featured events first
-        },
-        {
-          date: "asc", // Then by date
-        },
-      ],
-    });
+    const { data: events, error } = await supabase
+      .from("events")
+      .select("*")
+      .order("featured", { ascending: false })
+      .order("date", { ascending: true });
+
+    if (error) {
+      throw error;
+    }
 
     console.log("Successfully fetched events:", events.length);
     return NextResponse.json({ events });
@@ -153,34 +137,33 @@ export async function POST(request) {
     const eventDate = new Date(date);
     const timeString = eventDate.toTimeString().slice(0, 5); // Format: "HH:MM"
 
-    const event = await prisma.event.create({
-      data: {
-        title,
-        description,
-        category,
-        location,
-        venue,
-        date: eventDate,
-        time: timeString,
-        price: parseFloat(ticketPrice) || 0,
-        capacity: parseInt(maxAttendees) || 100,
-        imageUrl,
-        organizerId,
-        organizerName,
-        organizerEmail,
-        organizerPhone,
-        featured: featured || false,
-      },
-      include: {
-        organizer: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
+    const { data: event, error: createError } = await supabase
+      .from("events")
+      .insert([
+        {
+          title,
+          description,
+          category,
+          location,
+          venue,
+          date: eventDate.toISOString(),
+          time: timeString,
+          price: parseFloat(ticketPrice) || 0,
+          capacity: parseInt(maxAttendees) || 100,
+          imageUrl,
+          organizerId,
+          organizerName,
+          organizerEmail,
+          organizerPhone,
+          featured: featured || false,
         },
-      },
-    });
+      ])
+      .select("*")
+      .single();
+
+    if (createError) {
+      throw createError;
+    }
 
     return NextResponse.json({ event }, { status: 201 });
   } catch (error) {

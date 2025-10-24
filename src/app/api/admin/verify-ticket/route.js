@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { supabase } from "@/lib/supabase";
 
 // POST /api/admin/verify-ticket - Verify ticket for event admin
 export async function POST(request) {

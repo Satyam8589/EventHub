@@ -1,33 +1,29 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { supabase } from "@/lib/supabase";
 
 // GET /api/events/[id] - Get a specific event
 export async function GET(request, { params }) {
   try {
     const { id } = await params;
 
-    const event = await prisma.event.findUnique({
-      where: { id },
-      include: {
-        organizer: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            phone: true,
-          },
-        },
-        bookings: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-              },
-            },
-          },
-        },
+    const { data: event, error } = await supabase
+      .from('events')
+      .select(`
+        *,
+        organizer:User!Event_organizerId_fkey (
+          id,
+          name,
+          email,
+          phone
+        ),
+        bookings:Booking (
+          *,
+          user:User (
+            id,
+            name,
+            email
+          )
+        )
         reviews: {
           include: {
             user: {

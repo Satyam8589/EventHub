@@ -9,7 +9,6 @@ import {
   updateProfile,
 } from "firebase/auth";
 import { auth, googleProvider } from "@/lib/firebase";
-import { prisma } from "@/lib/prisma";
 
 const AuthContext = createContext({});
 

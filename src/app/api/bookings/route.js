@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { supabase } from "@/lib/supabase";
 import { sendTicketEmail, generateBookingEmailHTML } from "@/lib/email";
 import { generateTicketImage } from "@/lib/generateTicketImage";
 
@@ -9,40 +9,20 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get("userId");
 
-    const bookings = await prisma.booking.findMany({
-      where: userId ? { userId } : undefined,
-      include: {
-        event: {
-          select: {
-            id: true,
-            title: true,
-            description: true,
-            date: true,
-            time: true,
-            location: true,
-            venue: true,
-            imageUrl: true,
-          },
-        },
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-        verifications: {
-          select: {
-            id: true,
-            scannedAt: true,
-            isValid: true,
-          },
-        },
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
+    let query = supabase
+      .from("bookings")
+      .select("*")
+      .order("createdAt", { ascending: false });
+
+    if (userId) {
+      query = query.eq("userId", userId);
+    }
+
+    const { data: bookings, error } = await query;
+
+    if (error) {
+      throw error;
+    }
 
     return NextResponse.json({ bookings });
   } catch (error) {
@@ -104,38 +84,24 @@ export async function POST(request) {
       );
     }
 
-    const booking = await prisma.booking.create({
-      data: {
-        userId,
-        eventId,
-        tickets: parseInt(tickets),
-        totalAmount: parseFloat(totalAmount),
-        paymentMethod,
-        status: "CONFIRMED", // For now, we'll auto-confirm bookings
-      },
-      include: {
-        event: {
-          select: {
-            id: true,
-            title: true,
-            description: true,
-            date: true,
-            time: true,
-            location: true,
-            venue: true,
-            imageUrl: true,
-            organizerName: true,
-          },
+    const { data: booking, error: bookingError } = await supabase
+      .from("bookings")
+      .insert([
+        {
+          userId,
+          eventId,
+          tickets: parseInt(tickets),
+          totalAmount: parseFloat(totalAmount),
+          paymentMethod,
+          status: "CONFIRMED", // For now, we'll auto-confirm bookings
         },
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-      },
-    });
+      ])
+      .select("*")
+      .single();
+
+    if (bookingError) {
+      throw bookingError;
+    }
 
     // Send ticket email (don't wait for it to avoid blocking response)
     // Wrap in try-catch so booking still succeeds even if email fails

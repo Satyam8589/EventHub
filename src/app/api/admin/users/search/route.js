@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { supabase } from "@/lib/supabase";
 
 // GET /api/admin/users/search?q=search_term - Search users for admin assignment
 export async function GET(request) {

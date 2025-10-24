@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { prisma } from "@/lib/prisma";
+import { supabase } from "@/lib/supabase";
 import { sendTicketEmail } from "@/lib/email";
 
 // Initialize Gemini AI
@@ -30,15 +30,23 @@ export async function POST(request) {
     console.log("💾 Attempting to save to database...");
 
     // Save contact message to database
-    const contactMessage = await prisma.contactMessage.create({
-      data: {
-        name,
-        email,
-        subject,
-        message,
-        status: "NEW",
-      },
-    });
+    const { data: contactMessage, error: createError } = await supabase
+      .from("contact_messages")
+      .insert([
+        {
+          name,
+          email,
+          subject,
+          message,
+          status: "NEW",
+        },
+      ])
+      .select()
+      .single();
+
+    if (createError) {
+      throw createError;
+    }
 
     console.log("✅ Message saved to database:", contactMessage.id);
 
@@ -74,13 +82,17 @@ Keep the tone professional but friendly. Do not make promises we can't keep. Foc
         responseGenerated = true;
 
         // Update the contact message with AI response
-        await prisma.contactMessage.update({
-          where: { id: contactMessage.id },
-          data: {
+        const { error: updateError } = await supabase
+          .from("contact_messages")
+          .update({
             aiResponse,
-            respondedAt: new Date(),
-          },
-        });
+            respondedAt: new Date().toISOString(),
+          })
+          .eq("id", contactMessage.id);
+
+        if (updateError) {
+          console.error("Error updating contact message:", updateError);
+        }
 
         console.log(
           "✅ AI response generated for contact message:",
@@ -220,12 +232,20 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status");
 
-    const messages = await prisma.contactMessage.findMany({
-      where: status ? { status } : undefined,
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
+    let query = supabase
+      .from("contact_messages")
+      .select("*")
+      .order("createdAt", { ascending: false });
+
+    if (status) {
+      query = query.eq("status", status);
+    }
+
+    const { data: messages, error } = await query;
+
+    if (error) {
+      throw error;
+    }
 
     return NextResponse.json({ messages });
   } catch (error) {

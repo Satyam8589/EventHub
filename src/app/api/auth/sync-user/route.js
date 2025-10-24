@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { supabase } from "@/lib/supabase";
 
 // POST /api/auth/sync-user - Sync Firebase user with our database
 export async function POST(request) {
@@ -19,34 +19,54 @@ export async function POST(request) {
     console.log("Syncing user:", uid, email);
 
     // Check if user already exists in our database
-    let user = await prisma.user.findFirst({
-      where: {
-        OR: [{ id: uid }, { email: email }],
-      },
-    });
+    const { data: existingUsers, error: findError } = await supabase
+      .from("users")
+      .select("*")
+      .or(`id.eq.${uid},email.eq.${email}`);
+
+    if (findError) {
+      throw findError;
+    }
+
+    let user = existingUsers?.[0];
 
     if (user) {
       // Update existing user (preserve existing role)
-      user = await prisma.user.update({
-        where: { id: user.id },
-        data: {
+      const { data: updatedUser, error: updateError } = await supabase
+        .from("users")
+        .update({
           name: name || user.name,
           avatar: avatar || user.avatar,
-          // Don't update role here - preserve existing role from database
-        },
-      });
+        })
+        .eq("id", user.id)
+        .select()
+        .single();
+
+      if (updateError) {
+        throw updateError;
+      }
+      user = updatedUser;
       console.log("Updated existing user");
     } else {
       // Create new user
-      user = await prisma.user.create({
-        data: {
-          id: uid, // Use Firebase UID as our database ID
-          email,
-          name: name || email.split("@")[0],
-          avatar,
-          role: "ATTENDEE",
-        },
-      });
+      const { data: newUser, error: createError } = await supabase
+        .from("users")
+        .insert([
+          {
+            id: uid, // Use Firebase UID as our database ID
+            email,
+            name: name || email.split("@")[0],
+            avatar,
+            role: "ATTENDEE",
+          },
+        ])
+        .select()
+        .single();
+
+      if (createError) {
+        throw createError;
+      }
+      user = newUser;
       console.log("Created new user");
     }
 
