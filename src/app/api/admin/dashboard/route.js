@@ -3,21 +3,32 @@ import { supabase } from "@/lib/supabase";
 
 export async function GET(request) {
   try {
+    console.log("=== ADMIN DASHBOARD API CALLED ===");
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get("userId");
+    console.log("Dashboard requested by userId:", userId);
 
     if (!userId) {
+      console.log("ERROR: No user ID provided");
       return NextResponse.json({ error: "User ID required" }, { status: 400 });
     }
 
     // Get user and check admin role
-    const { data: user } = await supabase
+    console.log("Fetching user data for userId:", userId);
+    const { data: user, error: userError } = await supabase
       .from("users")
       .select("*")
       .eq("id", userId)
       .single();
 
+    if (userError) {
+      console.log("ERROR fetching user:", userError);
+    }
+    
+    console.log("User found:", user ? `${user.name} (${user.role})` : "No user");
+
     if (!user || (user.role !== "SUPER_ADMIN" && user.role !== "EVENT_ADMIN")) {
+      console.log("UNAUTHORIZED: User not found or invalid role");
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
@@ -34,6 +45,8 @@ export async function GET(request) {
 
       if (eventsError) {
         console.error("Error fetching events:", eventsError);
+      } else {
+        console.log("Dashboard events fetched:", events?.length || 0, "events");
       }
 
       const { data: bookings, error: bookingsError } = await supabase
@@ -42,6 +55,8 @@ export async function GET(request) {
 
       if (bookingsError) {
         console.error("Error fetching bookings:", bookingsError);
+      } else {
+        console.log("Dashboard bookings fetched:", bookings?.length || 0, "bookings");
       }
 
       // Calculate stats

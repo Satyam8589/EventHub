@@ -528,7 +528,9 @@ export default function TicketModal({ booking, isOpen, onClose }) {
             <div>
               <h2 className="text-lg font-bold">EventHub E-Ticket</h2>
               {/* Hide download button if ticket is verified */}
-              {!(booking.paymentId && booking.paymentId.startsWith("SCANNED_")) ? (
+              {!(
+                booking.paymentId && booking.paymentId.startsWith("SCANNED_")
+              ) ? (
                 <button
                   onClick={handleDownload}
                   disabled={isDownloading}
@@ -575,7 +577,9 @@ export default function TicketModal({ booking, isOpen, onClose }) {
                   )}
                 </button>
               ) : (
-                <span className="text-xs text-green-300">✓ Ticket Verified</span>
+                <span className="text-xs text-green-300">
+                  ✓ Ticket Verified
+                </span>
               )}
             </div>
           </div>

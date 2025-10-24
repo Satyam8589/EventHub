@@ -367,7 +367,7 @@ export async function generateTicketImage(booking, event, user) {
       ctx.fillStyle = "#064e3b"; // darker green
       ctx.font = "16px Arial";
       ctx.fillText("TICKET VERIFIED ✓", 450, yPosition + 140);
-      
+
       ctx.fillStyle = "#064e3b";
       ctx.font = "14px Arial";
       ctx.fillText(
@@ -377,7 +377,7 @@ export async function generateTicketImage(booking, event, user) {
         450,
         yPosition + 165
       );
-      
+
       // Add attendee details
       ctx.fillStyle = "#047857";
       ctx.font = "12px Arial";

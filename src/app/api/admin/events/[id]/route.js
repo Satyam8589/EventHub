@@ -101,16 +101,21 @@ export async function PUT(request, { params }) {
 
     if (updateError) {
       throw updateError;
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-        discounts: true,
-      },
-    });
+    }
 
-    return NextResponse.json({ event: updatedEvent });
+    // Return the updated event with enriched data
+    const { data: organizer } = await supabase
+      .from("users")
+      .select("id, name, email")
+      .eq("id", updatedEvent.organizerId)
+      .single();
+
+    const enrichedUpdatedEvent = {
+      ...updatedEvent,
+      organizer: organizer || null,
+    };
+
+    return NextResponse.json({ event: enrichedUpdatedEvent });
   } catch (error) {
     console.error("Error updating event:", error);
     return NextResponse.json(

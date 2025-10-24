@@ -23,10 +23,7 @@ export async function GET(request) {
 
     if (error) {
       throw error;
-        createdAt: "desc",
-      },
-      take: 50, // Limit to 50 most recent bookings
-    });
+    }
 
     return NextResponse.json({
       success: true,

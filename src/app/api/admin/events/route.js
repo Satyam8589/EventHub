@@ -4,43 +4,57 @@ import { supabase } from "@/lib/supabase";
 // GET /api/admin/events - Get events for admin
 export async function GET(request) {
   try {
+    console.log("=== ADMIN EVENTS API CALLED ===");
     const { searchParams } = new URL(request.url);
     const adminUserId = searchParams.get("adminUserId");
+    console.log("Admin User ID:", adminUserId);
 
     let events;
 
     if (adminUserId) {
       // Get user to check their role
-      const { data: user } = await supabase
+      console.log("Fetching user role for:", adminUserId);
+      const { data: user, error: userError } = await supabase
         .from("users")
         .select("role")
         .eq("id", adminUserId)
         .single();
 
+      console.log("User role query result:", { user, error: userError });
+
       if (user?.role === "EVENT_ADMIN") {
         // Event Admin - get only events they created
-        const { data: adminEvents } = await supabase
+        console.log("Fetching events for EVENT_ADMIN:", adminUserId);
+        const { data: adminEvents, error: eventsError } = await supabase
           .from("events")
           .select("*")
           .eq("organizerId", adminUserId);
 
+        console.log("EVENT_ADMIN events result:", { adminEvents, error: eventsError });
         events = adminEvents || [];
       } else {
         // Super Admin - get all events
-        const { data: allEvents } = await supabase.from("events").select("*");
+        console.log("Fetching all events for SUPER_ADMIN");
+        const { data: allEvents, error: allEventsError } = await supabase
+          .from("events")
+          .select("*");
 
+        console.log("SUPER_ADMIN events result:", { allEvents, error: allEventsError });
         events = allEvents || [];
       }
     } else {
       // No admin user ID provided - get all events
-      const { data: allEvents } = await supabase
+      console.log("No admin user ID provided - fetching all events");
+      const { data: allEvents, error: allEventsError } = await supabase
         .from("events")
         .select("*")
         .order("createdAt", { ascending: false });
 
+      console.log("All events result:", { allEvents, error: allEventsError });
       events = allEvents || [];
     }
 
+    console.log("Final events count:", events.length);
     return NextResponse.json({ events });
   } catch (error) {
     console.error("Error fetching admin events:", error);

@@ -12,11 +12,8 @@ export async function GET() {
         email,
         role,
         createdAt
-      `);
-      orderBy: {
-        createdAt: "desc",
-      },
-      `);
+      `)
+      .order("createdAt", { ascending: false });
 
     if (error) {
       throw error;
