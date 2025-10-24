@@ -172,6 +172,7 @@ export async function POST(request) {
       .from("events")
       .insert([
         {
+          id: crypto.randomUUID(), // Generate unique ID
           title,
           description,
           category,
@@ -187,6 +188,8 @@ export async function POST(request) {
           organizerEmail,
           organizerPhone,
           featured: featured || false,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
         },
       ])
       .select("*")

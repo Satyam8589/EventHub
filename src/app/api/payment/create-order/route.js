@@ -132,7 +132,12 @@ export async function POST(request) {
       if (userDetails.phone) updateData.phone = userDetails.phone;
       updateData.updatedAt = new Date().toISOString();
 
-      console.log("🔄 Updating user profile with:", updateData, "for userId:", userId);
+      console.log(
+        "🔄 Updating user profile with:",
+        updateData,
+        "for userId:",
+        userId
+      );
 
       const { error: userUpdateError } = await supabase
         .from("users")
