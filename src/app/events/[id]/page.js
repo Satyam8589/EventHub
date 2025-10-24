@@ -21,7 +21,17 @@ export default function Page({ params }) {
   useEffect(() => {
     if (!p?.id) return;
 
-    fetch(`/api/events/${p.id}`)
+    console.log("Fetching event details for ID:", p.id);
+    
+    // Add cache buster to force fresh data
+    const cacheBuster = Date.now();
+    
+    fetch(`/api/events/${p.id}?_=${cacheBuster}`, {
+      cache: 'no-store',
+      headers: {
+        'Cache-Control': 'no-cache',
+      },
+    })
       .then((res) => {
         if (!res.ok) throw new Error("Not found");
         return res.json();
@@ -32,6 +42,8 @@ export default function Page({ params }) {
           title: data.event?.title,
           imageUrl: data.event?.imageUrl,
           gallery: data.event?.gallery,
+          bookingsCount: data.event?._count?.bookings,
+          capacity: data.event?.capacity,
         });
         setEvent(data.event);
         setLoading(false);
