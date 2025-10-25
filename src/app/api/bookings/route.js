@@ -50,7 +50,7 @@ export async function GET(request) {
       console.log(
         "Check: 1) userId exists in database, 2) bookings exist for this user, 3) status matches filter"
       );
-      
+
       // Return empty array if no bookings found
       return NextResponse.json(
         { bookings: [] },
@@ -122,12 +122,12 @@ export async function GET(request) {
     console.error("Error name:", error?.name);
     console.error("Error message:", error?.message);
     console.error("Error stack:", error?.stack);
-    
+
     return NextResponse.json(
-      { 
+      {
         error: "Failed to fetch bookings",
         details: error?.message || "Unknown error",
-        bookings: [] // Return empty array to prevent frontend crash
+        bookings: [], // Return empty array to prevent frontend crash
       },
       { status: 500 }
     );
@@ -213,10 +213,14 @@ export async function POST(request) {
 
     // Update user profile with any new details provided during booking
     console.log("📝 User Details from booking form:", userDetails);
-    if (userDetails && (userDetails.name || userDetails.phone)) {
+    if (
+      userDetails &&
+      (userDetails.name || userDetails.phone || userDetails.phoneNumber)
+    ) {
       const updateData = {};
       if (userDetails.name) updateData.name = userDetails.name;
       if (userDetails.phone) updateData.phone = userDetails.phone;
+      if (userDetails.phoneNumber) updateData.phone = userDetails.phoneNumber; // Handle frontend phoneNumber field
       updateData.updatedAt = new Date().toISOString();
 
       console.log(

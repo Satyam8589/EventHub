@@ -135,10 +135,14 @@ export async function POST(request) {
     console.log("Booking ID:", booking.id);
 
     // Update user profile with any new details provided during booking
-    if (userDetails && (userDetails.name || userDetails.phone)) {
+    if (
+      userDetails &&
+      (userDetails.name || userDetails.phone || userDetails.phoneNumber)
+    ) {
       const updateData = {};
       if (userDetails.name) updateData.name = userDetails.name;
       if (userDetails.phone) updateData.phone = userDetails.phone;
+      if (userDetails.phoneNumber) updateData.phone = userDetails.phoneNumber; // Handle frontend phoneNumber field
       updateData.updatedAt = new Date().toISOString();
 
       console.log(
