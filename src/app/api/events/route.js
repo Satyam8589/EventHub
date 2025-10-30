@@ -185,33 +185,7 @@ export async function POST(request) {
       );
     }
 
-    // Check if this organizer is already assigned to another event
-    console.log("Checking if organizer already has an event:", organizerId);
-    const { data: existingEvents, error: checkError } = await supabase
-      .from("events")
-      .select("id, title, organizerId")
-      .eq("organizerId", organizerId);
-
-    if (checkError) {
-      console.error("Error checking existing events:", checkError);
-      throw checkError;
-    }
-
-    if (existingEvents && existingEvents.length > 0) {
-      console.log("Organizer already assigned to events:", existingEvents);
-      return NextResponse.json(
-        {
-          error: "This organizer is already assigned to another event",
-          details: `Organizer is already managing: ${existingEvents
-            .map((e) => e.title)
-            .join(", ")}`,
-          existingEvents: existingEvents,
-        },
-        { status: 409 } // 409 Conflict
-      );
-    }
-
-    console.log("Organizer is available for assignment");
+    // Allow organizer (admin) to post multiple events: removed single-event restriction
 
     // Handle image - use provided URL, upload to Cloudinary, or use default
     let imageUrl =
