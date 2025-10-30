@@ -14,7 +14,7 @@ export async function GET() {
       .from("events")
       .select("*")
       .order("featured", { ascending: false })
-      .order("date", { ascending: true });
+      .order("date", { ascending: false });
 
     if (error) {
       console.error("Supabase query error:", error);
