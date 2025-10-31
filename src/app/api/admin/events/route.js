@@ -29,8 +29,10 @@ export async function GET(request) {
         // First get the event assignments
         const { data: assignments, error: assignmentError } = await supabase
           .from("event_admins")
-          .select("event_id")
+          .select("event_id, user_id")
           .eq("user_id", adminUserId);
+
+        console.log("event_admins assignments for user:", assignments);
 
         if (assignmentError) {
           console.error("Error fetching assigned events:", assignmentError);
@@ -41,6 +43,7 @@ export async function GET(request) {
         } else {
           // Get the actual events
           const eventIds = assignments.map((a) => a.event_id);
+          console.log("EVENT_ADMIN eventIds:", eventIds);
           const { data: adminEvents, error: eventsError } = await supabase
             .from("events")
             .select("*")

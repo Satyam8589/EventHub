@@ -40,9 +40,17 @@ export default function AdminEvents() {
             ? "/api/admin/events"
             : `/api/admin/events?adminUserId=${adminUserId}`;
 
+        // Debug: print adminUserId and endpoint
+        if (user.role === "EVENT_ADMIN") {
+          console.log("[DEBUG] EVENT_ADMIN adminUserId:", adminUserId);
+          console.log("[DEBUG] Fetching events from endpoint:", endpoint);
+        }
+
         const response = await fetch(endpoint);
         if (response.ok) {
           const data = await response.json();
+          // Debug: always print events received from API
+          console.log("[DEBUG] Events received from API:", data.events);
           setEvents(data.events || []);
         }
       } catch (error) {

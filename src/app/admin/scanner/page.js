@@ -35,8 +35,11 @@ export default function TicketScanner() {
   const fetchAdminEvents = async () => {
     try {
       setLoading(true);
-      // Get events where user is admin
-      const response = await fetch(`/api/admin/events?adminId=${user.uid}`);
+      // Use dbUser.id for EVENT_ADMIN, fallback to user.id or user.uid
+      const adminUserId = user.dbUser?.id || user.id || user.uid;
+      const response = await fetch(
+        `/api/admin/events?adminUserId=${adminUserId}`
+      );
       if (!response.ok) throw new Error("Failed to fetch events");
 
       const data = await response.json();
