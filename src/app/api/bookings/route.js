@@ -1,6 +1,31 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 
+// Import email/ticket functions with safe require (these may rely on native modules)
+let sendTicketEmail, generateBookingEmailHTML, generateTicketImage;
+try {
+  const emailFunctions = require("@/lib/email");
+  sendTicketEmail = emailFunctions.sendTicketEmail;
+  generateBookingEmailHTML = emailFunctions.generateBookingEmailHTML;
+  console.log("✅ Email functions loaded for bookings route");
+} catch (e) {
+  console.error(
+    "⚠️ Email functions not available in bookings route:",
+    e?.message
+  );
+}
+
+try {
+  const ticketFunctions = require("@/lib/generateTicketImage");
+  generateTicketImage = ticketFunctions.generateTicketImage;
+  console.log("✅ Ticket generation function loaded for bookings route");
+} catch (e) {
+  console.error(
+    "⚠️ Ticket generation not available in bookings route:",
+    e?.message
+  );
+}
+
 // GET /api/bookings - Get all bookings (with optional user filter)
 export async function GET(request) {
   try {
@@ -266,6 +291,22 @@ export async function POST(request) {
       setImmediate(async () => {
         try {
           console.log("Sending ticket email to:", user.email);
+
+          if (
+            !generateTicketImage ||
+            !generateBookingEmailHTML ||
+            !sendTicketEmail
+          ) {
+            console.warn(
+              "⚠️ Email/ticket functions not available - skipping email send",
+              {
+                generateTicketImage: !!generateTicketImage,
+                generateBookingEmailHTML: !!generateBookingEmailHTML,
+                sendTicketEmail: !!sendTicketEmail,
+              }
+            );
+            return;
+          }
 
           // Generate ticket image
           const ticketImageBuffer = await generateTicketImage(
