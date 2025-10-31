@@ -30,10 +30,15 @@ export default function AdminEvents() {
       if (!user) return;
 
       try {
+        // Use user.id (from database) for EVENT_ADMIN, not user.uid (firebase)
+        const adminUserId =
+          user.role === "EVENT_ADMIN"
+            ? user.dbUser?.id || user.id || user.uid
+            : undefined;
         const endpoint =
           user.role === "SUPER_ADMIN"
             ? "/api/admin/events"
-            : `/api/admin/events?adminUserId=${user.uid}`;
+            : `/api/admin/events?adminUserId=${adminUserId}`;
 
         const response = await fetch(endpoint);
         if (response.ok) {
