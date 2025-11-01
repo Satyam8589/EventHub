@@ -17,6 +17,7 @@ export default function CreateEvent() {
     description: "",
     category: "CONFERENCE",
     date: "",
+    endDate: "",
     time: "",
     location: "",
     venue: "",
@@ -84,12 +85,18 @@ export default function CreateEvent() {
         `${formData.date}T${formData.time}`
       ).toISOString();
 
+      // Combine end date and time (use same time as start if end date is provided)
+      const eventEndDateTime = formData.endDate
+        ? new Date(`${formData.endDate}T${formData.time}`).toISOString()
+        : null;
+
       // Prepare data for API
       const eventData = {
         title: formData.title,
         description: formData.description,
         category: formData.category,
         date: eventDateTime,
+        endDate: eventEndDateTime,
         location: formData.location,
         venue: formData.venue,
         maxAttendees: parseInt(formData.maxAttendees),
@@ -284,24 +291,6 @@ export default function CreateEvent() {
 
               <div className="space-y-2">
                 <label className="block text-white font-medium">
-                  Event Date *
-                </label>
-                <input
-                  type="date"
-                  name="date"
-                  value={formData.date}
-                  onChange={handleInputChange}
-                  required
-                  min={new Date().toISOString().split("T")[0]}
-                  className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-xl text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                />
-              </div>
-            </div>
-
-            {/* Time and Max Attendees Row */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <label className="block text-white font-medium">
                   Event Time *
                 </label>
                 <input
@@ -313,7 +302,45 @@ export default function CreateEvent() {
                   className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-xl text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                 />
               </div>
+            </div>
 
+            {/* Start Date and End Date Row */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label className="block text-white font-medium">
+                  Start Date *
+                </label>
+                <input
+                  type="date"
+                  name="date"
+                  value={formData.date}
+                  onChange={handleInputChange}
+                  required
+                  min={new Date().toISOString().split("T")[0]}
+                  className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-xl text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-white font-medium">
+                  End Date (Optional)
+                </label>
+                <input
+                  type="date"
+                  name="endDate"
+                  value={formData.endDate}
+                  onChange={handleInputChange}
+                  min={formData.date || new Date().toISOString().split("T")[0]}
+                  className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-xl text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                />
+                <p className="text-white/60 text-sm">
+                  Leave empty for single-day events
+                </p>
+              </div>
+            </div>
+
+            {/* Max Attendees and Ticket Price Row */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <label className="block text-white font-medium">
                   Max Attendees *

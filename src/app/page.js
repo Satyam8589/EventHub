@@ -73,31 +73,23 @@ export default function Home() {
 
         setEvents(allEvents);
 
-        // Filter featured events (max 3, actual featured events)
+        // Filter featured events (only actual featured events, no fallbacks)
         const featured = allEvents
           .filter((event) => event.featured === true)
           .slice(0, 3);
         console.log("Featured events:", featured.length);
 
-        // If less than 3 featured events, fill with latest non-featured events
+        setFeaturedEvents(featured);
+        console.log("Total featured events to display:", featured.length);
+
+        // For upcoming events, show latest non-featured events
         const nonFeatured = allEvents.filter(
           (event) => event.featured !== true
         );
-        const neededCount = Math.max(0, 3 - featured.length);
-        const additionalEvents = nonFeatured.slice(0, neededCount);
-
-        setFeaturedEvents([...featured, ...additionalEvents]);
-        console.log(
-          "Total featured events to display:",
-          [...featured, ...additionalEvents].length
-        );
-
-        // For upcoming events, show latest non-featured events (excluding those used in featured)
-        const remainingNonFeatured = nonFeatured.slice(neededCount);
-        setUpcomingEvents(remainingNonFeatured.slice(0, 3));
+        setUpcomingEvents(nonFeatured.slice(0, 3));
         console.log(
           "Upcoming events to display:",
-          remainingNonFeatured.slice(0, 3).length
+          nonFeatured.slice(0, 3).length
         );
       } catch (error) {
         console.error("Error fetching events:", error);
@@ -548,7 +540,6 @@ export default function Home() {
                   <EventCard
                     event={{
                       ...event,
-                      date: formatEventDate(event.date, event.time),
                       registered: event._count?.bookings || 0,
                       featured: true,
                     }}
@@ -601,7 +592,6 @@ export default function Home() {
                   <EventCard
                     event={{
                       ...event,
-                      date: formatEventDate(event.date, event.time),
                       registered: event._count?.bookings || 0,
                       featured: false,
                     }}

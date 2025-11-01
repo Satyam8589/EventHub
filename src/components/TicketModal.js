@@ -6,13 +6,38 @@ export default function TicketModal({ booking, isOpen, onClose }) {
 
   if (!isOpen || !booking) return null;
 
-  const generateQRCode = (ticketId) => {
+  const generateQRCode = (ticketId, dayIndex = null) => {
+    // For multi-day events, append day index to create unique QR codes per day
+    const qrData =
+      dayIndex !== null ? `${ticketId}_DAY_${dayIndex + 1}` : ticketId;
     // Using a QR code API service - you can replace with your preferred service
     // Add timestamp to prevent caching issues
     return `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(
-      ticketId
+      qrData
     )}&t=${Date.now()}`;
   };
+
+  // Calculate event days for multi-day events
+  const getEventDays = () => {
+    if (!booking.event.endDate) {
+      return [new Date(booking.event.date)];
+    }
+
+    const startDate = new Date(booking.event.date);
+    const endDate = new Date(booking.event.endDate);
+    const days = [];
+
+    const currentDate = new Date(startDate);
+    while (currentDate <= endDate) {
+      days.push(new Date(currentDate));
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    return days;
+  };
+
+  const eventDays = getEventDays();
+  const isMultiDay = eventDays.length > 1;
 
   const handleDownload = async () => {
     setIsDownloading(true);
@@ -22,8 +47,9 @@ export default function TicketModal({ booking, isOpen, onClose }) {
       const ctx = canvas.getContext("2d");
 
       // Set canvas size for high quality (modern aspect ratio)
+      // Adjust height based on whether it's multi-day event
       canvas.width = 900;
-      canvas.height = 1400;
+      canvas.height = isMultiDay ? 1600 + eventDays.length * 100 : 1400;
 
       // Modern gradient background
       const bgGradient = ctx.createLinearGradient(0, 0, 900, 1400);
@@ -205,20 +231,46 @@ export default function TicketModal({ booking, isOpen, onClose }) {
 
       ctx.fillStyle = "#f1f5f9"; // slate-100
       ctx.font = "16px Arial";
-      const eventDate = new Date(booking.event.date).toLocaleDateString(
-        "en-US",
-        {
-          weekday: "short",
-          year: "numeric",
+
+      if (isMultiDay) {
+        // Multi-day event display
+        const startDate = new Date(booking.event.date);
+        const endDate = new Date(booking.event.endDate);
+        const startText = startDate.toLocaleDateString("en-US", {
           month: "short",
           day: "numeric",
+        });
+        const endText = endDate.toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        });
+        ctx.fillText(`${startText} - ${endText}`, 80, yPosition + 60);
+        if (booking.event.time) {
+          ctx.fillStyle = "#cbd5e1";
+          ctx.font = "15px Arial";
+          ctx.fillText(`⏰ Starts ${booking.event.time}`, 80, yPosition + 85);
         }
-      );
-      ctx.fillText(eventDate, 80, yPosition + 60);
-      if (booking.event.time) {
-        ctx.fillStyle = "#cbd5e1";
-        ctx.font = "15px Arial";
-        ctx.fillText(`⏰ ${booking.event.time}`, 80, yPosition + 85);
+        ctx.fillStyle = "#a78bfa";
+        ctx.font = "12px Arial";
+        ctx.fillText(`${eventDays.length} Days`, 80, yPosition + 105);
+      } else {
+        // Single day event display
+        const eventDate = new Date(booking.event.date).toLocaleDateString(
+          "en-US",
+          {
+            weekday: "short",
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+          }
+        );
+        ctx.fillText(eventDate, 80, yPosition + 60);
+        if (booking.event.time) {
+          ctx.fillStyle = "#cbd5e1";
+          ctx.font = "15px Arial";
+          ctx.fillText(`⏰ ${booking.event.time}`, 80, yPosition + 85);
+        }
       }
 
       // Location Card
@@ -350,65 +402,151 @@ export default function TicketModal({ booking, isOpen, onClose }) {
       ctx.fillStyle = "#a78bfa"; // violet-400
       ctx.font = "bold 20px Arial";
       ctx.textAlign = "center";
-      ctx.fillText("SCAN FOR ENTRY", 450, yPosition);
+      ctx.fillText(
+        isMultiDay ? "SCAN FOR ENTRY (BY DAY)" : "SCAN FOR ENTRY",
+        450,
+        yPosition
+      );
 
       ctx.fillStyle = "#94a3b8";
       ctx.font = "14px Arial";
       ctx.fillText(
-        "Present this QR code at the venue entrance",
+        isMultiDay
+          ? "Present the correct QR code for each day at venue entrance"
+          : "Present this QR code at the venue entrance",
         450,
         yPosition + 25
       );
       ctx.textAlign = "left";
 
-      // Load QR Code image
-      const qrImage = new Image();
-      qrImage.crossOrigin = "anonymous";
-      qrImage.src = generateQRCode(booking.id);
+      // Generate QR Codes - Multiple for multi-day, single for single-day
+      if (isMultiDay) {
+        // Multi-day event: Show multiple QR codes in a grid
+        const qrSize = 180;
+        const qrSpacing = 20;
+        const qrPerRow = 2;
+        const totalRows = Math.ceil(eventDays.length / qrPerRow);
+        const gridWidth = qrSize * qrPerRow + qrSpacing * (qrPerRow - 1);
+        const startX = (900 - gridWidth) / 2;
 
-      await new Promise((resolve, reject) => {
-        qrImage.onload = () => {
-          yPosition += 60;
+        yPosition += 60;
 
-          // Modern QR container with glow effect
-          ctx.fillStyle = "rgba(255, 255, 255, 0.05)";
-          ctx.fillRect(300, yPosition, 300, 300);
+        for (let i = 0; i < eventDays.length; i++) {
+          const row = Math.floor(i / qrPerRow);
+          const col = i % qrPerRow;
+          const qrX = startX + col * (qrSize + qrSpacing);
+          const qrY = yPosition + row * (qrSize + 80);
 
-          // Border with gradient
-          const qrBorderGradient = ctx.createLinearGradient(
-            300,
-            yPosition,
-            600,
-            yPosition + 300
-          );
-          qrBorderGradient.addColorStop(0, "#3b82f6");
-          qrBorderGradient.addColorStop(0.5, "#8b5cf6");
-          qrBorderGradient.addColorStop(1, "#3b82f6");
-          ctx.strokeStyle = qrBorderGradient;
-          ctx.lineWidth = 3;
-          ctx.strokeRect(300, yPosition, 300, 300);
-
-          // White background for QR
+          // Day label
           ctx.fillStyle = "#ffffff";
-          ctx.fillRect(320, yPosition + 20, 260, 260);
-
-          // Draw QR code
-          ctx.drawImage(qrImage, 320, yPosition + 20, 260, 260);
-
-          // QR Code ID below
-          ctx.fillStyle = "#64748b";
-          ctx.font = "12px monospace";
+          ctx.font = "bold 16px Arial";
           ctx.textAlign = "center";
-          ctx.fillText(booking.id, 450, yPosition + 330);
-          ctx.textAlign = "left";
+          ctx.fillText(`Day ${i + 1}`, qrX + qrSize / 2, qrY - 10);
 
-          resolve();
-        };
-        qrImage.onerror = reject;
-      });
+          ctx.fillStyle = "#94a3b8";
+          ctx.font = "12px Arial";
+          const dayText = eventDays[i].toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+          });
+          ctx.fillText(dayText, qrX + qrSize / 2, qrY + 5);
 
-      // Footer Instructions with modern card design
-      yPosition += 390;
+          // Load and draw QR code for this day
+          const qrImage = new Image();
+          qrImage.crossOrigin = "anonymous";
+          qrImage.src = generateQRCode(booking.id, i);
+
+          await new Promise((resolve, reject) => {
+            qrImage.onload = () => {
+              // QR container
+              ctx.fillStyle = "rgba(255, 255, 255, 0.05)";
+              ctx.fillRect(qrX, qrY + 15, qrSize, qrSize);
+
+              // Border
+              ctx.strokeStyle = "#3b82f6";
+              ctx.lineWidth = 2;
+              ctx.strokeRect(qrX, qrY + 15, qrSize, qrSize);
+
+              // White background for QR
+              ctx.fillStyle = "#ffffff";
+              ctx.fillRect(qrX + 10, qrY + 25, qrSize - 20, qrSize - 20);
+
+              // Draw QR code
+              ctx.drawImage(
+                qrImage,
+                qrX + 10,
+                qrY + 25,
+                qrSize - 20,
+                qrSize - 20
+              );
+
+              // QR Code ID below
+              ctx.fillStyle = "#64748b";
+              ctx.font = "10px monospace";
+              ctx.textAlign = "center";
+              ctx.fillText(
+                `${booking.id}_DAY_${i + 1}`,
+                qrX + qrSize / 2,
+                qrY + qrSize + 35
+              );
+
+              resolve();
+            };
+            qrImage.onerror = reject;
+          });
+        }
+
+        ctx.textAlign = "left";
+        yPosition += totalRows * (qrSize + 80) + 50;
+      } else {
+        // Single day event: Show one large QR code
+        const qrImage = new Image();
+        qrImage.crossOrigin = "anonymous";
+        qrImage.src = generateQRCode(booking.id);
+
+        await new Promise((resolve, reject) => {
+          qrImage.onload = () => {
+            yPosition += 60;
+
+            // Modern QR container with glow effect
+            ctx.fillStyle = "rgba(255, 255, 255, 0.05)";
+            ctx.fillRect(300, yPosition, 300, 300);
+
+            // Border with gradient
+            const qrBorderGradient = ctx.createLinearGradient(
+              300,
+              yPosition,
+              600,
+              yPosition + 300
+            );
+            qrBorderGradient.addColorStop(0, "#3b82f6");
+            qrBorderGradient.addColorStop(0.5, "#8b5cf6");
+            qrBorderGradient.addColorStop(1, "#3b82f6");
+            ctx.strokeStyle = qrBorderGradient;
+            ctx.lineWidth = 3;
+            ctx.strokeRect(300, yPosition, 300, 300);
+
+            // White background for QR
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(320, yPosition + 20, 260, 260);
+
+            // Draw QR code
+            ctx.drawImage(qrImage, 320, yPosition + 20, 260, 260);
+
+            // QR Code ID below
+            ctx.fillStyle = "#64748b";
+            ctx.font = "12px monospace";
+            ctx.textAlign = "center";
+            ctx.fillText(booking.id, 450, yPosition + 330);
+            ctx.textAlign = "left";
+
+            resolve();
+          };
+          qrImage.onerror = reject;
+        });
+
+        yPosition += 390;
+      }
 
       // Instructions card
       const instructionsGradient = ctx.createLinearGradient(
@@ -433,21 +571,39 @@ export default function TicketModal({ booking, isOpen, onClose }) {
 
       ctx.font = "15px Arial";
       ctx.fillStyle = "#dbeafe";
-      ctx.fillText(
-        "✓ Present this ticket (digital or printed) at venue entrance",
-        90,
-        yPosition + 65
-      );
-      ctx.fillText(
-        "✓ QR code will be scanned for verification",
-        90,
-        yPosition + 90
-      );
-      ctx.fillText(
-        "✓ Each ticket can only be scanned once - No re-entry",
-        90,
-        yPosition + 115
-      );
+      if (isMultiDay) {
+        ctx.fillText(
+          "✓ Present this ticket (digital or printed) at venue entrance",
+          90,
+          yPosition + 65
+        );
+        ctx.fillText(
+          "✓ Use the specific QR code for each day of the event",
+          90,
+          yPosition + 90
+        );
+        ctx.fillText(
+          "✓ Each QR code can only be scanned once per day",
+          90,
+          yPosition + 115
+        );
+      } else {
+        ctx.fillText(
+          "✓ Present this ticket (digital or printed) at venue entrance",
+          90,
+          yPosition + 65
+        );
+        ctx.fillText(
+          "✓ QR code will be scanned for verification",
+          90,
+          yPosition + 90
+        );
+        ctx.fillText(
+          "✓ Each ticket can only be scanned once - No re-entry",
+          90,
+          yPosition + 115
+        );
+      }
 
       // Modern footer
       yPosition += 170;
@@ -646,7 +802,7 @@ export default function TicketModal({ booking, isOpen, onClose }) {
             </div>
           </div>
 
-          {/* Event Details */}
+          {/* Date & Time */}
           <div className="grid grid-cols-1 gap-3">
             <div>
               <h4 className="font-semibold text-gray-800 mb-1 flex items-center gap-2">
@@ -664,13 +820,44 @@ export default function TicketModal({ booking, isOpen, onClose }) {
                 Date & Time
               </h4>
               <p className="text-gray-600 text-sm">
-                {new Date(booking.event.date).toLocaleDateString("en-US", {
-                  weekday: "long",
-                  year: "numeric",
-                  month: "long",
-                  day: "numeric",
-                })}
-                {booking.event.time && ` at ${booking.event.time}`}
+                {(() => {
+                  const startDate = new Date(booking.event.date);
+                  const endDate = booking.event.endDate
+                    ? new Date(booking.event.endDate)
+                    : null;
+
+                  if (
+                    endDate &&
+                    startDate.toDateString() !== endDate.toDateString()
+                  ) {
+                    // Multi-day event
+                    return `${startDate.toLocaleDateString("en-US", {
+                      weekday: "long",
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                    })} - ${endDate.toLocaleDateString("en-US", {
+                      weekday: "long",
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                    })}${
+                      booking.event.time
+                        ? ` • Starts at ${booking.event.time}`
+                        : ""
+                    }`;
+                  } else {
+                    // Single day event
+                    return `${startDate.toLocaleDateString("en-US", {
+                      weekday: "long",
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                    })}${
+                      booking.event.time ? ` at ${booking.event.time}` : ""
+                    }`;
+                  }
+                })()}
               </p>
             </div>
 
@@ -780,30 +967,104 @@ export default function TicketModal({ booking, isOpen, onClose }) {
                 </div>
               </div>
             ) : (
-              /* Show QR Code for Unverified Tickets */
+              /* Show QR Code(s) for Unverified Tickets */
               <>
                 <div className="flex items-center justify-between mb-3">
-                  <h4 className="font-semibold text-gray-800">QR Code</h4>
+                  <h4 className="font-semibold text-gray-800">
+                    {isMultiDay
+                      ? `QR Codes (${eventDays.length} Days)`
+                      : "QR Code"}
+                  </h4>
                   <p className="text-xs text-gray-500">
                     Scan at venue entrance
                   </p>
                 </div>
 
-                <div className="flex justify-center">
-                  <div className="bg-white p-4 rounded-lg border-2 border-gray-200">
-                    <img
-                      src={generateQRCode(booking.id)}
-                      alt="QR Code for ticket verification"
-                      className="w-40 h-40"
-                    />
+                {isMultiDay ? (
+                  /* Multiple QR Codes for Multi-day Events */
+                  <div className="space-y-4 max-h-64 overflow-y-auto">
+                    {eventDays.map((day, index) => (
+                      <div
+                        key={index}
+                        className="border border-gray-200 rounded-lg p-3"
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <h5 className="font-medium text-gray-700">
+                            Day {index + 1}
+                          </h5>
+                          <span className="text-xs text-gray-500">
+                            {day.toLocaleDateString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                            })}
+                          </span>
+                        </div>
+                        <div className="flex justify-center">
+                          <div className="bg-white p-2 rounded border">
+                            <img
+                              src={generateQRCode(booking.id, index)}
+                              alt={`QR Code for Day ${index + 1}`}
+                              className="w-24 h-24"
+                            />
+                          </div>
+                        </div>
+                        <div className="text-center mt-1">
+                          <p className="text-xs font-mono text-gray-600">
+                            {booking.id}_DAY_{index + 1}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                </div>
+                ) : (
+                  /* Single QR Code for Single-day Events */
+                  <>
+                    <div className="flex justify-center">
+                      <div className="bg-white p-4 rounded-lg border-2 border-gray-200">
+                        <img
+                          src={generateQRCode(booking.id)}
+                          alt="QR Code for ticket verification"
+                          className="w-40 h-40"
+                        />
+                      </div>
+                    </div>
 
-                <div className="text-center mt-3">
-                  <p className="text-sm font-mono text-gray-600">
-                    {booking.id}
-                  </p>
-                </div>
+                    <div className="text-center mt-3">
+                      <p className="text-sm font-mono text-gray-600">
+                        {booking.id}
+                      </p>
+                    </div>
+                  </>
+                )}
+
+                {/* Multi-day Instructions */}
+                {isMultiDay && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-4">
+                    <div className="flex items-start gap-2">
+                      <svg
+                        className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                      <div>
+                        <p className="text-xs font-medium text-blue-800 mb-1">
+                          Multi-Day Event
+                        </p>
+                        <p className="text-xs text-blue-700">
+                          Use the specific QR code for each day. Each code can
+                          only be scanned once per day.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </>
             )}
           </div>

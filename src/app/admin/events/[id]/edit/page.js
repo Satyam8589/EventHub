@@ -14,6 +14,7 @@ export default function EditEventPage() {
     description: "",
     category: "CONFERENCE",
     date: "",
+    endDate: "",
     time: "",
     location: "",
     venue: "",
@@ -76,11 +77,17 @@ export default function EditEventPage() {
 
       // Populate form data
       const eventDate = new Date(data.event.date);
+      // Handle both endDate and enddate (PostgreSQL lowercase)
+      const eventEndDate =
+        data.event.endDate || data.event.enddate
+          ? new Date(data.event.endDate || data.event.enddate)
+          : null;
       setFormData({
         title: data.event.title || "",
         description: data.event.description || "",
         category: data.event.category || "CONFERENCE",
         date: eventDate.toISOString().split("T")[0],
+        endDate: eventEndDate ? eventEndDate.toISOString().split("T")[0] : "",
         time: data.event.time || "",
         location: data.event.location || "",
         venue: data.event.venue || "",
@@ -233,9 +240,14 @@ export default function EditEventPage() {
         `${formData.date}T${formData.time}`
       ).toISOString();
 
+      const eventEndDateTime = formData.endDate
+        ? new Date(`${formData.endDate}T${formData.time}`).toISOString()
+        : null;
+
       const eventData = {
         ...formData,
         date: eventDateTime,
+        endDate: eventEndDateTime,
         capacity: parseInt(formData.capacity),
         price: parseFloat(formData.price),
         gallery: gallery,
@@ -427,10 +439,10 @@ export default function EditEventPage() {
               </div>
 
               {/* Date and Time */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="space-y-2">
                   <label className="block text-white font-medium">
-                    Event Date *
+                    Start Date *
                   </label>
                   <input
                     type="date"
@@ -439,6 +451,21 @@ export default function EditEventPage() {
                     onChange={handleInputChange}
                     required
                     className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-xl text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-white font-medium">
+                    End Date
+                  </label>
+                  <input
+                    type="date"
+                    name="endDate"
+                    value={formData.endDate}
+                    onChange={handleInputChange}
+                    min={formData.date}
+                    className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-xl text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    placeholder="Optional - for multi-day events"
                   />
                 </div>
 
@@ -537,27 +564,48 @@ export default function EditEventPage() {
             {/* Upload New Media */}
             <div className="mb-6">
               <label className="block text-white font-medium mb-2">
-                Add Images & Videos
+                Add Full Images & Videos
               </label>
-              <div className="flex items-center gap-4">
+              <div className="space-y-3">
                 <input
                   type="file"
                   multiple
                   accept="image/*,video/*"
                   onChange={handleMediaFileChange}
-                  className="flex-1 text-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700"
+                  className="w-full text-white file:mr-4 file:py-3 file:px-6 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 file:cursor-pointer"
                 />
+                <div className="text-sm text-white/60">
+                  📸 Supported image formats: JPG, PNG, GIF, WebP (max 10MB
+                  each)
+                  <br />
+                  🎬 Supported video formats: MP4, WebM, MOV (max 50MB each)
+                  <br />✨ Images will be optimized to full resolution, videos
+                  will maintain original quality
+                </div>
                 {newMediaFiles.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={uploadMediaFiles}
-                    disabled={uploadingMedia}
-                    className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors"
-                  >
-                    {uploadingMedia
-                      ? "Uploading..."
-                      : `Upload ${newMediaFiles.length} files`}
-                  </button>
+                  <div className="flex items-center justify-between bg-white/5 p-3 rounded-lg">
+                    <div className="text-sm text-white">
+                      Selected: {newMediaFiles.length} file(s) (
+                      {
+                        newMediaFiles.filter((f) => f.type.startsWith("image/"))
+                          .length
+                      }{" "}
+                      images,{" "}
+                      {
+                        newMediaFiles.filter((f) => f.type.startsWith("video/"))
+                          .length
+                      }{" "}
+                      videos)
+                    </div>
+                    <button
+                      type="button"
+                      onClick={uploadMediaFiles}
+                      disabled={uploadingMedia}
+                      className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-6 py-2 rounded-lg transition-colors font-medium"
+                    >
+                      {uploadingMedia ? "Uploading..." : `Upload All Files`}
+                    </button>
+                  </div>
                 )}
               </div>
             </div>
@@ -567,7 +615,7 @@ export default function EditEventPage() {
               {gallery.map((media) => (
                 <div key={media.id} className="relative group">
                   <div
-                    className="aspect-square bg-white/5 rounded-lg overflow-hidden cursor-pointer hover:scale-105 transition-transform"
+                    className="aspect-square bg-white/5 rounded-lg overflow-hidden cursor-pointer hover:scale-105 transition-transform border border-white/10"
                     onClick={() => setSelectedMedia(media)}
                   >
                     {media.type === "video" ? (
@@ -584,12 +632,24 @@ export default function EditEventPage() {
                       />
                     )}
 
-                    {/* Play icon for videos */}
+                    {/* Video indicator - always visible */}
                     {media.type === "video" && (
-                      <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                        <div className="w-12 h-12 bg-white/80 rounded-full flex items-center justify-center">
-                          <span className="text-black text-xl">▶</span>
+                      <>
+                        <div className="absolute top-2 left-2 bg-red-600 text-white px-2 py-1 rounded text-xs font-bold">
+                          🎬 VIDEO
                         </div>
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                          <div className="w-12 h-12 bg-white/80 rounded-full flex items-center justify-center">
+                            <span className="text-black text-xl">▶</span>
+                          </div>
+                        </div>
+                      </>
+                    )}
+
+                    {/* Image indicator - shows on hover */}
+                    {media.type === "image" && (
+                      <div className="absolute top-2 left-2 bg-blue-600 text-white px-2 py-1 rounded text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity">
+                        📷 IMAGE
                       </div>
                     )}
                   </div>

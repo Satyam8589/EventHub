@@ -4,11 +4,16 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import AdminLayout from "@/components/AdminLayout";
 import Link from "next/link";
+import EventAnalyticsModal from "@/components/EventAnalyticsModal";
 
 export default function AdminEvents() {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all"); // all, upcoming, ongoing, completed
+  const [analyticsModal, setAnalyticsModal] = useState({
+    isOpen: false,
+    eventId: null,
+  });
 
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
@@ -248,6 +253,17 @@ export default function AdminEvents() {
                         >
                           Edit
                         </Link>
+                        <button
+                          onClick={() =>
+                            setAnalyticsModal({
+                              isOpen: true,
+                              eventId: event.id,
+                            })
+                          }
+                          className="flex-1 bg-green-600/20 text-white px-3 py-2 rounded-lg text-xs font-medium border border-green-500/30 hover:bg-green-600/30 transition-all text-center"
+                        >
+                          Details
+                        </button>
                         <Link
                           href={`/admin/events/${event.id}/admins`}
                           className="flex-1 bg-purple-600/20 text-white px-3 py-2 rounded-lg text-xs font-medium border border-purple-500/30 hover:bg-purple-600/30 transition-all text-center"
@@ -278,6 +294,13 @@ export default function AdminEvents() {
           </div>
         )}
       </div>
+
+      {/* Analytics Modal */}
+      <EventAnalyticsModal
+        eventId={analyticsModal.eventId}
+        isOpen={analyticsModal.isOpen}
+        onClose={() => setAnalyticsModal({ isOpen: false, eventId: null })}
+      />
     </AdminLayout>
   );
 }

@@ -30,12 +30,41 @@ export async function GET() {
         status: e.status,
         featured: e.featured,
         date: e.date,
+        endDate: e.endDate,
+      }))
+    );
+
+    // Filter out expired events based on endDate
+    const now = new Date();
+    const activeEvents = events.filter((event) => {
+      // If event has endDate (either endDate or enddate), check if it hasn't passed
+      const endDateValue = event.endDate || event.enddate;
+      if (endDateValue) {
+        const endDate = new Date(endDateValue);
+        return endDate >= now;
+      }
+      // If no endDate, use the start date
+      const eventDate = new Date(event.date);
+      return eventDate >= now;
+    });
+
+    console.log(
+      `Active events: ${activeEvents.length} out of ${events.length} total`
+    );
+    console.log(
+      "Active events:",
+      activeEvents.map((e) => ({
+        id: e.id,
+        title: e.title,
+        featured: e.featured,
+        date: e.date,
+        endDate: e.endDate,
       }))
     );
 
     // Get booking counts for each event
     const eventsWithCounts = await Promise.all(
-      events.map(async (event) => {
+      activeEvents.map(async (event) => {
         try {
           // Get all bookings for this event to sum up total tickets
           const { data: bookings, error: bookingsError } = await supabase
@@ -148,6 +177,7 @@ export async function POST(request) {
       location,
       venue,
       date,
+      endDate,
       maxAttendees,
       ticketPrice,
       organizerId,
@@ -226,33 +256,66 @@ export async function POST(request) {
     const eventDate = new Date(date);
     const timeString = eventDate.toTimeString().slice(0, 5); // Format: "HH:MM"
 
-    const { data: event, error: createError } = await supabase
+    // Handle endDate if provided
+    const eventEndDate = endDate ? new Date(endDate) : null;
+
+    // Prepare event data
+    const eventData = {
+      id: crypto.randomUUID(), // Generate unique ID
+      title,
+      description,
+      category,
+      location,
+      venue,
+      date: eventDate.toISOString(),
+      time: timeString,
+      price: parseFloat(ticketPrice) || 0,
+      capacity: parseInt(maxAttendees) || 100,
+      imageUrl,
+      organizerId,
+      organizerName,
+      organizerEmail,
+      organizerPhone,
+      featured: featured || false,
+      status: "UPCOMING",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    // Add endDate if provided - use lowercase to match PostgreSQL column name
+    if (eventEndDate) {
+      eventData.enddate = eventEndDate.toISOString(); // Use lowercase 'enddate'
+    }
+
+    let { data: event, error: createError } = await supabase
       .from("events")
-      .insert([
-        {
-          id: crypto.randomUUID(), // Generate unique ID
-          title,
-          description,
-          category,
-          location,
-          venue,
-          date: eventDate.toISOString(),
-          time: timeString,
-          price: parseFloat(ticketPrice) || 0,
-          capacity: parseInt(maxAttendees) || 100,
-          imageUrl,
-          organizerId,
-          organizerName,
-          organizerEmail,
-          organizerPhone,
-          featured: featured || false,
-          status: "UPCOMING",
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-      ])
+      .insert([eventData])
       .select("*")
       .single();
+
+    // If endDate column doesn't exist, retry without endDate
+    if (
+      createError &&
+      createError.code === "PGRST204" &&
+      (createError.message.includes("endDate") ||
+        createError.message.includes("enddate"))
+    ) {
+      console.warn(
+        "endDate column doesn't exist in database, creating event without endDate"
+      );
+
+      // Remove endDate from event data
+      const { enddate: _, endDate: __, ...eventDataWithoutEndDate } = eventData;
+
+      const { data: retryEvent, error: retryCreateError } = await supabase
+        .from("events")
+        .insert([eventDataWithoutEndDate])
+        .select("*")
+        .single();
+
+      event = retryEvent;
+      createError = retryCreateError;
+    }
 
     if (createError) {
       throw createError;

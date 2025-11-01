@@ -1,31 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 
-// Import email/ticket functions with safe require (these may rely on native modules)
-let sendTicketEmail, generateBookingEmailHTML, generateTicketImage;
-try {
-  const emailFunctions = require("@/lib/email");
-  sendTicketEmail = emailFunctions.sendTicketEmail;
-  generateBookingEmailHTML = emailFunctions.generateBookingEmailHTML;
-  console.log("✅ Email functions loaded for bookings route");
-} catch (e) {
-  console.error(
-    "⚠️ Email functions not available in bookings route:",
-    e?.message
-  );
-}
-
-try {
-  const ticketFunctions = require("@/lib/generateTicketImage");
-  generateTicketImage = ticketFunctions.generateTicketImage;
-  console.log("✅ Ticket generation function loaded for bookings route");
-} catch (e) {
-  console.error(
-    "⚠️ Ticket generation not available in bookings route:",
-    e?.message
-  );
-}
-
 // GET /api/bookings - Get all bookings (with optional user filter)
 export async function GET(request) {
   try {
@@ -285,69 +260,53 @@ export async function POST(request) {
       });
     }
 
-    // Send ticket email (don't wait for it to avoid blocking response)
-    // Wrap in try-catch so booking still succeeds even if email fails
+    // Send ticket email after successful booking
     if (user && user.email) {
-      setImmediate(async () => {
-        try {
-          console.log("Sending ticket email to:", user.email);
+      try {
+        console.log("📧 Sending ticket email to:", user.email);
 
-          if (
-            !generateTicketImage ||
-            !generateBookingEmailHTML ||
-            !sendTicketEmail
-          ) {
-            console.warn(
-              "⚠️ Email/ticket functions not available - skipping email send",
-              {
-                generateTicketImage: !!generateTicketImage,
-                generateBookingEmailHTML: !!generateBookingEmailHTML,
-                sendTicketEmail: !!sendTicketEmail,
-              }
-            );
-            return;
-          }
+        // Import email utilities
+        const { sendTicketEmail, generateBookingEmailHTML } = await import(
+          "../../../../lib/email"
+        );
+        const { generateTicketImage } = await import(
+          "../../../../lib/generateTicketImage"
+        );
 
-          // Generate ticket image
-          const ticketImageBuffer = await generateTicketImage(
-            booking,
-            event,
-            user
+        // Generate ticket image
+        const ticketBuffer = await generateTicketImage(booking, event, user);
+
+        // Generate email HTML
+        const emailHTML = generateBookingEmailHTML(booking, event, user);
+
+        // Send email with ticket attachment
+        const emailResult = await sendTicketEmail({
+          to: user.email,
+          subject: `🎫 Your Ticket for ${event.title}`,
+          html: emailHTML,
+          attachments: [
+            {
+              filename: `ticket-${booking.id}.png`,
+              content: ticketBuffer,
+              contentType: "image/png",
+            },
+          ],
+        });
+
+        if (emailResult.success) {
+          console.log(
+            "✅ Ticket email sent successfully:",
+            emailResult.messageId
           );
-
-          // Generate email HTML
-          const emailHTML = generateBookingEmailHTML(booking, event, user);
-
-          // Send email with ticket attachment
-          const emailResult = await sendTicketEmail({
-            to: user.email,
-            subject: `🎉 Your Ticket for ${event.title} - Booking Confirmed!`,
-            html: emailHTML,
-            attachments: [
-              {
-                filename: `ticket-${booking.id}.png`,
-                content: ticketImageBuffer,
-                contentType: "image/png",
-              },
-            ],
-          });
-
-          if (emailResult.success) {
-            console.log(
-              "✅ Ticket email sent successfully:",
-              emailResult.messageId
-            );
-          } else {
-            console.warn(
-              "⚠️ Failed to send ticket email:",
-              emailResult.error || emailResult.message
-            );
-          }
-        } catch (emailError) {
-          console.error("❌ Error sending ticket email:", emailError);
-          // Don't throw - we don't want email errors to affect booking
+        } else {
+          console.error("❌ Failed to send ticket email:", emailResult.error);
         }
-      });
+      } catch (emailError) {
+        console.error("❌ Error sending ticket email:", emailError);
+        // Don't fail the booking if email fails
+      }
+    } else {
+      console.warn("⚠️ Cannot send email: User email not available");
     }
 
     return NextResponse.json({ booking }, { status: 201 });

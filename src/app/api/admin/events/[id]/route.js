@@ -62,6 +62,7 @@ export async function PUT(request, { params }) {
       description,
       category,
       date,
+      endDate,
       location,
       venue,
       capacity,
@@ -77,27 +78,68 @@ export async function PUT(request, { params }) {
     const eventDate = new Date(date);
     const timeString = eventDate.toTimeString().slice(0, 5); // Format: "HH:MM"
 
-    const { data: updatedEvent, error: updateError } = await supabase
+    // Handle endDate if provided
+    const eventEndDate = endDate ? new Date(endDate) : null;
+
+    // Try to update with endDate first, fall back without it if column doesn't exist
+    let updateData = {
+      title,
+      description,
+      category,
+      location,
+      venue,
+      date: eventDate.toISOString(),
+      time: timeString,
+      capacity: parseInt(capacity),
+      price: parseFloat(price),
+      featured: featured || false,
+      organizerName,
+      organizerEmail,
+      organizerPhone,
+      gallery: gallery || "",
+    };
+
+    // Add endDate if provided - use lowercase to match PostgreSQL column name
+    if (eventEndDate) {
+      updateData.enddate = eventEndDate.toISOString(); // Use lowercase 'enddate'
+    }
+
+    let { data: updatedEvent, error: updateError } = await supabase
       .from("events")
-      .update({
-        title,
-        description,
-        category,
-        location,
-        venue,
-        date: eventDate.toISOString(),
-        time: timeString,
-        capacity: parseInt(capacity),
-        price: parseFloat(price),
-        featured: featured || false,
-        organizerName,
-        organizerEmail,
-        organizerPhone,
-        gallery: gallery || "",
-      })
+      .update(updateData)
       .eq("id", id)
       .select()
       .single();
+
+    // If endDate column doesn't exist, retry without endDate
+    if (
+      updateError &&
+      updateError.code === "PGRST204" &&
+      (updateError.message.includes("endDate") ||
+        updateError.message.includes("enddate"))
+    ) {
+      console.warn(
+        "endDate column doesn't exist in database, updating without endDate"
+      );
+
+      // Remove endDate from update data
+      const {
+        enddate: _,
+        endDate: __,
+        ...updateDataWithoutEndDate
+      } = updateData;
+
+      const { data: retryUpdatedEvent, error: retryUpdateError } =
+        await supabase
+          .from("events")
+          .update(updateDataWithoutEndDate)
+          .eq("id", id)
+          .select()
+          .single();
+
+      updatedEvent = retryUpdatedEvent;
+      updateError = retryUpdateError;
+    }
 
     if (updateError) {
       throw updateError;

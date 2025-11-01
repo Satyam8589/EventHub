@@ -132,13 +132,28 @@ export default function EventsPage() {
           selectedCategory === "All Categories" ||
           event.category === selectedCategory;
 
-        const result = matchesSearch && matchesCategory;
+        // Check if event is not expired
+        const currentDate = new Date();
+        const isNotExpired = (() => {
+          if (event.endDate) {
+            // If event has an end date, check if it's not past the end date
+            return new Date(event.endDate) >= currentDate;
+          } else {
+            // If no end date, check if it's not past the event date
+            return new Date(event.date) >= currentDate;
+          }
+        })();
+
+        const result = matchesSearch && matchesCategory && isNotExpired;
 
         if (process.env.NODE_ENV === "development") {
           console.log("Event filter:", {
             title: event.title,
             matchesSearch,
             matchesCategory,
+            isNotExpired,
+            eventDate: event.date,
+            endDate: event.endDate,
             result,
           });
         }
@@ -581,7 +596,6 @@ export default function EventsPage() {
                 <EventCard
                   event={{
                     ...event,
-                    date: formatEventDate(event.date, event.time),
                     registered: event._count?.bookings || 0,
                   }}
                 />

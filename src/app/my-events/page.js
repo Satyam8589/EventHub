@@ -153,7 +153,7 @@ export default function MyEventsPage() {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
   }, [user]);
 
-  // Filter bookings by upcoming/past
+  // Filter bookings by upcoming/past with endDate support
   const filterBookings = (bookings, type) => {
     const now = new Date();
     console.log(`Filtering ${bookings.length} bookings for ${type} events`);
@@ -169,18 +169,30 @@ export default function MyEventsPage() {
         });
         return false; // Skip bookings without valid event data
       }
-      const eventDate = new Date(booking.event.date);
-      const isUpcoming = eventDate >= now;
+
+      // Use endDate if available, otherwise use start date
+      const eventEndDate = booking.event.endDate
+        ? new Date(booking.event.endDate)
+        : new Date(booking.event.date);
+
+      const eventStartDate = new Date(booking.event.date);
+
+      // For upcoming events: start date is in the future OR event is currently ongoing
+      // For past events: end date is in the past
+      const isUpcoming = eventEndDate >= now;
+      const isExpired = eventEndDate < now;
 
       console.log(`Booking ${booking.id}:`, {
         eventName: booking.event.name,
-        eventDate: booking.event.date,
+        eventStartDate: booking.event.date,
+        eventEndDate: booking.event.endDate,
         isUpcoming,
+        isExpired,
         typeFilter: type,
         included: type === "upcoming" ? isUpcoming : !isUpcoming,
       });
 
-      return type === "upcoming" ? eventDate >= now : eventDate < now;
+      return type === "upcoming" ? isUpcoming : !isUpcoming;
     });
 
     console.log(`Filtered result: ${filtered.length} ${type} bookings`);
@@ -555,15 +567,33 @@ export default function MyEventsPage() {
                         className="w-full h-full object-cover"
                       />
                       <div className="absolute top-2 left-2">
-                        <span
-                          className={`px-2 py-1 rounded-md text-xs font-medium ${
-                            activeTab === "upcoming"
-                              ? "bg-green-500/80 text-white"
-                              : "bg-gray-500/80 text-white"
-                          }`}
-                        >
-                          {activeTab === "upcoming" ? "Upcoming" : "Attended"}
-                        </span>
+                        {(() => {
+                          const now = new Date();
+                          const eventEndDate = booking.event.endDate
+                            ? new Date(booking.event.endDate)
+                            : new Date(booking.event.date);
+                          const isExpired = eventEndDate < now;
+
+                          if (activeTab === "past" && isExpired) {
+                            return (
+                              <span className="px-2 py-1 rounded-md text-xs font-medium bg-red-500/80 text-white">
+                                Expired
+                              </span>
+                            );
+                          } else if (activeTab === "past") {
+                            return (
+                              <span className="px-2 py-1 rounded-md text-xs font-medium bg-gray-500/80 text-white">
+                                Attended
+                              </span>
+                            );
+                          } else {
+                            return (
+                              <span className="px-2 py-1 rounded-md text-xs font-medium bg-green-500/80 text-white">
+                                Upcoming
+                              </span>
+                            );
+                          }
+                        })()}
                       </div>
                     </div>
 
@@ -577,10 +607,41 @@ export default function MyEventsPage() {
                         <div className="flex items-center gap-2 text-white/80">
                           <span className="text-blue-400">📅</span>
                           <span className="text-xs">
-                            {formatEventDate(
-                              booking.event.date,
-                              booking.event.time
-                            )}
+                            {(() => {
+                              const startDate = new Date(booking.event.date);
+                              const endDate = booking.event.endDate
+                                ? new Date(booking.event.endDate)
+                                : null;
+
+                              if (
+                                endDate &&
+                                startDate.toDateString() !==
+                                  endDate.toDateString()
+                              ) {
+                                // Multi-day event
+                                return `${startDate.toLocaleDateString(
+                                  "en-US",
+                                  {
+                                    month: "short",
+                                    day: "numeric",
+                                  }
+                                )} - ${endDate.toLocaleDateString("en-US", {
+                                  month: "short",
+                                  day: "numeric",
+                                  year: "numeric",
+                                })}${
+                                  booking.event.time
+                                    ? ` • ${booking.event.time}`
+                                    : ""
+                                }`;
+                              } else {
+                                // Single day event
+                                return formatEventDate(
+                                  booking.event.date,
+                                  booking.event.time
+                                );
+                              }
+                            })()}
                           </span>
                         </div>
                         <div className="flex items-center gap-2 text-white/80">

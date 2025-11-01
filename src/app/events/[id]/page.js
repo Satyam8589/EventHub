@@ -213,6 +213,17 @@ export default function Page({ params }) {
             transform: translateY(-20px) translateX(10px);
           }
         }
+        @keyframes shimmer {
+          0% {
+            transform: translateX(-100%);
+          }
+          100% {
+            transform: translateX(100%);
+          }
+        }
+        .animate-shimmer {
+          animation: shimmer 2s infinite;
+        }
       `}</style>
 
       {/* Professional Navigation */}
@@ -457,14 +468,31 @@ export default function Page({ params }) {
                             />
                           )}
 
-                          {/* Play button for videos */}
+                          {/* Video indicator - always visible for videos */}
                           {media.type === "video" && (
-                            <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <div className="w-12 h-12 bg-white/80 rounded-full flex items-center justify-center">
-                                <span className="text-black text-xl ml-1">
-                                  ▶
-                                </span>
+                            <>
+                              {/* Video badge in top-left corner */}
+                              <div className="absolute top-2 left-2 z-20 bg-red-600 text-white px-2 py-1 rounded-md text-xs font-bold flex items-center gap-1">
+                                <span>🎬</span>
+                                VIDEO
                               </div>
+
+                              {/* Play button for videos - shows on hover */}
+                              <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <div className="w-12 h-12 bg-white/80 rounded-full flex items-center justify-center">
+                                  <span className="text-black text-xl ml-1">
+                                    ▶
+                                  </span>
+                                </div>
+                              </div>
+                            </>
+                          )}
+
+                          {/* Image indicator for images */}
+                          {media.type === "image" && (
+                            <div className="absolute top-2 left-2 z-20 bg-blue-600 text-white px-2 py-1 rounded-md text-xs font-bold flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <span>📷</span>
+                              IMAGE
                             </div>
                           )}
 
@@ -504,58 +532,103 @@ export default function Page({ params }) {
           {/* Right Column - Sidebar */}
           <div className="lg:col-span-1 space-y-6">
             {/* Pricing Card */}
-            <div className="sticky top-28 backdrop-blur-xl bg-white/5 rounded-2xl p-6 border border-black/40 shadow-2xl">
-              <div className="text-center mb-6 pb-6 border-b border-white/10">
-                <div className="text-5xl font-bold text-white mb-2">
-                  ₹{(event.price || 499).toLocaleString("en-IN")}
-                </div>
-                <div className="text-sm text-gray-400">per ticket</div>
-              </div>
+            <div className="sticky top-28 backdrop-blur-xl bg-gradient-to-br from-white/10 to-white/5 rounded-3xl p-8 border border-white/20 shadow-2xl relative overflow-hidden">
+              {/* Decorative background elements */}
+              <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-full blur-2xl"></div>
+              <div className="absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-tr from-purple-500/20 to-pink-500/20 rounded-full blur-xl"></div>
 
-              {/* Availability Progress */}
-              <div className="mb-6">
-                <div className="flex justify-between items-center text-sm mb-3">
-                  <span className="text-gray-400">Availability</span>
-                  <span className="font-semibold text-white">
-                    {availableSpots} / {event.capacity || 1000}
-                  </span>
-                </div>
-                <div className="relative w-full h-2 bg-white/10 rounded-full overflow-hidden">
-                  <div
-                    className="absolute top-0 left-0 h-full bg-gradient-to-r from-blue-500 to-purple-500 rounded-full transition-all duration-1000"
-                    style={{
-                      width: `${Math.min(100, Math.max(5, bookedPercentage))}%`,
-                    }}
-                  >
-                    <div className="absolute inset-0 bg-white/20 animate-pulse"></div>
+              <div className="relative z-10">
+                <div className="text-center mb-8 pb-6 border-b border-white/20">
+                  <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-600/30 to-purple-600/30 border border-blue-500/30 mb-4">
+                    <span className="text-3xl">🎫</span>
+                  </div>
+                  <div className="text-6xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent mb-2">
+                    ₹{(event.price || 499).toLocaleString("en-IN")}
+                  </div>
+                  <div className="text-sm text-gray-300 font-medium">
+                    per ticket
                   </div>
                 </div>
-                <p className="text-xs text-gray-500 mt-2">
-                  {Math.round(bookedPercentage)}% filled
-                </p>
+
+                {/* Availability Progress */}
+                <div className="mb-8">
+                  <div className="flex justify-between items-center text-sm mb-4">
+                    <span className="text-gray-300 font-medium">
+                      Availability
+                    </span>
+                    <span className="font-bold text-white bg-white/10 px-3 py-1 rounded-full">
+                      {availableSpots} / {event.capacity || 1000}
+                    </span>
+                  </div>
+                  <div className="relative w-full h-3 bg-white/10 rounded-full overflow-hidden shadow-inner">
+                    <div
+                      className="absolute top-0 left-0 h-full bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-full transition-all duration-1000 shadow-lg"
+                      style={{
+                        width: `${Math.min(
+                          100,
+                          Math.max(5, bookedPercentage)
+                        )}%`,
+                      }}
+                    >
+                      <div className="absolute inset-0 bg-white/30 animate-pulse rounded-full"></div>
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer rounded-full"></div>
+                    </div>
+                  </div>
+                  <div className="flex justify-between items-center mt-3">
+                    <p className="text-xs text-gray-400">
+                      {Math.round(bookedPercentage)}% filled
+                    </p>
+                    <p className="text-xs text-green-400 font-medium">
+                      {availableSpots > 0
+                        ? `${availableSpots} spots left`
+                        : "Sold Out"}
+                    </p>
+                  </div>
+                </div>
+
+                {/* CTA Button */}
+                {user ? (
+                  <button
+                    onClick={() => setShowBookingModal(true)}
+                    className="w-full bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 text-white py-4 px-6 rounded-2xl font-bold text-lg hover:from-blue-700 hover:via-purple-700 hover:to-pink-700 transition-all duration-300 shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 hover:shadow-2xl hover:scale-[1.02] transform relative overflow-hidden group"
+                  >
+                    <span className="relative z-10 flex items-center justify-center gap-2">
+                      <span>🚀</span>
+                      Book Now
+                    </span>
+                    <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
+                  </button>
+                ) : (
+                  <Link
+                    href="/"
+                    className="w-full inline-block text-center bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 text-white py-4 px-6 rounded-2xl font-bold text-lg hover:from-blue-700 hover:via-purple-700 hover:to-pink-700 transition-all duration-300 shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 hover:shadow-2xl hover:scale-[1.02] transform relative overflow-hidden group"
+                  >
+                    <span className="relative z-10 flex items-center justify-center gap-2">
+                      <span>🔐</span>
+                      Sign In to Book
+                    </span>
+                    <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
+                  </Link>
+                )}
+
+                {/* Trust indicators */}
+                <div className="mt-6 pt-6 border-t border-white/10">
+                  <div className="flex items-center justify-center gap-6 text-xs text-gray-400">
+                    <div className="flex items-center gap-1">
+                      <span className="text-green-400">🔒</span>
+                      <span>Secure Payment</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className="text-blue-400">⚡</span>
+                      <span>Instant Booking</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className="text-purple-400">📱</span>
+                      <span>Mobile Tickets</span>
+                    </div>
+                  </div>
+                </div>
               </div>
-
-              {/* CTA Button */}
-              {user ? (
-                <button
-                  onClick={() => setShowBookingModal(true)}
-                  className="w-full bg-linear-to-r from-blue-600 to-purple-600 text-white py-4 rounded-xl font-semibold hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 hover:scale-[1.02] mb-3"
-                >
-                  Book Now
-                </button>
-              ) : (
-                <Link
-                  href="/"
-                  className="w-full inline-block text-center bg-linear-to-r from-blue-600 to-purple-600 text-white py-4 rounded-xl font-semibold hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 hover:scale-[1.02] mb-3"
-                >
-                  Sign In to Book
-                </Link>
-              )}
-
-              <p className="text-xs text-gray-400 text-center flex items-center justify-center gap-1">
-                <span>✓</span>
-                <span>Free cancellation until 24 hours before</span>
-              </p>
             </div>
 
             {/* Event Details Card */}
@@ -586,6 +659,32 @@ export default function Page({ params }) {
                   </div>
                 </div>
 
+                {(event.endDate || event.enddate) && (
+                  <div className="flex gap-4 p-4 rounded-xl bg-white/5 border border-white/10">
+                    <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-red-600/20 flex items-center justify-center text-2xl">
+                      🏁
+                    </div>
+                    <div>
+                      <div className="font-semibold text-white mb-1">
+                        Ending Date
+                      </div>
+                      <div className="text-sm text-gray-300">
+                        {new Date(
+                          event.endDate || event.enddate
+                        ).toLocaleDateString("en-US", {
+                          weekday: "long",
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                        })}
+                      </div>
+                      <div className="text-sm text-gray-400">
+                        {event.time || "09:00 AM"}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex gap-4 p-4 rounded-xl bg-white/5 border border-white/10">
                   <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-purple-600/20 flex items-center justify-center text-2xl">
                     📍
@@ -594,7 +693,6 @@ export default function Page({ params }) {
                     <div className="font-semibold text-white mb-1">
                       Location
                     </div>
-                    <div className="text-sm text-gray-300">Hall A & B</div>
                     <div className="text-sm text-gray-400">
                       {event.location || "Convention Center, San Francisco"}
                     </div>

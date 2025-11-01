@@ -40,7 +40,15 @@ export async function uploadToCloudinary(
         resource_type: resourceType,
         transformation:
           resourceType === "image"
-            ? [{ width: 1200, height: 800, crop: "fill", quality: "auto" }]
+            ? [
+                {
+                  width: 1920,
+                  height: 1080,
+                  crop: "limit", // Preserve aspect ratio, don't force dimensions
+                  quality: "auto:best", // High quality for full images
+                  fetch_format: "auto", // Automatically choose best format
+                },
+              ]
             : undefined,
         ...options,
       };

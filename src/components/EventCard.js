@@ -119,8 +119,18 @@ export default function EventCard({ event }) {
       {/* Gallery Indicator */}
       {event.gallery && event.gallery.length > 0 && (
         <div className="absolute bottom-3 right-3 z-10 bg-black/70 text-white px-2 py-1 rounded-md text-xs font-medium flex items-center gap-1">
-          <span>🖼️</span>
+          {/* Check if gallery contains videos */}
+          {event.gallery.some((item) => item.type === "video") ? (
+            <span>🎬</span>
+          ) : (
+            <span>🖼️</span>
+          )}
           {event.gallery.length}
+          {/* Show mixed icon if both images and videos exist */}
+          {event.gallery.some((item) => item.type === "video") &&
+            event.gallery.some((item) => item.type === "image") && (
+              <span className="ml-1">📷</span>
+            )}
         </div>
       )}
 
@@ -174,7 +184,27 @@ export default function EventCard({ event }) {
         <div className="space-y-2 mb-4 text-sm text-gray-600">
           <div className="flex items-center gap-2">
             <span className="text-gray-400">📅</span>
-            <span>{event.date}</span>
+            <span>
+              {event.date ? (
+                <>
+                  {new Date(event.date).toLocaleDateString()}
+                  {event.time && ` at ${event.time}`}
+                  {event.endDate && event.endDate !== event.date && (
+                    <span>
+                      {" "}
+                      - {new Date(event.endDate).toLocaleDateString()}
+                    </span>
+                  )}
+                </>
+              ) : (
+                "Date TBD"
+              )}
+            </span>
+            {event.endDate && new Date(event.endDate) < new Date() && (
+              <span className="px-2 py-1 bg-red-100 text-red-600 text-xs rounded-full ml-2">
+                Expired
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <span className="text-gray-400">📍</span>

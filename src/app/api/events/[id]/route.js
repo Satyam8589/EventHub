@@ -75,17 +75,53 @@ export async function PUT(request, { params }) {
     const { id } = await params;
     const body = await request.json();
 
-    const { data: event, error } = await supabase
+    // Prepare update data
+    const updateData = {
+      ...body,
+      price: body.price ? parseFloat(body.price) : undefined,
+      capacity: body.capacity ? parseInt(body.capacity) : undefined,
+      date: body.date ? new Date(body.date).toISOString() : undefined,
+    };
+
+    // Add endDate if provided - use lowercase to match PostgreSQL column name
+    if (body.endDate) {
+      updateData.enddate = new Date(body.endDate).toISOString(); // Use lowercase 'enddate'
+    }
+
+    let { data: event, error } = await supabase
       .from("events")
-      .update({
-        ...body,
-        price: body.price ? parseFloat(body.price) : undefined,
-        capacity: body.capacity ? parseInt(body.capacity) : undefined,
-        date: body.date ? new Date(body.date).toISOString() : undefined,
-      })
+      .update(updateData)
       .eq("id", id)
       .select("*")
       .single();
+
+    // If endDate column doesn't exist, retry without endDate
+    if (
+      error &&
+      error.code === "PGRST204" &&
+      (error.message.includes("endDate") || error.message.includes("enddate"))
+    ) {
+      console.warn(
+        "endDate column doesn't exist in database, updating without endDate"
+      );
+
+      // Remove endDate from update data
+      const {
+        enddate: _,
+        endDate: __,
+        ...updateDataWithoutEndDate
+      } = updateData;
+
+      const { data: retryEvent, error: retryError } = await supabase
+        .from("events")
+        .update(updateDataWithoutEndDate)
+        .eq("id", id)
+        .select("*")
+        .single();
+
+      event = retryEvent;
+      error = retryError;
+    }
 
     if (error) {
       throw error;
