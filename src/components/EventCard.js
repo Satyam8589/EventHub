@@ -95,59 +95,33 @@ export default function EventCard({ event }) {
 
   return (
     <div
-      className={`bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02] group relative ${
+      className={`bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 group relative ${
         event.featured
-          ? "ring-2 ring-amber-400/50 shadow-amber-500/20 shadow-xl"
+          ? "ring-2 ring-amber-400/60 shadow-amber-500/30 shadow-2xl"
           : ""
       }`}
     >
       {/* Featured Badge */}
       {event.featured && (
-        <div className="absolute top-2 right-2 z-20 bg-gradient-to-r from-amber-400 via-yellow-500 to-amber-600 text-white px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 shadow-lg border border-yellow-300/50 animate-pulse">
+        <div className="absolute top-3 right-3 z-20 bg-linear-to-r from-amber-400 via-yellow-500 to-amber-600 text-white px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 shadow-lg border border-yellow-300/50 animate-pulse">
           <span className="text-sm">⭐</span>
           <span className="tracking-wide">FEATURED</span>
         </div>
       )}
 
-      {/* Featured Golden Shimmer Overlay */}
-      {event.featured && (
-        <div className="absolute inset-0 z-10 pointer-events-none">
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-amber-200/10 to-transparent animate-shimmer"></div>
-        </div>
-      )}
-
-      {/* Gallery Indicator */}
-      {event.gallery && event.gallery.length > 0 && (
-        <div className="absolute bottom-3 right-3 z-10 bg-black/70 text-white px-2 py-1 rounded-md text-xs font-medium flex items-center gap-1">
-          {/* Check if gallery contains videos */}
-          {event.gallery.some((item) => item.type === "video") ? (
-            <span>🎬</span>
-          ) : (
-            <span>🖼️</span>
-          )}
-          {event.gallery.length}
-          {/* Show mixed icon if both images and videos exist */}
-          {event.gallery.some((item) => item.type === "video") &&
-            event.gallery.some((item) => item.type === "image") && (
-              <span className="ml-1">📷</span>
-            )}
-        </div>
-      )}
-
-      {/* Event Image */}
-      <div className="relative h-48 overflow-hidden">
+      {/* Event Image with Overlay */}
+      <div className="relative h-52 sm:h-56 overflow-hidden">
         {imageLoading && (
-          <div className="absolute inset-0 bg-gray-300 animate-pulse"></div>
+          <div className="absolute inset-0 bg-linear-to-br from-gray-200 to-gray-300 animate-pulse"></div>
         )}
         <img
           src={imageError ? getBackgroundImage(event.category) : imageUrl}
           alt={event.title}
-          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+          className="w-full h-full object-cover transition-all duration-700 group-hover:scale-110 group-hover:rotate-1"
           onError={(e) => {
             console.error("Image failed to load:", imageUrl);
             setImageError(true);
             setImageLoading(false);
-            // Prevent infinite loop by checking if already using fallback
             if (!imageError) {
               e.target.src = getBackgroundImage(event.category);
             }
@@ -159,102 +133,141 @@ export default function EventCard({ event }) {
             }
           }}
         />
-        {/* Dark overlay for better text readability */}
-        <div className="absolute inset-0 bg-black/40"></div>
+        {/* Gradient Overlay */}
+        <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/30 to-transparent"></div>
 
         {/* Category Badge */}
-        <div className="absolute top-3 left-3 bg-white/95 backdrop-blur-sm text-gray-800 px-2 py-1 rounded-md text-xs font-medium">
+        <div className="absolute top-3 left-3 bg-white/95 backdrop-blur-md text-gray-800 px-3 py-1.5 rounded-full text-xs font-semibold shadow-lg">
           {event.category}
+        </div>
+
+        {/* Gallery Indicator */}
+        {event.gallery && event.gallery.length > 0 && (
+          <div className="absolute bottom-3 left-3 bg-black/70 backdrop-blur-sm text-white px-2.5 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5 shadow-lg">
+            {event.gallery.some((item) => item.type === "video") ? (
+              <span>🎬</span>
+            ) : (
+              <span>🖼️</span>
+            )}
+            <span>{event.gallery.length}</span>
+          </div>
+        )}
+
+        {/* Event Title Overlay on Image */}
+        <div className="absolute bottom-0 left-0 right-0 p-4">
+          <h3 className="text-lg sm:text-xl font-bold text-white mb-1 line-clamp-2 drop-shadow-lg">
+            {event.title}
+          </h3>
         </div>
       </div>
 
       {/* Event Details */}
-      <div className="p-5">
-        {/* Title */}
-        <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-2">
-          {event.title}
-        </h3>
-
+      <div className="p-4 sm:p-5">
         {/* Description */}
-        <p className="text-gray-600 text-sm mb-4 line-clamp-2">
+        <p className="text-gray-600 text-sm mb-4 line-clamp-2 leading-relaxed">
           {event.description}
         </p>
 
-        {/* Date and Location */}
-        <div className="space-y-2 mb-4 text-sm text-gray-600">
-          <div className="flex items-center gap-2">
-            <span className="text-gray-400">📅</span>
-            <span>
-              {event.date ? (
-                <>
-                  {new Date(event.date).toLocaleDateString()}
-                  {event.time && ` at ${event.time}`}
-                  {event.endDate && event.endDate !== event.date && (
-                    <span>
-                      {" "}
-                      - {new Date(event.endDate).toLocaleDateString()}
-                    </span>
-                  )}
-                </>
-              ) : (
-                "Date TBD"
+        {/* Date and Location - Enhanced Design */}
+        <div className="space-y-2.5 mb-4">
+          <div className="flex items-start gap-2.5 text-sm">
+            <span className="text-blue-500 text-lg mt-0.5 shrink-0">📅</span>
+            <div className="flex-1 min-w-0">
+              <span className="text-gray-700 font-medium">
+                {event.date ? (
+                  <>
+                    {new Date(event.date).toLocaleDateString("en-US", {
+                      weekday: "short",
+                      month: "short",
+                      day: "numeric",
+                    })}
+                    {event.time && (
+                      <span className="text-gray-500 ml-1.5">
+                        • {event.time}
+                      </span>
+                    )}
+                    {event.endDate && event.endDate !== event.date && (
+                      <span className="block text-xs text-gray-500 mt-0.5">
+                        Until{" "}
+                        {new Date(event.endDate).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                        })}
+                      </span>
+                    )}
+                  </>
+                ) : (
+                  "Date TBD"
+                )}
+              </span>
+              {event.endDate && new Date(event.endDate) < new Date() && (
+                <span className="inline-block px-2 py-0.5 bg-red-100 text-red-600 text-xs rounded-full ml-2 font-medium">
+                  Expired
+                </span>
               )}
-            </span>
-            {event.endDate && new Date(event.endDate) < new Date() && (
-              <span className="px-2 py-1 bg-red-100 text-red-600 text-xs rounded-full ml-2">
-                Expired
-              </span>
-            )}
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-gray-400">📍</span>
-            <span className="line-clamp-1">{event.location}</span>
+          <div className="flex items-start gap-2.5 text-sm">
+            <span className="text-purple-500 text-lg mt-0.5 shrink-0">📍</span>
+            <span className="text-gray-700 font-medium line-clamp-1 flex-1 min-w-0">
+              {event.location}
+            </span>
           </div>
         </div>
 
-        {/* Registration Stats */}
+        {/* Attendees Info - Compact Design */}
+        <div className="flex items-center gap-2 mb-4 text-sm">
+          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 rounded-full">
+            <span className="text-blue-600">👥</span>
+            <span className="text-blue-700 font-semibold">
+              {event.registered || 0}
+            </span>
+            <span className="text-blue-600 text-xs">going</span>
+          </div>
+          <div className="flex-1 text-right">
+            <span
+              className={`text-xs font-medium ${
+                spotsLeft > 0 ? "text-green-600" : "text-red-600"
+              }`}
+            >
+              {spotsLeft > 0 ? `${spotsLeft} spots left` : "Sold Out"}
+            </span>
+          </div>
+        </div>
+
+        {/* Capacity Bar - Sleeker Design */}
         <div className="mb-4">
-          <div className="flex justify-between items-center text-sm text-gray-600 mb-3">
-            <span className="flex items-center gap-1">
-              <span className="text-gray-400">👥</span>
-              <span>{event.registered || 0} attendees</span>
-            </span>
-            <span>
-              {spotsLeft > 0 ? `${spotsLeft} spots left` : "Sold out"}
-            </span>
+          <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+            <div
+              className={`h-1.5 rounded-full transition-all duration-500 ${
+                spotsLeft === 0
+                  ? "bg-linear-to-r from-red-500 to-red-600"
+                  : spotsLeft <= capacity * 0.1
+                  ? "bg-linear-to-r from-orange-500 to-orange-600"
+                  : "bg-linear-to-r from-blue-500 via-purple-500 to-pink-500"
+              }`}
+              style={{ width: `${capacityPercentage}%` }}
+            ></div>
           </div>
-
-          {/* Capacity Bar */}
-          <div>
-            <div className="flex justify-between items-center text-xs text-gray-500 mb-2">
-              <span>
-                Capacity: {registered}/{capacity}
-              </span>
-              <span>{capacityPercentage}% full</span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div
-                className={`h-2 rounded-full transition-all duration-500 ${
-                  spotsLeft === 0
-                    ? "bg-red-500"
-                    : spotsLeft <= capacity * 0.1
-                    ? "bg-orange-500"
-                    : "bg-linear-to-r from-blue-500 to-purple-600"
-                }`}
-                style={{ width: `${capacityPercentage}%` }}
-              ></div>
-            </div>
+          <div className="flex justify-between items-center text-xs text-gray-500 mt-1.5">
+            <span>
+              {registered}/{capacity}
+            </span>
+            <span>{capacityPercentage}% filled</span>
           </div>
         </div>
 
-        {/* Price and Action */}
-        <div className="flex items-center justify-between pt-2">
-          <div className="text-xl font-bold text-gray-900">
-            ₹{event.price?.toLocaleString("en-IN")}
+        {/* Price and Action - Modern Layout */}
+        <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+          <div>
+            <div className="text-xs text-gray-500 mb-0.5">Price</div>
+            <div className="text-2xl font-bold bg-linear-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              ₹{event.price?.toLocaleString("en-IN")}
+            </div>
           </div>
           <Link
             href={`/events/${event.id}`}
-            className="bg-gray-900 hover:bg-gray-800 text-white px-6 py-2.5 rounded-lg text-sm font-medium transition-all duration-300 transform hover:scale-105 inline-block text-center"
+            className="bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-6 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl inline-block text-center"
           >
             View Details
           </Link>

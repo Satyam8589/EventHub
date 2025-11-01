@@ -26,8 +26,8 @@ export const metadata = {
     title: "EventHub",
   },
   icons: {
-    apple: [{ url: "/next.svg", sizes: "any", type: "image/svg+xml" }],
-    icon: [{ url: "/next.svg", sizes: "any", type: "image/svg+xml" }],
+    apple: [{ url: "/eventhub-logo.svg", sizes: "any", type: "image/svg+xml" }],
+    icon: [{ url: "/eventhub-logo.svg", sizes: "any", type: "image/svg+xml" }],
   },
 };
 
@@ -46,7 +46,8 @@ export default function RootLayout({ children }) {
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="EventHub" />
-        <link rel="apple-touch-icon" href="/next.svg" />
+        <link rel="apple-touch-icon" href="/eventhub-logo.svg" />
+        <link rel="icon" href="/eventhub-logo.svg" type="image/svg+xml" />
         <meta name="mobile-web-app-capable" content="yes" />
       </head>
       <body

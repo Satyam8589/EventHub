@@ -1,0 +1,25 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#8b5cf6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#ec4899;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background Circle -->
+  <circle cx="256" cy="256" r="240" fill="url(#logoGradient)"/>
+  
+  <!-- E Letter -->
+  <path d="M 180 153 L 332 153 L 332 194 L 230 194 L 230 230 L 317 230 L 317 276 L 230 276 L 230 317 L 332 317 L 332 358 L 180 358 Z" fill="white"/>
+  
+  <!-- Hub dots -->
+  <circle cx="350" cy="180" r="18" fill="white" opacity="0.9"/>
+  <circle cx="370" cy="256" r="16" fill="white" opacity="0.8"/>
+  <circle cx="350" cy="332" r="18" fill="white" opacity="0.9"/>
+  
+  <!-- Connection lines -->
+  <line x1="332" y1="173" x2="350" y2="180" stroke="white" stroke-width="6" opacity="0.5"/>
+  <line x1="317" y1="253" x2="370" y2="256" stroke="white" stroke-width="6" opacity="0.5"/>
+  <line x1="332" y1="337" x2="350" y2="332" stroke="white" stroke-width="6" opacity="0.5"/>
+</svg>

@@ -1,8 +1,10 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import TicketModal from "@/components/TicketModal";
+import EventHubLogo from "@/components/EventHubLogo";
 
 export default function MyEventsPage() {
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
@@ -12,8 +14,10 @@ export default function MyEventsPage() {
   const [activeTab, setActiveTab] = useState("upcoming");
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [showTicketModal, setShowTicketModal] = useState(false);
+  const [redirectCountdown, setRedirectCountdown] = useState(5);
 
   const { user, loading: authLoading, signOut } = useAuth();
+  const router = useRouter();
 
   useEffect(() => {
     const handleMouseMove = (e) => {
@@ -39,6 +43,24 @@ export default function MyEventsPage() {
 
     generateParticles();
   }, []);
+
+  // Redirect countdown when user is not authenticated
+  useEffect(() => {
+    if (!authLoading && !user) {
+      const timer = setInterval(() => {
+        setRedirectCountdown((prev) => {
+          if (prev <= 1) {
+            clearInterval(timer);
+            router.push("/");
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+
+      return () => clearInterval(timer);
+    }
+  }, [authLoading, user, router]);
 
   // Fetch user's bookings when user is available
   useEffect(() => {
@@ -335,7 +357,12 @@ export default function MyEventsPage() {
         <div className="relative z-10 flex items-center justify-center min-h-[calc(100vh-80px)] px-4">
           <div className="text-center max-w-md mx-auto">
             <div className="bg-white/10 backdrop-blur-md rounded-3xl p-8 border border-white/20 shadow-2xl">
-              <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-blue-600/20 to-purple-600/20 rounded-full flex items-center justify-center border border-blue-500/30">
+              {/* Logo */}
+              <div className="flex justify-center mb-6">
+                <EventHubLogo size={64} showText={false} />
+              </div>
+
+              <div className="w-20 h-20 mx-auto mb-6 bg-linear-to-br from-blue-600/20 to-purple-600/20 rounded-full flex items-center justify-center border border-blue-500/30">
                 <svg
                   className="w-10 h-10 text-blue-400"
                   fill="none"
@@ -351,33 +378,48 @@ export default function MyEventsPage() {
                 </svg>
               </div>
 
-              <h1 className="text-3xl font-bold text-white mb-4">
-                Login to View Your Tickets
+              <h1 className="text-3xl font-bold bg-linear-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent mb-4">
+                Authentication Required
               </h1>
-              <p className="text-gray-300 mb-8 leading-relaxed">
+              <p className="text-gray-300 mb-2 leading-relaxed">
                 Sign in to access your booked events, manage your tickets, and
                 view your event history.
               </p>
+              <p className="text-white/50 mb-6 text-sm">
+                Redirecting to home page in{" "}
+                <span className="text-blue-400 font-bold text-xl">
+                  {redirectCountdown}
+                </span>{" "}
+                seconds...
+              </p>
 
-              <Link
-                href="/"
-                className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-3 rounded-xl font-medium hover:from-blue-700 hover:to-purple-700 transition-all transform hover:scale-105 shadow-lg shadow-blue-500/25"
-              >
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
+              <div className="space-y-3">
+                <Link
+                  href="/"
+                  className="inline-flex items-center gap-2 w-full justify-center bg-linear-to-r from-blue-600 to-purple-600 text-white px-8 py-3 rounded-xl font-medium hover:from-blue-700 hover:to-purple-700 transition-all transform hover:scale-105 shadow-lg shadow-blue-500/25"
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"
-                  />
-                </svg>
-                Sign In to Continue
-              </Link>
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
+                    />
+                  </svg>
+                  Go to Home & Sign In
+                </Link>
+                <button
+                  onClick={() => router.back()}
+                  className="w-full bg-white/10 hover:bg-white/20 text-white px-8 py-3 rounded-xl transition-colors border border-white/20"
+                >
+                  Go Back
+                </button>
+              </div>
             </div>
           </div>
         </div>

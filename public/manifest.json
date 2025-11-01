@@ -13,13 +13,13 @@
   "scope": "/",
   "icons": [
     {
-      "src": "/next.svg",
+      "src": "/eventhub-logo.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"
     },
     {
-      "src": "/vercel.svg",
+      "src": "/eventhub-logo.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "maskable"
@@ -33,7 +33,7 @@
       "url": "/events",
       "icons": [
         {
-          "src": "/next.svg",
+          "src": "/eventhub-logo.svg",
           "sizes": "any"
         }
       ]
@@ -45,7 +45,7 @@
       "url": "/my-events",
       "icons": [
         {
-          "src": "/next.svg",
+          "src": "/eventhub-logo.svg",
           "sizes": "any"
         }
       ]
@@ -57,7 +57,7 @@
       "url": "/contact",
       "icons": [
         {
-          "src": "/next.svg",
+          "src": "/eventhub-logo.svg",
           "sizes": "any"
         }
       ]
@@ -65,14 +65,14 @@
   ],
   "screenshots": [
     {
-      "src": "/next.svg",
+      "src": "/eventhub-logo.svg",
       "sizes": "1280x720",
       "type": "image/svg+xml",
       "form_factor": "wide",
       "label": "EventHub Desktop View"
     },
     {
-      "src": "/vercel.svg",
+      "src": "/eventhub-logo.svg",
       "sizes": "540x720",
       "type": "image/svg+xml",
       "form_factor": "narrow",

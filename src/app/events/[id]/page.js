@@ -17,6 +17,8 @@ export default function Page({ params }) {
   const [scrollY, setScrollY] = useState(0);
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [selectedGalleryItem, setSelectedGalleryItem] = useState(null);
+  const [attendees, setAttendees] = useState([]);
+  const [totalAttendees, setTotalAttendees] = useState(0);
 
   useEffect(() => {
     if (!p?.id) return;
@@ -51,6 +53,29 @@ export default function Page({ params }) {
       .catch((err) => {
         setError(err.message);
         setLoading(false);
+      });
+  }, [p?.id]);
+
+  // Fetch attendees separately
+  useEffect(() => {
+    if (!p?.id) return;
+
+    console.log(">>> Fetching attendees for event ID:", p.id);
+
+    fetch(`/api/events/${p.id}/attendees`)
+      .then((res) => {
+        console.log(">>> Attendees fetch response status:", res.status);
+        return res.json();
+      })
+      .then((data) => {
+        console.log(">>> Attendees API response:", data);
+        console.log(">>> Setting attendees:", data.attendees);
+        console.log(">>> Setting total:", data.total);
+        setAttendees(data.attendees || []);
+        setTotalAttendees(data.total || 0);
+      })
+      .catch((err) => {
+        console.error(">>> Error fetching attendees:", err);
       });
   }, [p?.id]);
 
@@ -367,7 +392,7 @@ export default function Page({ params }) {
                   >
                     {tab}
                     {activeTab === tab.toLowerCase() && (
-                      <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-blue-500 to-purple-500"></span>
+                      <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-linear-to-r from-blue-500 to-purple-500"></span>
                     )}
                   </button>
                 ))}
@@ -515,15 +540,108 @@ export default function Page({ params }) {
                 </div>
               )}
 
+              {activeTab === "reviews" && (
+                <div>
+                  <EventReviews eventId={event.id} />
+                </div>
+              )}
+
               {activeTab === "attendees" && (
-                <div className="text-center py-12">
-                  <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-gradient-to-br from-blue-600/20 to-purple-600/20 border-2 border-blue-500/30 mb-6">
-                    <span className="text-5xl">👥</span>
+                <div>
+                  <div className="text-center mb-8">
+                    <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-gradient-to-br from-blue-600/20 to-purple-600/20 border-2 border-blue-500/30 mb-6">
+                      <span className="text-5xl">👥</span>
+                    </div>
+                    <h3 className="text-3xl font-bold text-white mb-2">
+                      {totalAttendees} Attendees
+                    </h3>
+                    <p className="text-gray-400">Registered for this event</p>
                   </div>
-                  <h3 className="text-3xl font-bold text-white mb-2">
-                    {event._count?.bookings || 0} Attendees
-                  </h3>
-                  <p className="text-gray-400">Registered for this event</p>
+
+                  {/* Top 5 Attendees */}
+                  {attendees && attendees.length > 0 && (
+                    <div className="mt-8">
+                      <h4 className="text-xl font-bold text-white mb-6">
+                        Latest Registrations
+                      </h4>
+                      <div className="space-y-3">
+                        {attendees.map((attendee, index) => {
+                          // Generate color based on index
+                          const colors = [
+                            "from-blue-600 to-blue-400",
+                            "from-purple-600 to-purple-400",
+                            "from-pink-600 to-pink-400",
+                            "from-green-600 to-green-400",
+                            "from-orange-600 to-orange-400",
+                          ];
+                          const color = colors[index % colors.length];
+
+                          // Get initials from name
+                          const getInitials = (name) => {
+                            if (!name) return "?";
+                            const parts = name.trim().split(" ");
+                            if (parts.length >= 2) {
+                              return (
+                                parts[0][0] + parts[parts.length - 1][0]
+                              ).toUpperCase();
+                            }
+                            return name.substring(0, 2).toUpperCase();
+                          };
+
+                          return (
+                            <div
+                              key={attendee.userId || index}
+                              className="flex items-center gap-4 p-4 rounded-xl bg-white/5 border border-white/10 hover:border-blue-500/30 hover:bg-white/10 transition-all"
+                            >
+                              {/* Avatar */}
+                              <div
+                                className={`w-12 h-12 rounded-full bg-gradient-to-br ${color} flex items-center justify-center text-white font-bold shadow-lg`}
+                              >
+                                {getInitials(attendee.name)}
+                              </div>
+
+                              {/* User Info */}
+                              <div className="flex-1 min-w-0">
+                                <div className="font-semibold text-white truncate">
+                                  {attendee.name}
+                                </div>
+                                <div className="text-sm text-gray-400 truncate">
+                                  {attendee.email || "No email"}
+                                </div>
+                              </div>
+
+                              {/* Badge */}
+                              <div className="flex-shrink-0">
+                                <span className="px-3 py-1 rounded-full bg-blue-600/20 text-blue-400 text-xs font-medium border border-blue-500/30">
+                                  #{index + 1}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Show remaining count if more than 5 */}
+                      {totalAttendees > 5 && (
+                        <div className="mt-6 text-center">
+                          <div className="inline-flex items-center gap-2 px-4 py-3 rounded-xl bg-white/5 border border-white/10">
+                            <span className="text-gray-300">
+                              +{totalAttendees - 5} more attendees
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* No attendees message */}
+                  {(!attendees || attendees.length === 0) && totalAttendees === 0 && (
+                    <div className="text-center py-8">
+                      <p className="text-gray-400">
+                        No attendees registered yet. Be the first to book!
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

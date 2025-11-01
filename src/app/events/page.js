@@ -5,6 +5,7 @@ import EventCard from "../../components/EventCard";
 import LoginForm from "../../components/auth/LoginForm";
 import SignupForm from "../../components/auth/SignupForm";
 import UserMenu from "../../components/auth/UserMenu";
+import EventHubLogo from "../../components/EventHubLogo";
 
 export default function EventsPage() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -233,34 +234,40 @@ export default function EventsPage() {
 
       {/* Navigation */}
       <nav className="relative z-10 bg-black/20 backdrop-blur-md border-b border-white/10 mobile-menu-container">
-        <div className="max-w-7xl mx-auto px-6 py-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-linear-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">E</span>
-              </div>
-              <span className="text-white font-bold text-xl">EventHub</span>
-            </div>
+            <a href="/">
+              <EventHubLogo size={32} showText={true} />
+            </a>
 
-            <div className="hidden md:flex items-center space-x-8 text-white/80">
+            <div className="hidden md:flex items-center space-x-6 lg:space-x-8 text-white/80">
               <a href="/" className="hover:text-white transition-colors">
                 Home
               </a>
               <a href="/events" className="text-white font-medium">
                 Events
               </a>
-              <a
-                href="/my-events"
-                className="hover:text-white transition-colors"
-              >
-                My Events
-              </a>
               <a href="/about" className="hover:text-white transition-colors">
                 About
               </a>
-              <a href="/profile" className="hover:text-white transition-colors">
-                Profile
-              </a>
+
+              {/* Show My Events and Profile only when logged in */}
+              {!authLoading && user && (
+                <>
+                  <a
+                    href="/my-events"
+                    className="hover:text-white transition-colors"
+                  >
+                    My Events
+                  </a>
+                  <a
+                    href="/profile"
+                    className="hover:text-white transition-colors"
+                  >
+                    Profile
+                  </a>
+                </>
+              )}
 
               {/* Admin Navigation - Only show for admins */}
               {!authLoading &&
@@ -362,36 +369,45 @@ export default function EventsPage() {
 
       {/* Mobile Menu */}
       {showMobileMenu && (
-        <div className="md:hidden relative z-20 bg-black/95 backdrop-blur-md border-b border-white/10 mobile-menu-container">
-          <div className="px-6 py-4 space-y-3">
+        <div className="md:hidden relative z-20 bg-black/95 backdrop-blur-md border-b border-white/10 mobile-menu-container animate-fade-in">
+          <div className="px-4 sm:px-6 py-4 space-y-2">
             {/* Navigation Links */}
             <a
               href="/"
-              className="block text-white/80 hover:text-white transition-colors py-2"
+              className="block text-white/80 hover:text-white transition-colors py-2.5 px-2 rounded-lg hover:bg-white/10"
             >
               Home
             </a>
-            <a href="/events" className="block text-white font-medium py-2">
+            <a
+              href="/events"
+              className="block text-white font-medium py-2.5 px-2 rounded-lg bg-white/10"
+            >
               Events
             </a>
             <a
-              href="/my-events"
-              className="block text-white/80 hover:text-white transition-colors py-2"
-            >
-              My Events
-            </a>
-            <a
               href="/about"
-              className="block text-white/80 hover:text-white transition-colors py-2"
+              className="block text-white/80 hover:text-white transition-colors py-2.5 px-2 rounded-lg hover:bg-white/10"
             >
               About
             </a>
-            <a
-              href="/profile"
-              className="block px-3 py-2 text-white/80 hover:text-white transition-colors"
-            >
-              Profile
-            </a>
+
+            {/* Show My Events and Profile only when logged in */}
+            {!authLoading && user && (
+              <>
+                <a
+                  href="/my-events"
+                  className="block text-white/80 hover:text-white transition-colors py-2.5 px-2 rounded-lg hover:bg-white/10"
+                >
+                  My Events
+                </a>
+                <a
+                  href="/profile"
+                  className="block text-white/80 hover:text-white transition-colors py-2.5 px-2 rounded-lg hover:bg-white/10"
+                >
+                  Profile
+                </a>
+              </>
+            )}
 
             {/* Admin Navigation - Only show for admins */}
             {!authLoading &&
@@ -479,60 +495,63 @@ export default function EventsPage() {
       )}
 
       {/* Header Section */}
-      <div className="relative z-10 py-12">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold text-white mb-4">
+      <div className="relative z-10 py-8 md:py-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          <div className="text-center mb-6 md:mb-8">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-3 md:mb-4">
               Discover Events
             </h1>
-            <p className="text-gray-300 max-w-2xl mx-auto">
+            <p className="text-gray-300 max-w-2xl mx-auto text-sm sm:text-base">
               Explore our calendar of amazing events
             </p>
           </div>
 
           {/* Search and Filters */}
-          <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
-            <div className="flex flex-col md:flex-row gap-4 items-center">
+          <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 sm:p-6 border border-white/20">
+            <div className="flex flex-col gap-3 sm:gap-4">
               {/* Search Bar */}
-              <div className="flex-1 relative">
+              <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <span className="text-gray-300">🔍</span>
+                  <span className="text-gray-300 text-lg">🔍</span>
                 </div>
                 <input
                   type="text"
                   placeholder="Search events..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="block w-full pl-10 pr-4 py-3 border border-white/20 rounded-lg bg-white/10 backdrop-blur-md text-white placeholder-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  className="block w-full pl-10 pr-4 py-3 border border-white/20 rounded-lg bg-white/10 backdrop-blur-md text-white placeholder-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm sm:text-base"
                 />
               </div>
 
-              {/* Category Filter */}
-              <select
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className="px-4 py-3 border border-white/20 rounded-lg bg-white/10 backdrop-blur-md text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-              >
-                {categories.map((category) => (
-                  <option
-                    key={category}
-                    value={category}
-                    className="text-gray-900 bg-white"
-                  >
-                    {category}
-                  </option>
-                ))}
-              </select>
+              {/* Filters Row */}
+              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+                {/* Category Filter */}
+                <select
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  className="flex-1 px-4 py-3 border border-white/20 rounded-lg bg-white/10 backdrop-blur-md text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm sm:text-base"
+                >
+                  {categories.map((category) => (
+                    <option
+                      key={category}
+                      value={category}
+                      className="text-gray-900 bg-white"
+                    >
+                      {category}
+                    </option>
+                  ))}
+                </select>
 
-              {/* Date Filter */}
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="px-4 py-3 border border-white/20 rounded-lg bg-white/10 backdrop-blur-md text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-              />
+                {/* Date Filter */}
+                <input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="flex-1 px-4 py-3 border border-white/20 rounded-lg bg-white/10 backdrop-blur-md text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm sm:text-base"
+                />
+              </div>
 
-              {/* More Filters Button */}
+              {/* More Filters Button - Mobile Optimized */}
               <button
                 onClick={() => setShowFilters(!showFilters)}
                 className="flex items-center gap-2 px-4 py-3 border border-white/20 rounded-lg bg-white/10 backdrop-blur-md text-white hover:bg-white/20 transition-colors"
@@ -546,15 +565,15 @@ export default function EventsPage() {
       </div>
 
       {/* Results Section */}
-      <div className="relative z-10 max-w-7xl mx-auto px-6 py-8">
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 py-6 md:py-8">
         {/* Results Count */}
-        <div className="flex justify-between items-center mb-8">
-          <p className="text-gray-300">
-            <span className="font-medium text-white">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 md:mb-8 gap-3 sm:gap-0">
+          <p className="text-gray-300 text-sm sm:text-base">
+            <span className="font-medium text-white text-base sm:text-lg">
               {filteredEvents.length} Events Found
             </span>
           </p>
-          <button className="flex items-center gap-2 text-gray-300 hover:text-white transition-colors">
+          <button className="flex items-center gap-2 text-gray-300 hover:text-white transition-colors text-sm sm:text-base">
             <span>⚙️</span>
             <span>More Filters</span>
           </button>
@@ -564,29 +583,29 @@ export default function EventsPage() {
         {loading ? (
           <div className="text-center py-12">
             <div className="animate-spin w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-            <h3 className="text-xl font-semibold text-white mb-2">
+            <h3 className="text-lg sm:text-xl font-semibold text-white mb-2">
               Loading events...
             </h3>
-            <p className="text-gray-300">
+            <p className="text-gray-300 text-sm sm:text-base">
               Please wait while we fetch the latest events
             </p>
           </div>
         ) : error ? (
-          <div className="text-center py-12">
-            <div className="text-6xl mb-4">⚠️</div>
-            <h3 className="text-xl font-semibold text-white mb-2">
+          <div className="text-center py-12 px-4">
+            <div className="text-5xl sm:text-6xl mb-4">⚠️</div>
+            <h3 className="text-lg sm:text-xl font-semibold text-white mb-2">
               Error loading events
             </h3>
-            <p className="text-gray-300 mb-4">{error}</p>
+            <p className="text-gray-300 mb-4 text-sm sm:text-base">{error}</p>
             <button
               onClick={() => window.location.reload()}
-              className="px-6 py-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors"
+              className="px-6 py-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors text-sm sm:text-base"
             >
               Try Again
             </button>
           </div>
         ) : filteredEvents.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 md:gap-8">
             {filteredEvents.map((event, index) => (
               <div
                 key={event.id}
@@ -603,12 +622,12 @@ export default function EventsPage() {
             ))}
           </div>
         ) : (
-          <div className="text-center py-12">
-            <div className="text-6xl mb-4">🔍</div>
-            <h3 className="text-xl font-semibold text-white mb-2">
+          <div className="text-center py-12 px-4">
+            <div className="text-5xl sm:text-6xl mb-4">🔍</div>
+            <h3 className="text-lg sm:text-xl font-semibold text-white mb-2">
               No events found
             </h3>
-            <p className="text-gray-300 mb-4">
+            <p className="text-gray-300 mb-4 text-sm sm:text-base">
               Try adjusting your search criteria or browse all categories
             </p>
             <button
@@ -617,7 +636,7 @@ export default function EventsPage() {
                 setSelectedCategory("All Categories");
                 setSelectedDate("");
               }}
-              className="bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-6 py-3 rounded-lg transition-colors"
+              className="bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-6 py-3 rounded-lg transition-colors text-sm sm:text-base"
             >
               Clear Filters
             </button>
@@ -626,8 +645,8 @@ export default function EventsPage() {
 
         {/* Load More Button */}
         {filteredEvents.length > 0 && (
-          <div className="text-center mt-12">
-            <button className="bg-white/10 backdrop-blur-md border border-white/20 text-white px-8 py-3 rounded-lg hover:bg-white/20 transition-colors font-medium">
+          <div className="text-center mt-8 md:mt-12">
+            <button className="bg-white/10 backdrop-blur-md border border-white/20 text-white px-6 sm:px-8 py-3 rounded-lg hover:bg-white/20 transition-colors font-medium text-sm sm:text-base">
               Load More Events
             </button>
           </div>
@@ -635,16 +654,13 @@ export default function EventsPage() {
       </div>
 
       {/* Footer */}
-      <footer className="bg-gray-900 text-white py-12 mt-16">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            <div>
-              <div className="flex items-center space-x-2 mb-4">
-                <div className="w-8 h-8 bg-linear-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                  <span className="text-white font-bold text-sm">E</span>
-                </div>
-                <span className="text-white font-bold text-xl">EventHub</span>
-              </div>
+      <footer className="bg-gray-900 text-white py-8 sm:py-12 mt-12 sm:mt-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
+            <div className="sm:col-span-2 lg:col-span-1">
+              <a href="/" className="cursor-pointer inline-block">
+                <EventHubLogo size={32} showText={true} className="mb-4" />
+              </a>
               <p className="text-gray-400 text-sm">
                 Your premium destination for discovering and booking amazing
                 events
@@ -652,7 +668,9 @@ export default function EventsPage() {
             </div>
 
             <div>
-              <h4 className="text-white font-semibold mb-4">Quick Links</h4>
+              <h4 className="text-white font-semibold mb-3 sm:mb-4 text-base">
+                Quick Links
+              </h4>
               <ul className="space-y-2 text-sm text-gray-400">
                 <li>
                   <a href="#" className="hover:text-white transition-colors">
@@ -678,7 +696,9 @@ export default function EventsPage() {
             </div>
 
             <div>
-              <h4 className="text-white font-semibold mb-4">Categories</h4>
+              <h4 className="text-white font-semibold mb-3 sm:mb-4 text-base">
+                Categories
+              </h4>
               <ul className="space-y-2 text-sm text-gray-400">
                 <li>
                   <a href="#" className="hover:text-white transition-colors">
@@ -704,8 +724,10 @@ export default function EventsPage() {
             </div>
 
             <div>
-              <h4 className="text-white font-semibold mb-4">Contact Us</h4>
-              <p className="text-gray-400 text-sm mb-2">
+              <h4 className="text-white font-semibold mb-3 sm:mb-4 text-base">
+                Contact Us
+              </h4>
+              <p className="text-gray-400 text-sm mb-2 wrap-break-word">
                 📧 join.eventhub@gmail.com
               </p>
               <p className="text-gray-400 text-sm mb-2">📞 +91 9263472616</p>
@@ -713,7 +735,7 @@ export default function EventsPage() {
             </div>
           </div>
 
-          <div className="border-t border-gray-800 mt-8 pt-8 text-center text-sm text-gray-400">
+          <div className="border-t border-gray-800 mt-6 sm:mt-8 pt-6 sm:pt-8 text-center text-sm text-gray-400">
             <p>&copy; 2025 EventHub. All rights reserved.</p>
           </div>
         </div>

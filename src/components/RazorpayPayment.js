@@ -36,7 +36,7 @@ const RazorpayPayment = ({
         currency: orderData.currency,
         name: "EventHub",
         description: `Ticket for ${orderData.event.title}`,
-        image: "/favicon.ico", // You can add your logo here
+        image: "/eventhub-logo.svg",
         order_id: orderData.orderId,
         handler: async function (response) {
           console.log("Payment Success Response:", response);

@@ -5,6 +5,7 @@ import EventCard from "../components/EventCard";
 import LoginForm from "../components/auth/LoginForm";
 import SignupForm from "../components/auth/SignupForm";
 import UserMenu from "../components/auth/UserMenu";
+import EventHubLogo from "../components/EventHubLogo";
 
 export default function Home() {
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
@@ -167,14 +168,9 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16 md:h-20">
             {/* Logo */}
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-linear-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">E</span>
-              </div>
-              <span className="text-white font-bold text-lg sm:text-xl">
-                EventHub
-              </span>
-            </div>
+            <a href="/" className="cursor-pointer">
+              <EventHubLogo size={32} showText={true} />
+            </a>
 
             {/* Desktop Navigation */}
             <div className="hidden lg:flex items-center space-x-6 xl:space-x-8 text-white/80">
@@ -187,18 +183,34 @@ export default function Home() {
               <a href="/events" className="hover:text-white transition-colors">
                 Events
               </a>
-              <a
-                href="/my-events"
-                className="hover:text-white transition-colors"
-              >
-                My Events
-              </a>
               <a href="/about" className="hover:text-white transition-colors">
                 About
               </a>
-              <a href="/profile" className="hover:text-white transition-colors">
-                Profile
+              <a
+                href="/gamification"
+                className="hover:text-white transition-colors flex items-center gap-1.5"
+              >
+                <span>🏆</span>
+                <span>Leaderboard</span>
               </a>
+
+              {/* Show My Events and Profile only when logged in */}
+              {!authLoading && user && (
+                <>
+                  <a
+                    href="/my-events"
+                    className="hover:text-white transition-colors"
+                  >
+                    My Events
+                  </a>
+                  <a
+                    href="/profile"
+                    className="hover:text-white transition-colors"
+                  >
+                    Profile
+                  </a>
+                </>
+              )}
 
               {/* Admin Navigation - Only show for admins */}
               {!authLoading &&
@@ -312,23 +324,41 @@ export default function Home() {
                   Events
                 </a>
                 <a
-                  href="/my-events"
-                  className="block px-3 py-2 text-white/80 hover:text-white transition-colors"
-                >
-                  My Events
-                </a>
-                <a
                   href="/about"
                   className="block px-3 py-2 text-white/80 hover:text-white transition-colors"
                 >
                   About
                 </a>
                 <a
-                  href="/profile"
+                  href="/gamification"
                   className="block px-3 py-2 text-white/80 hover:text-white transition-colors"
                 >
-                  Profile
+                  🏆 Leaderboard
                 </a>
+
+                {/* Show My Events and Profile only when logged in */}
+                {!authLoading && user && (
+                  <>
+                    <a
+                      href="/my-events"
+                      className="block px-3 py-2 text-white/80 hover:text-white transition-colors"
+                    >
+                      My Events
+                    </a>
+                    <a
+                      href="/profile"
+                      className="block px-3 py-2 text-white/80 hover:text-white transition-colors"
+                    >
+                      Profile
+                    </a>
+                    <a
+                      href="/gamification"
+                      className="block px-3 py-2 text-white/80 hover:text-white transition-colors"
+                    >
+                      🏆 Leaderboard
+                    </a>
+                  </>
+                )}
 
                 {/* Mobile Authentication */}
                 {!authLoading && (
@@ -643,12 +673,9 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-6">
           <div className="grid grid-cols-1 md:grid-cols-5 gap-8 text-gray-300">
             <div>
-              <div className="flex items-center space-x-2 mb-4">
-                <div className="w-8 h-8 bg-linear-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                  <span className="text-white font-bold text-sm">E</span>
-                </div>
-                <span className="text-white font-bold text-xl">EventHub</span>
-              </div>
+              <a href="/" className="cursor-pointer inline-block">
+                <EventHubLogo size={32} showText={true} className="mb-4" />
+              </a>
               <p className="text-sm">
                 Discover and book amazing events near you. Create memories that
                 last forever.

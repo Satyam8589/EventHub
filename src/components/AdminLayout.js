@@ -2,6 +2,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
+import EventHubLogo from "./EventHubLogo";
 
 export default function AdminLayout({ children, activeTab = "dashboard" }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -59,12 +60,9 @@ export default function AdminLayout({ children, activeTab = "dashboard" }) {
       >
         {/* Logo */}
         <div className="flex items-center justify-between h-16 px-6 border-b border-white/10">
-          <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-sm">E</span>
-            </div>
-            <span className="text-white font-bold text-lg">EventHub</span>
-          </div>
+          <Link href="/" className="cursor-pointer">
+            <EventHubLogo size={32} showText={true} />
+          </Link>
           <button
             onClick={() => setSidebarOpen(false)}
             className="lg:hidden text-gray-400 hover:text-white"
