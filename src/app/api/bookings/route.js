@@ -267,10 +267,10 @@ export async function POST(request) {
 
         // Import email utilities
         const { sendTicketEmail, generateBookingEmailHTML } = await import(
-          "../../../../lib/email"
+          "../../../lib/email"
         );
         const { generateTicketImage } = await import(
-          "../../../../lib/generateTicketImage"
+          "../../../lib/generateTicketImage"
         );
 
         // Generate ticket image
