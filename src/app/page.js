@@ -1,15 +1,15 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useRouter } from "next/navigation";
 import EventCard from "../components/EventCard";
 import LoginForm from "../components/auth/LoginForm";
 import SignupForm from "../components/auth/SignupForm";
-import UserMenu from "../components/auth/UserMenu";
+import Navbar from "../components/Navbar";
 import EventHubLogo from "../components/EventHubLogo";
 
 export default function Home() {
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [events, setEvents] = useState([]);
   const [featuredEvents, setFeaturedEvents] = useState([]);
   const [upcomingEvents, setUpcomingEvents] = useState([]);
@@ -18,7 +18,8 @@ export default function Home() {
   const [showSignup, setShowSignup] = useState(false);
   const [particles, setParticles] = useState([]);
 
-  const { user, loading: authLoading, signOut } = useAuth();
+  const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
 
   useEffect(() => {
     const handleMouseMove = (e) => {
@@ -164,276 +165,7 @@ export default function Home() {
       </div>
 
       {/* Navigation */}
-      <nav className="relative z-10 bg-black/20 backdrop-blur-md border-b border-white/10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16 md:h-20">
-            {/* Logo */}
-            <a href="/" className="cursor-pointer">
-              <EventHubLogo size={32} showText={true} />
-            </a>
-
-            {/* Desktop Navigation */}
-            <div className="hidden lg:flex items-center space-x-6 xl:space-x-8 text-white/80">
-              <a
-                href="/"
-                className="hover:text-white transition-colors font-medium"
-              >
-                Home
-              </a>
-              <a href="/events" className="hover:text-white transition-colors">
-                Events
-              </a>
-              <a href="/about" className="hover:text-white transition-colors">
-                About
-              </a>
-              <a
-                href="/gamification"
-                className="hover:text-white transition-colors flex items-center gap-1.5"
-              >
-                <span>🏆</span>
-                <span>Leaderboard</span>
-              </a>
-
-              {/* Show My Events and Profile only when logged in */}
-              {!authLoading && user && (
-                <>
-                  <a
-                    href="/my-events"
-                    className="hover:text-white transition-colors"
-                  >
-                    My Events
-                  </a>
-                  <a
-                    href="/profile"
-                    className="hover:text-white transition-colors"
-                  >
-                    Profile
-                  </a>
-                </>
-              )}
-
-              {/* Admin Navigation - Only show for admins */}
-              {!authLoading &&
-                user &&
-                (user.role === "SUPER_ADMIN" ||
-                  user.role === "EVENT_ADMIN") && (
-                  <a
-                    href="/admin"
-                    className="hover:text-blue-400 transition-colors font-medium bg-blue-600/20 px-3 py-1 rounded-lg border border-blue-500/30"
-                  >
-                    🛡️ Admin Panel
-                  </a>
-                )}
-            </div>
-
-            <div className="flex items-center space-x-4">
-              {/* Authentication Section */}
-              {!authLoading && (
-                <>
-                  {user ? (
-                    <div className="hidden md:flex items-center space-x-3">
-                      <UserMenu />
-                      <button
-                        onClick={async () => {
-                          try {
-                            const result = await signOut();
-                            if (!result.error) {
-                              window.location.reload();
-                            }
-                          } catch (error) {
-                            console.error("Error signing out:", error);
-                          }
-                        }}
-                        className="text-white/80 hover:text-white transition-colors p-2 hover:bg-white/10 rounded-lg"
-                        title="Sign Out"
-                      >
-                        <svg
-                          className="w-5 h-5"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-                          />
-                        </svg>
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="hidden md:flex items-center space-x-3">
-                      <button
-                        onClick={() => setShowLogin(true)}
-                        className="text-white/80 hover:text-white transition-colors font-medium"
-                      >
-                        Sign In
-                      </button>
-                      <button
-                        onClick={() => setShowSignup(true)}
-                        className="bg-linear-to-r from-blue-600 to-purple-600 text-white px-4 lg:px-6 py-2 rounded-full hover:from-blue-700 hover:to-purple-700 transition-all duration-300 transform hover:scale-105 shadow-lg text-sm lg:text-base"
-                      >
-                        Sign Up
-                      </button>
-                    </div>
-                  )}
-                </>
-              )}
-
-              {/* Mobile menu button */}
-              <button
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="lg:hidden text-white p-2"
-              >
-                <svg
-                  className="w-6 h-6"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d={
-                      mobileMenuOpen
-                        ? "M6 18L18 6M6 6l12 12"
-                        : "M4 6h16M4 12h16M4 18h16"
-                    }
-                  />
-                </svg>
-              </button>
-            </div>
-          </div>
-
-          {/* Mobile Navigation Menu */}
-          {mobileMenuOpen && (
-            <div className="lg:hidden">
-              <div className="px-2 pt-2 pb-3 space-y-1 bg-black/40 backdrop-blur-md rounded-lg mt-2">
-                <a
-                  href="/"
-                  className="block px-3 py-2 text-white/80 hover:text-white transition-colors"
-                >
-                  Home
-                </a>
-                <a
-                  href="/events"
-                  className="block px-3 py-2 text-white/80 hover:text-white transition-colors"
-                >
-                  Events
-                </a>
-                <a
-                  href="/about"
-                  className="block px-3 py-2 text-white/80 hover:text-white transition-colors"
-                >
-                  About
-                </a>
-                <a
-                  href="/gamification"
-                  className="block px-3 py-2 text-white/80 hover:text-white transition-colors"
-                >
-                  🏆 Leaderboard
-                </a>
-
-                {/* Show My Events and Profile only when logged in */}
-                {!authLoading && user && (
-                  <>
-                    <a
-                      href="/my-events"
-                      className="block px-3 py-2 text-white/80 hover:text-white transition-colors"
-                    >
-                      My Events
-                    </a>
-                    <a
-                      href="/profile"
-                      className="block px-3 py-2 text-white/80 hover:text-white transition-colors"
-                    >
-                      Profile
-                    </a>
-                    <a
-                      href="/gamification"
-                      className="block px-3 py-2 text-white/80 hover:text-white transition-colors"
-                    >
-                      🏆 Leaderboard
-                    </a>
-                  </>
-                )}
-
-                {/* Mobile Authentication */}
-                {!authLoading && (
-                  <div className="border-t border-white/20 mt-2 pt-2">
-                    {user ? (
-                      <>
-                        <div className="px-3 py-2 border-b border-white/20">
-                          <p className="text-sm font-medium text-white">
-                            {user.displayName || user.email?.split("@")[0]}
-                          </p>
-                          <p className="text-xs text-white/60">{user.email}</p>
-                        </div>
-
-                        {/* Admin Panel Link - Only show for admins */}
-                        {(user.role === "SUPER_ADMIN" ||
-                          user.role === "EVENT_ADMIN") && (
-                          <a
-                            href="/admin"
-                            className="block px-3 py-2 text-blue-400 hover:text-blue-300 transition-colors border-t border-white/20"
-                          >
-                            🛡️ Admin Panel
-                          </a>
-                        )}
-
-                        <button
-                          onClick={async () => {
-                            try {
-                              const result = await signOut();
-
-                              // Only close menu and reload if sign out was successful
-                              if (!result.error) {
-                                setMobileMenuOpen(false);
-                                window.location.reload();
-                              } else {
-                                setMobileMenuOpen(false);
-                              }
-                            } catch (error) {
-                              console.error("Error signing out:", error);
-                              setMobileMenuOpen(false);
-                            }
-                          }}
-                          className="block w-full text-left px-3 py-2 text-red-400 hover:text-red-300 transition-colors cursor-pointer"
-                        >
-                          Sign Out
-                        </button>
-                      </>
-                    ) : (
-                      <div className="px-3 py-2 space-y-2">
-                        <button
-                          onClick={() => {
-                            setMobileMenuOpen(false);
-                            setShowLogin(true);
-                          }}
-                          className="w-full text-white/80 hover:text-white transition-colors text-left py-2"
-                        >
-                          Sign In
-                        </button>
-                        <button
-                          onClick={() => {
-                            setMobileMenuOpen(false);
-                            setShowSignup(true);
-                          }}
-                          className="w-full bg-linear-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-full hover:from-blue-700 hover:to-purple-700 transition-all duration-300 text-sm"
-                        >
-                          Sign Up
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-      </nav>
+      <Navbar setShowLogin={setShowLogin} setShowSignup={setShowSignup} />
 
       {/* Hero Section */}
       <section className="relative z-10 text-center py-12 sm:py-16 md:py-20 lg:py-24 px-4 sm:px-6 lg:px-8">
@@ -465,10 +197,16 @@ export default function Home() {
 
           {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center animate-fade-in-up animation-delay-900 px-4">
-            <button className="bg-white text-gray-900 px-6 sm:px-8 py-3 sm:py-4 rounded-full font-semibold hover:bg-gray-100 transition-all duration-300 transform hover:scale-105 shadow-xl text-sm sm:text-base">
+            <button
+              onClick={() => router.push("/events")}
+              className="bg-white text-gray-900 px-6 sm:px-8 py-3 sm:py-4 rounded-full font-semibold hover:bg-gray-100 transition-all duration-300 transform hover:scale-105 shadow-xl text-sm sm:text-base"
+            >
               Browse Events
             </button>
-            <button className="border-2 border-white text-white px-6 sm:px-8 py-3 sm:py-4 rounded-full font-semibold hover:bg-white hover:text-gray-900 transition-all duration-300 transform hover:scale-105 text-sm sm:text-base">
+            <button
+              onClick={() => router.push("/about")}
+              className="border-2 border-white text-white px-6 sm:px-8 py-3 sm:py-4 rounded-full font-semibold hover:bg-white hover:text-gray-900 transition-all duration-300 transform hover:scale-105 text-sm sm:text-base"
+            >
               Learn More
             </button>
           </div>

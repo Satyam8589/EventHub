@@ -2,12 +2,16 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
+import Navbar from "../../components/Navbar";
+import LoginForm from "../../components/auth/LoginForm";
+import SignupForm from "../../components/auth/SignupForm";
 
 export default function AboutPage() {
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [isVisible, setIsVisible] = useState({});
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [showLogin, setShowLogin] = useState(false);
+  const [showSignup, setShowSignup] = useState(false);
 
   useEffect(() => {
     const handleMouseMove = (e) => {
@@ -169,196 +173,7 @@ export default function AboutPage() {
       </div>
 
       {/* Navigation */}
-      <nav className="relative z-10 bg-white/10 backdrop-blur-md border-b border-white/20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16 md:h-20">
-            <Link href="/" className="text-xl sm:text-2xl font-bold text-white">
-              EventHub
-            </Link>
-
-            {/* Desktop Navigation */}
-            <div className="hidden lg:flex space-x-6 xl:space-x-8">
-              <Link
-                href="/"
-                className="text-white/80 hover:text-white transition-colors"
-              >
-                Home
-              </Link>
-              <Link
-                href="/events"
-                className="text-white/80 hover:text-white transition-colors"
-              >
-                Events
-              </Link>
-              <Link
-                href="/my-events"
-                className="text-white/80 hover:text-white transition-colors"
-              >
-                My Events
-              </Link>
-              <Link href="/about" className="text-white font-medium">
-                About
-              </Link>
-              <Link
-                href="/profile"
-                className="hover:text-white transition-colors"
-              >
-                Profile
-              </Link>
-              {/* Admin Panel Link - Only show for admins */}
-              {user &&
-                (user.role === "SUPER_ADMIN" ||
-                  user.role === "EVENT_ADMIN") && (
-                  <Link
-                    href="/admin"
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
-                  >
-                    🛡️ Admin Panel
-                  </Link>
-                )}
-            </div>
-
-            {/* Desktop Sign Out Icon - Always visible when logged in */}
-            {user && (
-              <button
-                onClick={async () => {
-                  try {
-                    const result = await signOut();
-                    if (!result.error) {
-                      window.location.reload();
-                    }
-                  } catch (error) {
-                    console.error("Error signing out:", error);
-                  }
-                }}
-                className="hidden lg:flex text-white/80 hover:text-white transition-colors p-2 hover:bg-white/10 rounded-lg"
-                title="Sign Out"
-              >
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-                  />
-                </svg>
-              </button>
-            )}
-
-            {/* Mobile menu button */}
-            <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="lg:hidden text-white p-2"
-            >
-              <svg
-                className="w-6 h-6"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d={
-                    mobileMenuOpen
-                      ? "M6 18L18 6M6 6l12 12"
-                      : "M4 6h16M4 12h16M4 18h16"
-                  }
-                />
-              </svg>
-            </button>
-          </div>
-
-          {/* Mobile Navigation Menu */}
-          {mobileMenuOpen && (
-            <div className="lg:hidden">
-              <div className="px-2 pt-2 pb-3 space-y-1 bg-black/40 backdrop-blur-md rounded-lg mt-2">
-                <Link
-                  href="/"
-                  className="block px-3 py-2 text-white/80 hover:text-white transition-colors"
-                >
-                  Home
-                </Link>
-                <Link
-                  href="/events"
-                  className="block px-3 py-2 text-white/80 hover:text-white transition-colors"
-                >
-                  Events
-                </Link>
-                <Link
-                  href="/my-events"
-                  className="block px-3 py-2 text-white/80 hover:text-white transition-colors"
-                >
-                  My Events
-                </Link>
-                <Link
-                  href="/about"
-                  className="block px-3 py-2 text-white font-medium"
-                >
-                  About
-                </Link>
-                <Link
-                  href="/profile"
-                  className="block px-3 py-2 text-white/80 hover:text-white transition-colors"
-                >
-                  Profile
-                </Link>
-                {/* Admin Panel Link - Only show for admins */}
-                {user &&
-                  (user.role === "SUPER_ADMIN" ||
-                    user.role === "EVENT_ADMIN") && (
-                    <Link
-                      href="/admin"
-                      className="block px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors mt-2"
-                    >
-                      🛡️ Admin Panel
-                    </Link>
-                  )}
-
-                {/* Mobile Authentication - Only show on mobile screens */}
-                {user && (
-                  <div className="border-t border-white/20 mt-2 pt-2">
-                    <div className="px-3 py-2 border-b border-white/20">
-                      <p className="text-sm font-medium text-white">
-                        {user.displayName || user.email?.split("@")[0]}
-                      </p>
-                      <p className="text-xs text-white/60">{user.email}</p>
-                    </div>
-
-                    <button
-                      onClick={async () => {
-                        try {
-                          const result = await signOut();
-
-                          // Only close menu and reload if sign out was successful
-                          if (!result.error) {
-                            setMobileMenuOpen(false);
-                            window.location.reload();
-                          } else {
-                            setMobileMenuOpen(false);
-                          }
-                        } catch (error) {
-                          console.error("Error signing out:", error);
-                          setMobileMenuOpen(false);
-                        }
-                      }}
-                      className="block w-full text-left px-3 py-2 text-red-400 hover:text-red-300 transition-colors cursor-pointer"
-                    >
-                      Sign Out
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-      </nav>
+      <Navbar setShowLogin={setShowLogin} setShowSignup={setShowSignup} />
 
       {/* Hero Section */}
       <section className="relative z-10 py-12 sm:py-16 md:py-20 lg:py-24">
@@ -681,6 +496,28 @@ export default function AboutPage() {
           </div>
         </div>
       </footer>
+
+      {/* Login Modal */}
+      {showLogin && (
+        <LoginForm
+          onClose={() => setShowLogin(false)}
+          onSwitchToSignup={() => {
+            setShowLogin(false);
+            setShowSignup(true);
+          }}
+        />
+      )}
+
+      {/* Signup Modal */}
+      {showSignup && (
+        <SignupForm
+          onClose={() => setShowSignup(false)}
+          onSwitchToLogin={() => {
+            setShowSignup(false);
+            setShowLogin(true);
+          }}
+        />
+      )}
     </div>
   );
 }

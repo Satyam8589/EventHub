@@ -3,11 +3,13 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import Link from "next/link";
+import Navbar from "@/components/Navbar";
+import LoginForm from "@/components/auth/LoginForm";
+import SignupForm from "@/components/auth/SignupForm";
 import EventHubLogo from "@/components/EventHubLogo";
-import UserMenu from "@/components/auth/UserMenu";
 
 export default function GamificationPage() {
-  const { user, loading: authLoading, signOut } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedEvent, setSelectedEvent] = useState(null);
@@ -18,8 +20,9 @@ export default function GamificationPage() {
   const [submitting, setSubmitting] = useState(false);
   const [sortBy, setSortBy] = useState("rating"); // rating, recent, popular
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const [showLogin, setShowLogin] = useState(false);
+  const [showSignup, setShowSignup] = useState(false);
   const [particles, setParticles] = useState([]);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Mouse tracking for animated background
   useEffect(() => {
@@ -330,231 +333,7 @@ export default function GamificationPage() {
       </div>
 
       {/* Navigation - Same as Home Page */}
-      <nav className="relative z-10 bg-black/20 backdrop-blur-md border-b border-white/10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16 md:h-20">
-            {/* Logo */}
-            <a href="/" className="cursor-pointer">
-              <EventHubLogo size={32} showText={true} />
-            </a>
-
-            {/* Desktop Navigation */}
-            <div className="hidden lg:flex items-center space-x-6 xl:space-x-8 text-white/80">
-              <a
-                href="/"
-                className="hover:text-white transition-colors font-medium"
-              >
-                Home
-              </a>
-              <a href="/events" className="hover:text-white transition-colors">
-                Events
-              </a>
-              <a href="/about" className="hover:text-white transition-colors">
-                About
-              </a>
-              <a
-                href="/gamification"
-                className="text-white font-semibold flex items-center gap-1.5"
-              >
-                <span>🏆</span>
-                <span>Leaderboard</span>
-              </a>
-
-              {/* Show My Events and Profile only when logged in */}
-              {!authLoading && user && (
-                <>
-                  <a
-                    href="/my-events"
-                    className="hover:text-white transition-colors"
-                  >
-                    My Events
-                  </a>
-                  <a
-                    href="/profile"
-                    className="hover:text-white transition-colors"
-                  >
-                    Profile
-                  </a>
-                </>
-              )}
-
-              {/* Admin Navigation - Only show for admins */}
-              {!authLoading &&
-                user &&
-                (user.role === "SUPER_ADMIN" ||
-                  user.role === "EVENT_ADMIN") && (
-                  <a
-                    href="/admin"
-                    className="hover:text-blue-400 transition-colors font-medium bg-blue-600/20 px-3 py-1 rounded-lg border border-blue-500/30"
-                  >
-                    🛡️ Admin Panel
-                  </a>
-                )}
-            </div>
-
-            <div className="flex items-center space-x-4">
-              {/* Authentication Section */}
-              {!authLoading && (
-                <>
-                  {user ? (
-                    <div className="hidden md:flex items-center space-x-3">
-                      <UserMenu />
-                      <button
-                        onClick={async () => {
-                          try {
-                            const result = await signOut();
-                            if (!result.error) {
-                              window.location.reload();
-                            }
-                          } catch (error) {
-                            console.error("Error signing out:", error);
-                          }
-                        }}
-                        className="text-white/80 hover:text-white transition-colors p-2 hover:bg-white/10 rounded-lg"
-                        title="Sign Out"
-                      >
-                        <svg
-                          className="w-5 h-5"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-                          />
-                        </svg>
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="hidden md:flex items-center space-x-3">
-                      <a
-                        href="/"
-                        className="text-white/80 hover:text-white transition-colors font-medium"
-                      >
-                        Sign In
-                      </a>
-                      <a
-                        href="/"
-                        className="bg-linear-to-r from-blue-600 to-purple-600 text-white px-4 lg:px-6 py-2 rounded-full hover:from-blue-700 hover:to-purple-700 transition-all duration-300 transform hover:scale-105 shadow-lg text-sm lg:text-base"
-                      >
-                        Sign Up
-                      </a>
-                    </div>
-                  )}
-                </>
-              )}
-
-              {/* Mobile menu button */}
-              <button
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="lg:hidden text-white p-2"
-              >
-                <svg
-                  className="w-6 h-6"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d={
-                      mobileMenuOpen
-                        ? "M6 18L18 6M6 6l12 12"
-                        : "M4 6h16M4 12h16M4 18h16"
-                    }
-                  />
-                </svg>
-              </button>
-            </div>
-          </div>
-
-          {/* Mobile Navigation Menu */}
-          {mobileMenuOpen && (
-            <div className="lg:hidden">
-              <div className="px-2 pt-2 pb-3 space-y-1 bg-black/40 backdrop-blur-md rounded-lg mt-2">
-                <a
-                  href="/"
-                  className="block px-3 py-2 text-white/80 hover:text-white transition-colors"
-                >
-                  Home
-                </a>
-                <a
-                  href="/events"
-                  className="block px-3 py-2 text-white/80 hover:text-white transition-colors"
-                >
-                  Events
-                </a>
-                <a
-                  href="/about"
-                  className="block px-3 py-2 text-white/80 hover:text-white transition-colors"
-                >
-                  About
-                </a>
-                <a
-                  href="/gamification"
-                  className="block px-3 py-2 text-white font-semibold transition-colors"
-                >
-                  🏆 Leaderboard
-                </a>
-
-                {/* Show My Events and Profile only when logged in */}
-                {!authLoading && user && (
-                  <>
-                    <a
-                      href="/my-events"
-                      className="block px-3 py-2 text-white/80 hover:text-white transition-colors"
-                    >
-                      My Events
-                    </a>
-                    <a
-                      href="/profile"
-                      className="block px-3 py-2 text-white/80 hover:text-white transition-colors"
-                    >
-                      Profile
-                    </a>
-                  </>
-                )}
-
-                {/* Admin Link for Mobile */}
-                {!authLoading &&
-                  user &&
-                  (user.role === "SUPER_ADMIN" ||
-                    user.role === "EVENT_ADMIN") && (
-                    <a
-                      href="/admin"
-                      className="block px-3 py-2 text-blue-300 hover:text-blue-200 transition-colors font-medium"
-                    >
-                      🛡️ Admin Panel
-                    </a>
-                  )}
-
-                {/* Mobile Auth Buttons */}
-                {!authLoading && !user && (
-                  <div className="pt-2 space-y-2">
-                    <a
-                      href="/"
-                      className="block px-3 py-2 text-white/80 hover:text-white transition-colors"
-                    >
-                      Sign In
-                    </a>
-                    <a
-                      href="/"
-                      className="block px-3 py-2 bg-linear-to-r from-blue-600 to-purple-600 text-white rounded-lg text-center font-medium"
-                    >
-                      Sign Up
-                    </a>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-      </nav>
+      <Navbar setShowLogin={setShowLogin} setShowSignup={setShowSignup} />
 
       {/* Main Content */}
       <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
@@ -911,6 +690,28 @@ export default function GamificationPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Login Modal */}
+      {showLogin && (
+        <LoginForm
+          onClose={() => setShowLogin(false)}
+          onSwitchToSignup={() => {
+            setShowLogin(false);
+            setShowSignup(true);
+          }}
+        />
+      )}
+
+      {/* Signup Modal */}
+      {showSignup && (
+        <SignupForm
+          onClose={() => setShowSignup(false)}
+          onSwitchToLogin={() => {
+            setShowSignup(false);
+            setShowLogin(true);
+          }}
+        />
       )}
     </div>
   );
