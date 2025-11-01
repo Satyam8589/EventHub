@@ -1,5 +1,80 @@
 import { createCanvas, loadImage } from "canvas";
 
+// Helper function to calculate event duration in days
+function calculateEventDays(event) {
+  console.log("🔍 Calculating event days for:", {
+    eventId: event.id,
+    date: event.date,
+    endDate: event.endDate,
+    enddate: event.enddate,
+    eventKeys: Object.keys(event),
+  });
+
+  const startDate = new Date(event.date);
+  const endDate =
+    event.endDate || event.enddate
+      ? new Date(event.endDate || event.enddate)
+      : null;
+
+  console.log("📅 Date calculation:", {
+    startDate: startDate.toISOString(),
+    endDate: endDate ? endDate.toISOString() : null,
+    hasEndDate: !!endDate,
+  });
+
+  if (!endDate) {
+    console.log("❌ No end date found, returning 1 day");
+    return 1; // Single day event
+  }
+
+  // Calculate difference in days
+  const timeDiff = endDate.getTime() - startDate.getTime();
+  const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1; // +1 to include both start and end days
+
+  const finalDays = Math.max(1, daysDiff);
+  console.log("✅ Event duration calculated:", {
+    timeDiff,
+    daysDiff,
+    finalDays,
+  });
+
+  return finalDays; // Ensure at least 1 day
+}
+
+// Helper function to generate day-specific QR data
+function generateDayQRData(booking, dayIndex, totalDays) {
+  return `${booking.id}_DAY_${dayIndex + 1}_OF_${totalDays}`;
+}
+
+// Helper function to check if a QR code is scanned
+function isQRScanned(booking, dayNumber, qrData) {
+  if (!booking.scannedQRs) return false;
+
+  try {
+    const scannedQRs = JSON.parse(booking.scannedQRs);
+    return scannedQRs.some(
+      (scanned) => scanned.dayNumber === dayNumber && scanned.qrData === qrData
+    );
+  } catch (e) {
+    console.warn("Could not parse scannedQRs:", e);
+    return false;
+  }
+}
+
+// Helper function to get scan info for a QR code
+function getQRScanInfo(booking, dayNumber, qrData) {
+  if (!booking.scannedQRs) return null;
+
+  try {
+    const scannedQRs = JSON.parse(booking.scannedQRs);
+    return scannedQRs.find(
+      (scanned) => scanned.dayNumber === dayNumber && scanned.qrData === qrData
+    );
+  } catch (e) {
+    console.warn("Could not parse scannedQRs:", e);
+    return null;
+  }
+}
 export async function generateTicketImage(booking, event, user) {
   try {
     console.log("🎫 Generating ticket with user data:", {
@@ -9,11 +84,47 @@ export async function generateTicketImage(booking, event, user) {
       userPhone: user?.phone,
     });
 
-    // Calculate height based on ticket status (scanned tickets are shorter)
-    const canvasHeight =
-      booking.paymentId && booking.paymentId.startsWith("SCANNED_")
-        ? 1200
-        : 1400;
+    // Calculate event days to determine canvas height
+    const eventDays = calculateEventDays(event);
+    console.log("📏 Event days calculated for canvas sizing:", eventDays);
+
+    // Calculate dynamic height based on content
+    let canvasHeight = 800; // Base height
+
+    // Add height for event image
+    canvasHeight += 250;
+
+    // Add height for ticket info section
+    canvasHeight += 400;
+
+    // Add height for QR code section based on number of days
+    if (eventDays === 1) {
+      // Single QR code
+      canvasHeight += 400; // QR + spacing
+    } else {
+      // Multiple QR codes in grid
+      const qrSize = eventDays <= 3 ? 200 : 150;
+      const qrPerRow = Math.min(3, eventDays);
+      const totalRows = Math.ceil(eventDays / qrPerRow);
+      canvasHeight += 120; // Title and spacing
+      canvasHeight += totalRows * (qrSize + 80) + 60; // QR grid + extra spacing
+    }
+
+    // Add extra padding for footer
+    canvasHeight += 200;
+
+    // For scanned tickets, use minimum height
+    if (booking.paymentId && booking.paymentId.startsWith("SCANNED_")) {
+      canvasHeight = Math.min(canvasHeight, 1200);
+    }
+
+    console.log(
+      "📐 Canvas height calculated:",
+      canvasHeight,
+      "for",
+      eventDays,
+      "days"
+    );
 
     // Create canvas with dynamic dimensions
     const canvas = createCanvas(900, canvasHeight);
@@ -388,65 +499,271 @@ export async function generateTicketImage(booking, event, user) {
 
       yPosition += 250;
     } else {
-      // Regular QR code for unscanned tickets
-      ctx.fillStyle = "#a78bfa"; // violet-400
-      ctx.font = "bold 20px Arial";
-      ctx.textAlign = "center";
-      ctx.fillText("SCAN FOR ENTRY", 450, yPosition);
+      // Regular QR code(s) for unscanned tickets
+      const eventDays = calculateEventDays(event);
 
-      ctx.fillStyle = "#94a3b8";
-      ctx.font = "14px Arial";
-      ctx.fillText(
-        "Present this QR code at the venue entrance",
-        450,
-        yPosition + 25
-      );
+      if (eventDays === 1) {
+        // Single day event - one QR code
+        const qrData = booking.id;
+        const isScanned = isQRScanned(booking, 1, qrData);
 
-      yPosition += 60;
+        ctx.fillStyle = "#a78bfa"; // violet-400
+        ctx.font = "bold 20px Arial";
+        ctx.textAlign = "center";
+        ctx.fillText(
+          isScanned ? "ENTRY USED" : "SCAN FOR ENTRY",
+          450,
+          yPosition
+        );
 
-      // Load QR Code image - using api.qrserver.com like client-side
-      const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(
-        booking.id
-      )}`;
-      const qrImage = await loadImage(qrCodeUrl);
+        ctx.fillStyle = "#94a3b8";
+        ctx.font = "14px Arial";
+        if (isScanned) {
+          const scanInfo = getQRScanInfo(booking, 1, qrData);
+          const scanDate = scanInfo
+            ? new Date(scanInfo.scannedAt).toLocaleString()
+            : "Previously";
+          ctx.fillText(
+            `This ticket was scanned on ${scanDate}`,
+            450,
+            yPosition + 25
+          );
+        } else {
+          ctx.fillText(
+            "Present this QR code at the venue entrance",
+            450,
+            yPosition + 25
+          );
+        }
 
-      // Modern QR container with glow effect
-      ctx.fillStyle = "rgba(255, 255, 255, 0.05)";
-      ctx.fillRect(300, yPosition, 300, 300);
+        yPosition += 60;
 
-      // Border with gradient
-      const qrBorderGradient = ctx.createLinearGradient(
-        300,
-        yPosition,
-        600,
-        yPosition + 300
-      );
-      qrBorderGradient.addColorStop(0, "#3b82f6");
-      qrBorderGradient.addColorStop(0.5, "#8b5cf6");
-      qrBorderGradient.addColorStop(1, "#3b82f6");
-      ctx.strokeStyle = qrBorderGradient;
-      ctx.lineWidth = 3;
-      ctx.strokeRect(300, yPosition, 300, 300);
+        if (isScanned) {
+          // Show "USED" message instead of QR code
+          ctx.fillStyle = "rgba(220, 38, 38, 0.1)"; // Red background
+          ctx.fillRect(300, yPosition, 300, 300);
 
-      // White background for QR
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(320, yPosition + 20, 260, 260);
+          // Red border
+          ctx.strokeStyle = "#dc2626";
+          ctx.lineWidth = 3;
+          ctx.strokeRect(300, yPosition, 300, 300);
 
-      // Draw QR code
-      ctx.drawImage(qrImage, 320, yPosition + 20, 260, 260);
+          // "USED" text
+          ctx.fillStyle = "#dc2626";
+          ctx.font = "bold 48px Arial";
+          ctx.textAlign = "center";
+          ctx.fillText("USED", 450, yPosition + 160);
 
-      // QR Code ID below
-      ctx.fillStyle = "#64748b";
-      ctx.font = "12px monospace";
-      ctx.fillText(booking.id, 450, yPosition + 330);
+          // Scan date
+          const scanInfo = getQRScanInfo(booking, 1, qrData);
+          if (scanInfo) {
+            ctx.fillStyle = "#991b1b";
+            ctx.font = "14px Arial";
+            ctx.fillText(
+              `Scanned: ${new Date(scanInfo.scannedAt).toLocaleString()}`,
+              450,
+              yPosition + 190
+            );
+          }
+        } else {
+          // Show QR code
+          const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(
+            qrData
+          )}`;
+          const qrImage = await loadImage(qrCodeUrl);
 
-      yPosition += 350;
+          // Modern QR container with glow effect
+          ctx.fillStyle = "rgba(255, 255, 255, 0.05)";
+          ctx.fillRect(300, yPosition, 300, 300);
+
+          // Border with gradient
+          const qrBorderGradient = ctx.createLinearGradient(
+            300,
+            yPosition,
+            600,
+            yPosition + 300
+          );
+          qrBorderGradient.addColorStop(0, "#3b82f6");
+          qrBorderGradient.addColorStop(0.5, "#8b5cf6");
+          qrBorderGradient.addColorStop(1, "#3b82f6");
+          ctx.strokeStyle = qrBorderGradient;
+          ctx.lineWidth = 3;
+          ctx.strokeRect(300, yPosition, 300, 300);
+
+          // White background for QR
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(320, yPosition + 20, 260, 260);
+
+          // Draw QR code
+          ctx.drawImage(qrImage, 320, yPosition + 20, 260, 260);
+        }
+
+        // QR Code ID below
+        ctx.fillStyle = "#64748b";
+        ctx.font = "12px monospace";
+        ctx.fillText(booking.id, 450, yPosition + 330);
+
+        yPosition += 400; // Increased spacing from 350 to 400
+      } else {
+        // Multi-day event - multiple QR codes
+        ctx.fillStyle = "#a78bfa"; // violet-400
+        ctx.font = "bold 20px Arial";
+        ctx.textAlign = "center";
+        ctx.fillText(
+          `MULTI-DAY EVENT QR CODES (${eventDays} Days)`,
+          450,
+          yPosition
+        );
+
+        ctx.fillStyle = "#94a3b8";
+        ctx.font = "14px Arial";
+        ctx.fillText(
+          "Use the appropriate QR code for each day of the event",
+          450,
+          yPosition + 25
+        );
+
+        yPosition += 60;
+
+        // Calculate QR code layout
+        const qrSize = eventDays <= 3 ? 200 : 150; // Smaller QR codes for more days
+        const qrPadding = 20;
+        const qrPerRow = Math.min(3, eventDays); // Max 3 QR codes per row
+        const totalRows = Math.ceil(eventDays / qrPerRow);
+
+        // Calculate starting position to center the QR codes
+        const totalWidth = qrSize * qrPerRow + qrPadding * (qrPerRow - 1);
+        const startX = (900 - totalWidth) / 2;
+
+        for (let day = 0; day < eventDays; day++) {
+          const row = Math.floor(day / qrPerRow);
+          const col = day % qrPerRow;
+
+          const qrX = startX + col * (qrSize + qrPadding);
+          const qrY = yPosition + row * (qrSize + 80); // 80px spacing between rows
+
+          // Generate day-specific QR data
+          const dayQRData = generateDayQRData(booking, day, eventDays);
+          const dayNumber = day + 1;
+          const isScanned = isQRScanned(booking, dayNumber, dayQRData);
+
+          // Day-specific border colors
+          const borderColors = [
+            ["#3b82f6", "#8b5cf6"], // Blue to Purple
+            ["#10b981", "#34d399"], // Green shades
+            ["#f59e0b", "#fbbf24"], // Orange shades
+            ["#ef4444", "#f87171"], // Red shades
+            ["#8b5cf6", "#a78bfa"], // Purple shades
+            ["#06b6d4", "#22d3ee"], // Cyan shades
+            ["#84cc16", "#a3e635"], // Lime shades
+          ];
+          const colorIndex = day % borderColors.length;
+
+          if (isScanned) {
+            // Show "USED" message for scanned QR codes
+            ctx.fillStyle = "rgba(220, 38, 38, 0.1)"; // Red background
+            ctx.fillRect(qrX, qrY, qrSize, qrSize);
+
+            // Red border for used QR
+            ctx.strokeStyle = "#dc2626";
+            ctx.lineWidth = 3;
+            ctx.strokeRect(qrX, qrY, qrSize, qrSize);
+
+            // "USED" text
+            ctx.fillStyle = "#dc2626";
+            ctx.font = `bold ${qrSize < 180 ? "24" : "32"}px Arial`;
+            ctx.textAlign = "center";
+            ctx.fillText("USED", qrX + qrSize / 2, qrY + qrSize / 2 + 8);
+
+            // Smaller scan info for multi-day
+            const scanInfo = getQRScanInfo(booking, dayNumber, dayQRData);
+            if (scanInfo && qrSize >= 180) {
+              ctx.fillStyle = "#991b1b";
+              ctx.font = "10px Arial";
+              ctx.fillText(
+                new Date(scanInfo.scannedAt).toLocaleDateString(),
+                qrX + qrSize / 2,
+                qrY + qrSize / 2 + 30
+              );
+            }
+          } else {
+            // Show QR code for unscanned codes
+            const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(
+              dayQRData
+            )}`;
+            const qrImage = await loadImage(qrCodeUrl);
+
+            // QR container background
+            ctx.fillStyle = "rgba(255, 255, 255, 0.05)";
+            ctx.fillRect(qrX, qrY, qrSize, qrSize);
+
+            // Border with gradient
+            const qrBorderGradient = ctx.createLinearGradient(
+              qrX,
+              qrY,
+              qrX + qrSize,
+              qrY + qrSize
+            );
+            qrBorderGradient.addColorStop(0, borderColors[colorIndex][0]);
+            qrBorderGradient.addColorStop(1, borderColors[colorIndex][1]);
+            ctx.strokeStyle = qrBorderGradient;
+            ctx.lineWidth = 3;
+            ctx.strokeRect(qrX, qrY, qrSize, qrSize);
+
+            // White background for QR
+            const qrPadding2 = 10;
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(
+              qrX + qrPadding2,
+              qrY + qrPadding2,
+              qrSize - qrPadding2 * 2,
+              qrSize - qrPadding2 * 2
+            );
+
+            // Draw QR code
+            ctx.drawImage(
+              qrImage,
+              qrX + qrPadding2,
+              qrY + qrPadding2,
+              qrSize - qrPadding2 * 2,
+              qrSize - qrPadding2 * 2
+            );
+          }
+
+          // Day label
+          ctx.fillStyle = isScanned ? "#dc2626" : borderColors[colorIndex][0];
+          ctx.font = "bold 14px Arial";
+          ctx.textAlign = "center";
+          ctx.fillText(
+            `DAY ${dayNumber}${isScanned ? " ✓" : ""}`,
+            qrX + qrSize / 2,
+            qrY + qrSize + 20
+          );
+
+          // Date for this day
+          const dayDate = new Date(event.date);
+          dayDate.setDate(dayDate.getDate() + day);
+          ctx.fillStyle = isScanned ? "#991b1b" : "#64748b";
+          ctx.font = "10px Arial";
+          ctx.fillText(
+            dayDate.toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+            }),
+            qrX + qrSize / 2,
+            qrY + qrSize + 35
+          );
+        }
+
+        // Update yPosition based on the number of rows
+        yPosition += totalRows * (qrSize + 80) + 80; // Increased spacing from 40 to 80
+      }
     }
 
     ctx.textAlign = "left";
 
     // Footer Instructions with modern card design
-    yPosition += 390;
+    yPosition += 60; // Reduced spacing from 390 to 60
 
     // Instructions card
     const instructionsGradient = ctx.createLinearGradient(

@@ -6,10 +6,13 @@ export default function TicketModal({ booking, isOpen, onClose }) {
 
   if (!isOpen || !booking) return null;
 
-  const generateQRCode = (ticketId, dayIndex = null) => {
+  const generateQRCode = (ticketId, dayIndex = null, totalDays = null) => {
     // For multi-day events, append day index to create unique QR codes per day
+    // Match the format used in server-side generateTicketImage.js
     const qrData =
-      dayIndex !== null ? `${ticketId}_DAY_${dayIndex + 1}` : ticketId;
+      dayIndex !== null && totalDays !== null
+        ? `${ticketId}_DAY_${dayIndex + 1}_OF_${totalDays}`
+        : ticketId;
     // Using a QR code API service - you can replace with your preferred service
     // Add timestamp to prevent caching issues
     return `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(
@@ -19,12 +22,15 @@ export default function TicketModal({ booking, isOpen, onClose }) {
 
   // Calculate event days for multi-day events
   const getEventDays = () => {
-    if (!booking.event.endDate) {
+    // Check for both endDate and enddate (database column is lowercase)
+    const endDateValue = booking.event.endDate || booking.event.enddate;
+
+    if (!endDateValue) {
       return [new Date(booking.event.date)];
     }
 
     const startDate = new Date(booking.event.date);
-    const endDate = new Date(booking.event.endDate);
+    const endDate = new Date(endDateValue);
     const days = [];
 
     const currentDate = new Date(startDate);
@@ -454,7 +460,7 @@ export default function TicketModal({ booking, isOpen, onClose }) {
           // Load and draw QR code for this day
           const qrImage = new Image();
           qrImage.crossOrigin = "anonymous";
-          qrImage.src = generateQRCode(booking.id, i);
+          qrImage.src = generateQRCode(booking.id, i, eventDays.length);
 
           await new Promise((resolve, reject) => {
             qrImage.onload = () => {
@@ -502,7 +508,7 @@ export default function TicketModal({ booking, isOpen, onClose }) {
         // Single day event: Show one large QR code
         const qrImage = new Image();
         qrImage.crossOrigin = "anonymous";
-        qrImage.src = generateQRCode(booking.id);
+        qrImage.src = generateQRCode(booking.id, null, 1);
 
         await new Promise((resolve, reject) => {
           qrImage.onload = () => {
@@ -1003,7 +1009,11 @@ export default function TicketModal({ booking, isOpen, onClose }) {
                         <div className="flex justify-center">
                           <div className="bg-white p-2 rounded border">
                             <img
-                              src={generateQRCode(booking.id, index)}
+                              src={generateQRCode(
+                                booking.id,
+                                index,
+                                eventDays.length
+                              )}
                               alt={`QR Code for Day ${index + 1}`}
                               className="w-24 h-24"
                             />
@@ -1023,7 +1033,7 @@ export default function TicketModal({ booking, isOpen, onClose }) {
                     <div className="flex justify-center">
                       <div className="bg-white p-4 rounded-lg border-2 border-gray-200">
                         <img
-                          src={generateQRCode(booking.id)}
+                          src={generateQRCode(booking.id, null, 1)}
                           alt="QR Code for ticket verification"
                           className="w-40 h-40"
                         />

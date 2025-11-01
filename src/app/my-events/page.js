@@ -202,6 +202,20 @@ export default function MyEventsPage() {
   const upcomingBookings = filterBookings(bookings, "upcoming");
   const pastBookings = filterBookings(bookings, "past");
 
+  // Helper function to check if an event is expired
+  const isEventExpired = (event) => {
+    if (!event || !event.date) return false;
+
+    const now = new Date();
+    // Use endDate if available (for multi-day events), otherwise use start date
+    const eventEndDate =
+      event.endDate || event.enddate
+        ? new Date(event.endDate || event.enddate)
+        : new Date(event.date);
+
+    return eventEndDate < now;
+  };
+
   // Format date for display
   const formatEventDate = (dateString, timeString) => {
     const date = new Date(dateString);
@@ -652,24 +666,51 @@ export default function MyEventsPage() {
                         </div>
                       </div>
 
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => {
-                            console.log("View Ticket clicked:", booking);
-                            setSelectedTicket(booking);
-                            setShowTicketModal(true);
-                          }}
-                          className="flex-1 bg-blue-600/20 text-white px-3 py-2 rounded-lg text-xs font-medium border border-blue-500/30 hover:bg-blue-600/30 transition-all"
-                        >
-                          View Ticket
-                        </button>
-                        <Link
-                          href={`/events/${booking.event.id}`}
-                          className="flex-1 bg-white/10 text-white px-3 py-2 rounded-lg text-xs font-medium border border-white/20 hover:bg-white/20 transition-all text-center"
-                        >
-                          Details
-                        </Link>
-                      </div>
+                      {/* Action Buttons or Completed Stamp */}
+                      {isEventExpired(booking.event) ? (
+                        // Show "Event Completed" stamp for expired events
+                        <div className="relative flex items-center justify-center py-4 px-4">
+                          <div className="relative">
+                            {/* Stamp Background */}
+                            <div className="absolute inset-0 bg-red-600/20 border-2 border-red-500/40 rounded-lg transform rotate-[-2deg]"></div>
+                            <div className="relative bg-red-600/10 border-2 border-red-500/50 border-dashed rounded-lg px-4 py-2 transform rotate-[1deg]">
+                              <div className="flex flex-col items-center gap-1">
+                                <div className="w-6 h-6 rounded-full bg-red-500/30 flex items-center justify-center border border-red-400">
+                                  <span className="text-red-200 text-sm font-bold">
+                                    ✓
+                                  </span>
+                                </div>
+                                <span className="text-red-200 text-xs font-bold uppercase tracking-wide">
+                                  Event
+                                </span>
+                                <span className="text-red-200 text-xs font-bold uppercase tracking-wide">
+                                  Completed
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        // Show buttons for upcoming/active events
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => {
+                              console.log("View Ticket clicked:", booking);
+                              setSelectedTicket(booking);
+                              setShowTicketModal(true);
+                            }}
+                            className="flex-1 bg-blue-600/20 text-white px-3 py-2 rounded-lg text-xs font-medium border border-blue-500/30 hover:bg-blue-600/30 transition-all"
+                          >
+                            View Ticket
+                          </button>
+                          <Link
+                            href={`/events/${booking.event.id}`}
+                            className="flex-1 bg-white/10 text-white px-3 py-2 rounded-lg text-xs font-medium border border-white/20 hover:bg-white/20 transition-all text-center"
+                          >
+                            Details
+                          </Link>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )
