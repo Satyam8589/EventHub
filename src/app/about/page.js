@@ -200,10 +200,10 @@ export default function AboutPage() {
                 About
               </Link>
               <Link
-                href="/contact"
-                className="text-white/80 hover:text-white transition-colors"
+                href="/profile"
+                className="hover:text-white transition-colors"
               >
-                Contact
+                Profile
               </Link>
               {/* Admin Panel Link - Only show for admins */}
               {user &&
@@ -304,10 +304,10 @@ export default function AboutPage() {
                   About
                 </Link>
                 <Link
-                  href="/contact"
+                  href="/profile"
                   className="block px-3 py-2 text-white/80 hover:text-white transition-colors"
                 >
-                  Contact
+                  Profile
                 </Link>
                 {/* Admin Panel Link - Only show for admins */}
                 {user &&
@@ -648,10 +648,10 @@ export default function AboutPage() {
                 </li>
                 <li>
                   <Link
-                    href="/contact"
+                    href="/profile"
                     className="text-white/60 hover:text-white transition-colors"
                   >
-                    Contact
+                    Profile
                   </Link>
                 </li>
               </ul>

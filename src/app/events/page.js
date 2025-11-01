@@ -258,8 +258,8 @@ export default function EventsPage() {
               <a href="/about" className="hover:text-white transition-colors">
                 About
               </a>
-              <a href="/contact" className="hover:text-white transition-colors">
-                Contact
+              <a href="/profile" className="hover:text-white transition-colors">
+                Profile
               </a>
 
               {/* Admin Navigation - Only show for admins */}
@@ -387,10 +387,10 @@ export default function EventsPage() {
               About
             </a>
             <a
-              href="/contact"
-              className="block text-white/80 hover:text-white transition-colors py-2"
+              href="/profile"
+              className="block px-3 py-2 text-white/80 hover:text-white transition-colors"
             >
-              Contact
+              Profile
             </a>
 
             {/* Admin Navigation - Only show for admins */}
