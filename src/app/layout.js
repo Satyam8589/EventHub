@@ -2,6 +2,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { AuthProvider } from "@/contexts/AuthContext";
 import PWARegister from "@/components/PWARegister";
 import PWAInstallPrompt from "@/components/PWAInstallPrompt";
+import SplashScreenWrapper from "@/components/SplashScreenWrapper";
 import { Toaster } from "react-hot-toast";
 import "./globals.css";
 
@@ -54,6 +55,7 @@ export default function RootLayout({ children }) {
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <AuthProvider>
+          <SplashScreenWrapper />
           <PWARegister />
           {children}
           <PWAInstallPrompt />

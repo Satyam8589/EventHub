@@ -877,6 +877,80 @@ export default function Page({ params }) {
         </div>
       </div>
 
+      {/* Mobile Attendees Section - Compact at Bottom */}
+      <div className="md:hidden bg-linear-to-r from-slate-800/90 to-slate-900/90 backdrop-blur-md border-t border-white/10 p-4">
+        <div className="max-w-lg mx-auto">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-bold text-white">👥 Attendees</h3>
+            <span className="text-sm text-gray-300 bg-white/10 px-3 py-1 rounded-full">
+              {totalAttendees}
+            </span>
+          </div>
+
+          {/* Compact Attendees List */}
+          {attendees && attendees.length > 0 ? (
+            <div className="space-y-2">
+              {/* Top 5 in compact horizontal scroll */}
+              <div className="flex items-center gap-3 overflow-x-auto pb-2">
+                {attendees.slice(0, 5).map((attendee, index) => {
+                  const colors = [
+                    "from-blue-600 to-blue-400",
+                    "from-purple-600 to-purple-400",
+                    "from-pink-600 to-pink-400",
+                    "from-green-600 to-green-400",
+                    "from-orange-600 to-orange-400",
+                  ];
+                  const color = colors[index % colors.length];
+
+                  const getInitials = (name) => {
+                    if (!name) return "?";
+                    const parts = name.trim().split(" ");
+                    if (parts.length >= 2) {
+                      return (
+                        parts[0][0] + parts[parts.length - 1][0]
+                      ).toUpperCase();
+                    }
+                    return name.substring(0, 2).toUpperCase();
+                  };
+
+                  return (
+                    <div
+                      key={attendee.userId || index}
+                      className="shrink-0 text-center"
+                    >
+                      <div
+                        className={`w-12 h-12 rounded-full bg-linear-to-br ${color} flex items-center justify-center text-white text-sm font-bold mb-1 border-2 border-white/20`}
+                      >
+                        {getInitials(attendee.name)}
+                      </div>
+                      <div className="text-xs text-gray-300 max-w-[60px] truncate">
+                        {attendee.name?.split(" ")[0] || "User"}
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {/* Show +more indicator */}
+                {totalAttendees > 5 && (
+                  <div className="shrink-0 text-center">
+                    <div className="w-12 h-12 rounded-full bg-white/10 border-2 border-white/20 flex items-center justify-center text-white text-xs font-bold mb-1">
+                      +{totalAttendees - 5}
+                    </div>
+                    <div className="text-xs text-gray-400">more</div>
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-4">
+              <p className="text-gray-400 text-sm">
+                No attendees yet. Be the first!
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Gallery Popup */}
       {selectedGalleryItem && (
         <div
