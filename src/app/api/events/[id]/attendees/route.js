@@ -1,68 +1,65 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 
-// GET /api/events/[id]/attendees - Get attendees for an event
+// GET /api/events/[id]/attendees - Get top 5 different users who booked
 export async function GET(request, { params }) {
   try {
-    const { id } = params;
+    const { id } = await params;
 
-    console.log("===========================================");
-    console.log("ATTENDEES API CALLED FOR EVENT:", id);
-    console.log("===========================================");
-
-    // Fetch CONFIRMED bookings with user information
-    const { data: bookings, error } = await supabase
+    // Get ALL bookings for this event (any status)
+    const { data: allBookings, error } = await supabase
       .from("bookings")
-      .select(`
-        *,
-        users:userId (
-          id,
-          name,
-          email,
-          avatar
-        )
-      `)
+      .select("userId, createdAt, status")
       .eq("eventId", id)
-      .eq("status", "CONFIRMED")
-      .order("createdAt", { ascending: false })
-      .limit(10);
-
-    console.log("CONFIRMED bookings found:", bookings?.length || 0);
-    if (bookings && bookings.length > 0) {
-      console.log("First booking with user:", JSON.stringify(bookings[0], null, 2));
-    }
+      .order("createdAt", { ascending: false });
 
     if (error) {
-      console.error("Error fetching bookings:", error);
       return NextResponse.json({ attendees: [], total: 0 });
     }
 
-    if (!bookings || bookings.length === 0) {
-      console.log("No confirmed bookings found");
+    const totalBookings = allBookings?.length || 0;
+
+    if (totalBookings === 0) {
       return NextResponse.json({ attendees: [], total: 0 });
     }
 
-    // Extract attendee information from bookings with user data
-    const attendees = bookings.slice(0, 5).map((booking, index) => {
-      const user = booking.users;
-      
+    // Get first 5 unique users (different users only)
+    const uniqueUsers = [];
+    const seenUserIds = new Set();
+
+    for (const booking of allBookings) {
+      if (!seenUserIds.has(booking.userId) && uniqueUsers.length < 5) {
+        uniqueUsers.push(booking);
+        seenUserIds.add(booking.userId);
+      }
+    }
+
+    // Fetch user details for the unique users
+    const userIds = uniqueUsers.map((u) => u.userId);
+    const { data: users } = await supabase
+      .from("users")
+      .select("id, name, email, avatar")
+      .in("id", userIds);
+
+    // Create attendees list
+    const attendees = uniqueUsers.map((booking, index) => {
+      const user = users?.find((u) => u.id === booking.userId);
+
       return {
         userId: booking.userId,
-        name: user?.name || user?.email?.split('@')[0] || `User ${index + 1}`,
-        email: user?.email || '',
-        avatar: user?.avatar || '',
+        name: user?.name || user?.email?.split("@")[0] || `User ${index + 1}`,
+        email: user?.email || "",
+        avatar: user?.avatar || "",
         bookedAt: booking.createdAt,
       };
     });
 
-    console.log("Processed attendees:", attendees);
-
     return NextResponse.json({
       attendees: attendees,
-      total: bookings.length,
+      total: seenUserIds.size, // Total unique users, not total bookings
     });
   } catch (error) {
-    console.error("Error in GET /api/events/[id]/attendees:", error);
+    console.error("Error in attendees API:", error);
     return NextResponse.json({ attendees: [], total: 0 }, { status: 500 });
   }
 }

@@ -11,7 +11,7 @@ export async function GET() {
 
     console.log("Users table exists:", !error);
     console.log("Sample users:", users?.length || 0);
-    
+
     if (users && users.length > 0) {
       console.log("User fields:", Object.keys(users[0]));
     }

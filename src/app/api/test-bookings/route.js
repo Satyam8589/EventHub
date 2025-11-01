@@ -4,7 +4,7 @@ import { supabase } from "@/lib/supabase";
 export async function GET() {
   try {
     console.log("Testing bookings table...");
-    
+
     // Get ALL bookings
     const { data: allBookings, error } = await supabase
       .from("bookings")
@@ -12,9 +12,12 @@ export async function GET() {
       .limit(10);
 
     console.log("Total bookings in database:", allBookings?.length || 0);
-    
+
     if (allBookings && allBookings.length > 0) {
-      console.log("First booking structure:", JSON.stringify(allBookings[0], null, 2));
+      console.log(
+        "First booking structure:",
+        JSON.stringify(allBookings[0], null, 2)
+      );
       console.log("All booking fields:", Object.keys(allBookings[0]));
     }
 

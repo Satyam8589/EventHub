@@ -605,9 +605,6 @@ export default function Page({ params }) {
                                 <div className="font-semibold text-white truncate">
                                   {attendee.name}
                                 </div>
-                                <div className="text-sm text-gray-400 truncate">
-                                  {attendee.email || "No email"}
-                                </div>
                               </div>
 
                               {/* Badge */}
@@ -635,13 +632,14 @@ export default function Page({ params }) {
                   )}
 
                   {/* No attendees message */}
-                  {(!attendees || attendees.length === 0) && totalAttendees === 0 && (
-                    <div className="text-center py-8">
-                      <p className="text-gray-400">
-                        No attendees registered yet. Be the first to book!
-                      </p>
-                    </div>
-                  )}
+                  {(!attendees || attendees.length === 0) &&
+                    totalAttendees === 0 && (
+                      <div className="text-center py-8">
+                        <p className="text-gray-400">
+                          No attendees registered yet. Be the first to book!
+                        </p>
+                      </div>
+                    )}
                 </div>
               )}
             </div>
