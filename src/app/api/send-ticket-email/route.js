@@ -112,3 +112,12 @@ export async function POST(request) {
     );
   }
 }
+
+// GET method for deployment verification
+export async function GET() {
+  return NextResponse.json({
+    message: "Send ticket email API is running",
+    methods: ["POST"],
+    status: "active"
+  });
+}

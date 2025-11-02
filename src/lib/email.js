@@ -1,4 +1,4 @@
-const nodemailer = require("nodemailer");
+import nodemailer from "nodemailer";
 
 // Create reusable transporter
 let transporter = null;
@@ -10,16 +10,24 @@ function getTransporter() {
       console.warn(
         "Gmail credentials not configured. Email sending will be disabled."
       );
+      console.warn("GMAIL_USER:", process.env.GMAIL_USER ? "SET" : "MISSING");
+      console.warn("GMAIL_APP_PASSWORD:", process.env.GMAIL_APP_PASSWORD ? "SET" : "MISSING");
       return null;
     }
 
-    transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: process.env.GMAIL_USER,
-        pass: process.env.GMAIL_APP_PASSWORD,
-      },
-    });
+    try {
+      transporter = nodemailer.createTransporter({
+        service: "gmail",
+        auth: {
+          user: process.env.GMAIL_USER,
+          pass: process.env.GMAIL_APP_PASSWORD,
+        },
+      });
+      console.log("✅ Email transporter configured successfully");
+    } catch (error) {
+      console.error("❌ Failed to create email transporter:", error.message);
+      return null;
+    }
   }
   return transporter;
 }
