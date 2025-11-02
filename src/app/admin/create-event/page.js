@@ -19,6 +19,7 @@ export default function CreateEvent() {
     date: "",
     endDate: "",
     time: "",
+    endTime: "",
     location: "",
     venue: "",
     maxAttendees: "",
@@ -45,7 +46,16 @@ export default function CreateEvent() {
     } else if (type === "checkbox") {
       setFormData((prev) => ({ ...prev, [name]: checked }));
     } else {
-      setFormData((prev) => ({ ...prev, [name]: value }));
+      setFormData((prev) => {
+        const newData = { ...prev, [name]: value };
+
+        // Auto-set endTime to start time if endTime is empty
+        if (name === "time" && !prev.endTime) {
+          newData.endTime = value;
+        }
+
+        return newData;
+      });
     }
   };
 
@@ -85,10 +95,14 @@ export default function CreateEvent() {
         `${formData.date}T${formData.time}`
       ).toISOString();
 
-      // Combine end date and time (use same time as start if end date is provided)
+      // Combine end date and end time
       const eventEndDateTime = formData.endDate
-        ? new Date(`${formData.endDate}T${formData.time}`).toISOString()
-        : null;
+        ? new Date(
+            `${formData.endDate}T${formData.endTime || formData.time}`
+          ).toISOString()
+        : new Date(
+            `${formData.date}T${formData.endTime || formData.time}`
+          ).toISOString();
 
       // Prepare data for API
       const eventData = {
@@ -263,8 +277,8 @@ export default function CreateEvent() {
               />
             </div>
 
-            {/* Category and Date Row */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Category and Time Row */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="space-y-2">
                 <label className="block text-white font-medium">
                   Category *
@@ -291,7 +305,7 @@ export default function CreateEvent() {
 
               <div className="space-y-2">
                 <label className="block text-white font-medium">
-                  Event Time *
+                  Start Time *
                 </label>
                 <input
                   type="time"
@@ -301,6 +315,21 @@ export default function CreateEvent() {
                   required
                   className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-xl text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                 />
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-white font-medium">
+                  End Time *
+                </label>
+                <input
+                  type="time"
+                  name="endTime"
+                  value={formData.endTime}
+                  onChange={handleInputChange}
+                  required
+                  className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-xl text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                />
+                <p className="text-white/60 text-sm">Defaults to start time</p>
               </div>
             </div>
 

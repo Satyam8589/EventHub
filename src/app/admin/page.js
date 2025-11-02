@@ -257,11 +257,25 @@ export default function AdminDashboard() {
             <div className="space-y-3">
               {recentActivity.map((activity, index) => (
                 <div
-                  key={index}
-                  className="flex items-center space-x-3 p-3 bg-white/5 rounded-lg"
+                  key={activity.id || index}
+                  className="flex items-center space-x-3 p-3 bg-white/5 rounded-lg hover:bg-white/10 transition-colors"
                 >
-                  <div className="w-8 h-8 bg-blue-500/20 rounded-full flex items-center justify-center">
-                    <span className="text-sm">📝</span>
+                  <div
+                    className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                      activity.type === "booking"
+                        ? "bg-green-500/20"
+                        : activity.type === "event"
+                        ? "bg-blue-500/20"
+                        : "bg-purple-500/20"
+                    }`}
+                  >
+                    <span className="text-sm">
+                      {activity.type === "booking"
+                        ? "🎫"
+                        : activity.type === "event"
+                        ? "🎯"
+                        : "📝"}
+                    </span>
                   </div>
                   <div className="flex-1">
                     <p className="text-white text-sm">{activity.description}</p>
@@ -273,7 +287,16 @@ export default function AdminDashboard() {
               ))}
             </div>
           ) : (
-            <p className="text-gray-300">No recent activity</p>
+            <div className="text-center py-8">
+              <div className="w-16 h-16 mx-auto mb-4 bg-gray-500/20 rounded-full flex items-center justify-center">
+                <span className="text-2xl">📝</span>
+              </div>
+              <p className="text-gray-300 mb-2">No recent activity</p>
+              <p className="text-gray-500 text-sm">
+                Activity will appear here when users book tickets or create
+                events
+              </p>
+            </div>
           )}
         </div>
       </div>

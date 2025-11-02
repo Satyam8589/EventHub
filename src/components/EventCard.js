@@ -5,6 +5,41 @@ import { useState } from "react";
 export default function EventCard({ event }) {
   const [imageError, setImageError] = useState(false);
   const [imageLoading, setImageLoading] = useState(true);
+  // Format time range display
+  const formatTimeRange = (event) => {
+    if (!event.date) return null;
+
+    const startDate = new Date(event.date);
+    const endDate = event.endDate ? new Date(event.endDate) : null;
+
+    // Extract start time
+    const startTime = startDate.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
+
+    // If we have an end date and it's the same day, show time range
+    if (endDate) {
+      const isSameDay = startDate.toDateString() === endDate.toDateString();
+
+      if (isSameDay) {
+        const endTime = endDate.toLocaleTimeString("en-US", {
+          hour: "numeric",
+          minute: "2-digit",
+          hour12: true,
+        });
+
+        // Only show range if times are different
+        if (startTime !== endTime) {
+          return `${startTime} - ${endTime}`;
+        }
+      }
+    }
+
+    return startTime;
+  };
+
   const registered = event.registered || 0;
   const capacity = event.capacity || 0;
 
@@ -181,9 +216,9 @@ export default function EventCard({ event }) {
                       month: "short",
                       day: "numeric",
                     })}
-                    {event.time && (
+                    {formatTimeRange(event) && (
                       <span className="text-gray-500 ml-1.5">
-                        • {event.time}
+                        • {formatTimeRange(event)}
                       </span>
                     )}
                     {event.endDate && event.endDate !== event.date && (

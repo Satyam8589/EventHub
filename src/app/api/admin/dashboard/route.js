@@ -77,21 +77,57 @@ export async function GET(request) {
       const activeEvents =
         events?.filter((event) => event.status === "UPCOMING").length || 0;
 
-      // Get recent activity
-      const recentActivity = (bookings || [])
+      // Get recent activity - combine bookings and events
+      const recentActivity = [];
+
+      // Add recent bookings
+      (bookings || [])
         .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-        .slice(0, 10)
-        .map((booking) => {
+        .slice(0, 8)
+        .forEach((booking) => {
           const event = events?.find((e) => e.id === booking.eventId);
-          return {
-            id: booking.id,
+          recentActivity.push({
+            id: `booking-${booking.id}`,
             type: "booking",
-            message: `${booking.tickets} ticket(s) booked for ${
+            description: `${booking.tickets} ticket(s) booked for ${
               event?.title || "Unknown Event"
             } - ₹${booking.totalAmount?.toLocaleString("en-IN")}`,
+            timestamp: new Date(booking.createdAt).toLocaleString("en-US", {
+              month: "short",
+              day: "numeric",
+              hour: "numeric",
+              minute: "2-digit",
+              hour12: true,
+            }),
             createdAt: booking.createdAt,
-          };
+          });
         });
+
+      // Add recent events
+      (events || [])
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+        .slice(0, 5)
+        .forEach((event) => {
+          recentActivity.push({
+            id: `event-${event.id}`,
+            type: "event",
+            description: `New event created: ${event.title}`,
+            timestamp: new Date(event.createdAt).toLocaleString("en-US", {
+              month: "short",
+              day: "numeric",
+              hour: "numeric",
+              minute: "2-digit",
+              hour12: true,
+            }),
+            createdAt: event.createdAt,
+          });
+        });
+
+      // Sort all activities by creation date and limit to 10
+      recentActivity.sort(
+        (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+      );
+      const finalRecentActivity = recentActivity.slice(0, 10);
 
       return NextResponse.json({
         stats: {
@@ -100,7 +136,7 @@ export async function GET(request) {
           totalRevenue,
           activeEvents,
         },
-        recentActivity,
+        recentActivity: finalRecentActivity,
         events: events || [], // Include events list for admin panel
       });
     } catch (statsError) {
