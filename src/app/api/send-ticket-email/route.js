@@ -6,9 +6,62 @@ import {
   sendTicketEmailWithRetry,
 } from "@/lib/email";
 
+// GET method for deployment verification and health check
+export async function GET() {
+  try {
+    console.log("🔍 Email API Health Check - GET method called");
+    return NextResponse.json({
+      message: "Send ticket email API is running",
+      methods: ["GET", "POST"],
+      status: "active",
+      timestamp: new Date().toISOString(),
+      environment: process.env.NODE_ENV || "unknown",
+    });
+  } catch (error) {
+    console.error("❌ GET method error:", error);
+    return NextResponse.json(
+      {
+        error: "Health check failed",
+        message: error.message,
+      },
+      { status: 500 }
+    );
+  }
+}
+
 export async function POST(request) {
   try {
-    const { bookingId } = await request.json();
+    console.log("📧 Email API - POST method called");
+
+    // Add request debugging
+    const contentType = request.headers.get("content-type");
+    console.log("Content-Type:", contentType);
+
+    if (!contentType?.includes("application/json")) {
+      return NextResponse.json(
+        {
+          error: "Invalid content type. Expected application/json",
+        },
+        { status: 400 }
+      );
+    }
+
+    let requestBody;
+    try {
+      requestBody = await request.json();
+      console.log("📦 Request body:", requestBody);
+    } catch (jsonError) {
+      console.error("❌ JSON parsing error:", jsonError);
+      return NextResponse.json(
+        {
+          error: "Invalid JSON in request body",
+          details: jsonError.message,
+        },
+        { status: 400 }
+      );
+    }
+
+    const { bookingId } = requestBody;
 
     if (!bookingId) {
       return NextResponse.json(
@@ -118,6 +171,6 @@ export async function GET() {
   return NextResponse.json({
     message: "Send ticket email API is running",
     methods: ["POST"],
-    status: "active"
+    status: "active",
   });
 }

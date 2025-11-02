@@ -330,6 +330,8 @@ export default function MyEventsPage() {
     try {
       setSendingEmail(booking.id);
 
+      console.log("📧 Sending email for booking:", booking.id);
+      
       const response = await fetch("/api/send-ticket-email", {
         method: "POST",
         headers: {
@@ -339,6 +341,22 @@ export default function MyEventsPage() {
           bookingId: booking.id,
         }),
       });
+
+      console.log("📧 Email API response status:", response.status);
+      console.log("📧 Email API response headers:", [...response.headers.entries()]);
+
+      if (!response.ok) {
+        // Log the raw response for debugging
+        const responseText = await response.text();
+        console.error("❌ Email API failed:");
+        console.error("Status:", response.status);
+        console.error("Status Text:", response.statusText);
+        console.error("Response Text:", responseText);
+        
+        setSendingEmail(null);
+        alert("❌ Failed to send ticket email. Please try again.");
+        return;
+      }
 
       const result = await response.json();
 

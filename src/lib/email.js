@@ -11,7 +11,10 @@ function getTransporter() {
         "Gmail credentials not configured. Email sending will be disabled."
       );
       console.warn("GMAIL_USER:", process.env.GMAIL_USER ? "SET" : "MISSING");
-      console.warn("GMAIL_APP_PASSWORD:", process.env.GMAIL_APP_PASSWORD ? "SET" : "MISSING");
+      console.warn(
+        "GMAIL_APP_PASSWORD:",
+        process.env.GMAIL_APP_PASSWORD ? "SET" : "MISSING"
+      );
       return null;
     }
 

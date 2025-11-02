@@ -1,5 +1,8 @@
 // Test email import
-import { sendTicketEmailWithRetry, generateBookingEmailHTML } from "./src/lib/email.js";
+import {
+  sendTicketEmailWithRetry,
+  generateBookingEmailHTML,
+} from "./src/lib/email.js";
 
 console.log("Testing email imports...");
 console.log("sendTicketEmailWithRetry:", typeof sendTicketEmailWithRetry);
