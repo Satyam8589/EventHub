@@ -180,6 +180,7 @@ export async function POST(request) {
       venue,
       date,
       time,
+      endTime,
       price,
       capacity,
       imageUrl,
@@ -208,6 +209,7 @@ export async function POST(request) {
           venue: venue || location,
           date: new Date(date).toISOString(),
           time,
+          endtime: endTime || null, // Use lowercase to match PostgreSQL column name
           price: parseFloat(price) || 0,
           capacity: parseInt(capacity) || 100,
           imageUrl,
@@ -220,6 +222,53 @@ export async function POST(request) {
       ])
       .select("*")
       .single();
+
+    // If endTime column doesn't exist, retry without endTime
+    if (
+      createError &&
+      createError.code === "PGRST204" &&
+      (createError.message.includes("endTime") ||
+        createError.message.includes("endtime"))
+    ) {
+      console.warn(
+        "endTime column doesn't exist in database, creating without endTime"
+      );
+
+      const { data: retryEvent, error: retryCreateError } = await supabase
+        .from("events")
+        .insert([
+          {
+            id: crypto.randomUUID(), // Generate unique ID
+            title,
+            description,
+            category: category || "CONFERENCE",
+            location,
+            venue: venue || location,
+            date: new Date(date).toISOString(),
+            time,
+            price: parseFloat(price) || 0,
+            capacity: parseInt(capacity) || 100,
+            imageUrl,
+            tags: tags || [],
+            organizerId,
+            status: "UPCOMING",
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+        ])
+        .select("*")
+        .single();
+
+      if (retryCreateError) {
+        console.error("Error creating event (retry):", retryCreateError);
+        return NextResponse.json(
+          { error: "Failed to create event" },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json({ event: retryEvent });
+    }
 
     if (createError) {
       console.error("Error creating event:", createError);

@@ -63,6 +63,8 @@ export async function PUT(request, { params }) {
       category,
       date,
       endDate,
+      time,
+      endTime,
       location,
       venue,
       capacity,
@@ -74,9 +76,9 @@ export async function PUT(request, { params }) {
       gallery,
     } = body;
 
-    // Extract time from the date
-    const eventDate = new Date(date);
-    const timeString = eventDate.toTimeString().slice(0, 5); // Format: "HH:MM"
+    // Use the provided time or extract from date if time field not provided
+    const timeString = time || new Date(date).toTimeString().slice(0, 5);
+    const endTimeString = endTime || null;
 
     // Handle endDate if provided
     const eventEndDate = endDate ? new Date(endDate) : null;
@@ -88,8 +90,9 @@ export async function PUT(request, { params }) {
       category,
       location,
       venue,
-      date: eventDate.toISOString(),
+      date: new Date(date).toISOString(),
       time: timeString,
+      endtime: endTimeString, // Use lowercase to match PostgreSQL column name
       capacity: parseInt(capacity),
       price: parseFloat(price),
       featured: featured || false,
@@ -111,28 +114,31 @@ export async function PUT(request, { params }) {
       .select()
       .single();
 
-    // If endDate column doesn't exist, retry without endDate
+    // If endDate or endTime columns don't exist, retry without them
     if (
       updateError &&
       updateError.code === "PGRST204" &&
       (updateError.message.includes("endDate") ||
-        updateError.message.includes("enddate"))
+        updateError.message.includes("enddate") ||
+        updateError.message.includes("endTime") ||
+        updateError.message.includes("endtime"))
     ) {
       console.warn(
-        "endDate column doesn't exist in database, updating without endDate"
+        "endDate or endTime column doesn't exist in database, updating without them"
       );
 
-      // Remove endDate from update data
+      // Remove endDate and endTime from update data
       const {
         enddate: _,
         endDate: __,
-        ...updateDataWithoutEndDate
+        endtime: ___,
+        ...updateDataWithoutOptionalFields
       } = updateData;
 
       const { data: retryUpdatedEvent, error: retryUpdateError } =
         await supabase
           .from("events")
-          .update(updateDataWithoutEndDate)
+          .update(updateDataWithoutOptionalFields)
           .eq("id", id)
           .select()
           .single();

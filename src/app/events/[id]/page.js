@@ -46,6 +46,12 @@ export default function Page({ params }) {
           gallery: data.event?.gallery,
           bookingsCount: data.event?._count?.bookings,
           capacity: data.event?.capacity,
+          // Debug endtime fields
+          endTime: data.event?.endTime,
+          endtime: data.event?.endtime,
+          endDate: data.event?.endDate,
+          enddate: data.event?.enddate,
+          time: data.event?.time,
         });
         setEvent(data.event);
         setLoading(false);
@@ -770,32 +776,88 @@ export default function Page({ params }) {
                       })}
                     </div>
                     <div className="text-sm text-gray-400">
-                      {event.time || "09:00 AM"}
+                      {(() => {
+                        if (event.time) {
+                          // If time is already formatted with AM/PM, use it directly
+                          if (
+                            event.time.includes("AM") ||
+                            event.time.includes("PM")
+                          ) {
+                            return event.time;
+                          }
+                          // If time is in 24-hour format (HH:MM), convert to 12-hour with AM/PM
+                          const timeParts = event.time.split(":");
+                          if (timeParts.length === 2) {
+                            let hours = parseInt(timeParts[0]);
+                            const minutes = timeParts[1];
+                            const ampm = hours >= 12 ? "PM" : "AM";
+                            hours = hours % 12;
+                            hours = hours ? hours : 12; // 0 should be 12
+                            return `${hours}:${minutes} ${ampm}`;
+                          }
+                        }
+                        return "09:00 AM";
+                      })()}
                     </div>
                   </div>
                 </div>
 
-                {(event.endDate || event.enddate) && (
+                {(event.endDate ||
+                  event.enddate ||
+                  event.endTime ||
+                  event.endtime) && (
                   <div className="flex gap-4 p-4 rounded-xl bg-white/5 border border-white/10">
                     <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-red-600/20 flex items-center justify-center text-2xl">
                       🏁
                     </div>
                     <div>
                       <div className="font-semibold text-white mb-1">
-                        Ending Date
+                        Ending Date & Time
                       </div>
                       <div className="text-sm text-gray-300">
-                        {new Date(
-                          event.endDate || event.enddate
-                        ).toLocaleDateString("en-US", {
-                          weekday: "long",
-                          year: "numeric",
-                          month: "long",
-                          day: "numeric",
-                        })}
+                        {event.endDate || event.enddate
+                          ? new Date(
+                              event.endDate || event.enddate
+                            ).toLocaleDateString("en-US", {
+                              weekday: "long",
+                              year: "numeric",
+                              month: "long",
+                              day: "numeric",
+                            })
+                          : "End date not specified"}
                       </div>
                       <div className="text-sm text-gray-400">
-                        {event.time || "09:00 AM"}
+                        {(() => {
+                          const endTime = event.endTime || event.endtime;
+                          console.log("🔍 DEBUG Ending Time:", {
+                            endTime,
+                            "event.endTime": event.endTime,
+                            "event.endtime": event.endtime,
+                            type: typeof endTime,
+                          });
+
+                          if (endTime) {
+                            // If time is already formatted with AM/PM, use it directly
+                            if (
+                              endTime.includes("AM") ||
+                              endTime.includes("PM")
+                            ) {
+                              return endTime;
+                            }
+                            // If time is in 24-hour format (HH:MM or HH:MM:SS), convert to 12-hour with AM/PM
+                            const timeParts = endTime.split(":");
+                            if (timeParts.length >= 2) {
+                              let hours = parseInt(timeParts[0]);
+                              const minutes = timeParts[1];
+                              const ampm = hours >= 12 ? "PM" : "AM";
+                              hours = hours % 12;
+                              hours = hours ? hours : 12; // 0 should be 12
+                              return `${hours}:${minutes} ${ampm}`;
+                            }
+                          }
+                          // Show "Not specified" if no ending time is set
+                          return "End time not specified";
+                        })()}
                       </div>
                     </div>
                   </div>

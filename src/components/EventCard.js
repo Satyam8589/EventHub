@@ -7,37 +7,49 @@ export default function EventCard({ event }) {
   const [imageLoading, setImageLoading] = useState(true);
   // Format time range display
   const formatTimeRange = (event) => {
-    if (!event.date) return null;
+    // Use the separate time field instead of extracting from date
+    const startTime = event.time;
+    const endTime = event.endTime || event.endtime;
 
-    const startDate = new Date(event.date);
-    const endDate = event.endDate ? new Date(event.endDate) : null;
+    if (!startTime) return null;
 
-    // Extract start time
-    const startTime = startDate.toLocaleTimeString("en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    });
+    // Format start time to 12-hour format with AM/PM
+    const formatTime = (timeValue) => {
+      if (!timeValue) return null;
 
-    // If we have an end date and it's the same day, show time range
-    if (endDate) {
-      const isSameDay = startDate.toDateString() === endDate.toDateString();
-
-      if (isSameDay) {
-        const endTime = endDate.toLocaleTimeString("en-US", {
-          hour: "numeric",
-          minute: "2-digit",
-          hour12: true,
-        });
-
-        // Only show range if times are different
-        if (startTime !== endTime) {
-          return `${startTime} - ${endTime}`;
-        }
+      // If time is already formatted with AM/PM, use it directly
+      if (timeValue.includes("AM") || timeValue.includes("PM")) {
+        return timeValue;
       }
+
+      // If time is in 24-hour format (HH:MM or HH:MM:SS), convert to 12-hour with AM/PM
+      const timeParts = timeValue.split(":");
+      if (timeParts.length >= 2) {
+        let hours = parseInt(timeParts[0]);
+        const minutes = timeParts[1];
+        const ampm = hours >= 12 ? "PM" : "AM";
+        hours = hours % 12;
+        hours = hours ? hours : 12; // 0 should be 12
+        return `${hours}:${minutes} ${ampm}`;
+      }
+
+      return timeValue;
+    };
+
+    const formattedStartTime = formatTime(startTime);
+    const formattedEndTime = formatTime(endTime);
+
+    // If we have both start and end times and they're different, show range
+    if (
+      formattedStartTime &&
+      formattedEndTime &&
+      formattedStartTime !== formattedEndTime
+    ) {
+      return `${formattedStartTime} - ${formattedEndTime}`;
     }
 
-    return startTime;
+    // Otherwise just show start time
+    return formattedStartTime;
   };
 
   const registered = event.registered || 0;
@@ -203,48 +215,119 @@ export default function EventCard({ event }) {
           {event.description}
         </p>
 
-        {/* Date and Location - Enhanced Design */}
-        <div className="space-y-2.5 mb-4">
-          <div className="flex items-start gap-2.5 text-sm">
-            <span className="text-blue-500 text-lg mt-0.5 shrink-0">📅</span>
-            <div className="flex-1 min-w-0">
-              <span className="text-gray-700 font-medium">
-                {event.date ? (
-                  <>
+        {/* Organizer */}
+        {(event.organizerName || event.organizer?.name) && (
+          <div className="flex items-center justify-between mb-3 text-sm">
+            <span className="text-gray-500">Organizer:</span>
+            <span className="text-gray-700 font-medium">
+              {event.organizerName || event.organizer?.name}
+            </span>
+          </div>
+        )}
+
+        {/* Date and Time Information - Compact Design */}
+        <div className="space-y-1.5 mb-4">
+          {/* Starting Date & Time */}
+          <div className="flex items-center gap-2 text-sm">
+            <span className="text-blue-500 shrink-0">🚀</span>
+            <div className="flex-1 min-w-0 flex items-center justify-between">
+              {event.date ? (
+                <div className="flex items-center gap-1 text-gray-700 font-medium text-xs">
+                  <span>
                     {new Date(event.date).toLocaleDateString("en-US", {
-                      weekday: "short",
                       month: "short",
                       day: "numeric",
                     })}
-                    {formatTimeRange(event) && (
-                      <span className="text-gray-500 ml-1.5">
-                        • {formatTimeRange(event)}
-                      </span>
-                    )}
-                    {event.endDate && event.endDate !== event.date && (
-                      <span className="block text-xs text-gray-500 mt-0.5">
-                        Until{" "}
-                        {new Date(event.endDate).toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                        })}
-                      </span>
-                    )}
-                  </>
-                ) : (
-                  "Date TBD"
-                )}
-              </span>
-              {event.endDate && new Date(event.endDate) < new Date() && (
-                <span className="inline-block px-2 py-0.5 bg-red-100 text-red-600 text-xs rounded-full ml-2 font-medium">
-                  Expired
-                </span>
+                  </span>
+                  {event.time && (
+                    <span className="text-gray-500">
+                      •{" "}
+                      {(() => {
+                        const time = event.time;
+                        if (time.includes("AM") || time.includes("PM")) {
+                          return time;
+                        }
+                        const timeParts = time.split(":");
+                        if (timeParts.length >= 2) {
+                          let hours = parseInt(timeParts[0]);
+                          const minutes = timeParts[1];
+                          const ampm = hours >= 12 ? "PM" : "AM";
+                          hours = hours % 12;
+                          hours = hours ? hours : 12;
+                          return `${hours}:${minutes} ${ampm}`;
+                        }
+                        return time;
+                      })()}
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <span className="text-gray-500 text-xs">Date TBD</span>
               )}
+              {(() => {
+                // Smart expired logic that considers start time, end date, and end time
+                const now = new Date();
+                let isExpired = false;
+
+                // If we have an end date, use that to determine if expired
+                if (event.endDate || event.enddate) {
+                  const endDate = new Date(event.endDate || event.enddate);
+
+                  // If we also have an end time, combine them
+                  if (event.endTime || event.endtime) {
+                    const endTime = event.endTime || event.endtime;
+                    const timeParts = endTime.split(":");
+                    if (timeParts.length >= 2) {
+                      endDate.setHours(
+                        parseInt(timeParts[0]),
+                        parseInt(timeParts[1]),
+                        0,
+                        0
+                      );
+                    }
+                  } else {
+                    // If no end time specified, assume end of day
+                    endDate.setHours(23, 59, 59, 999);
+                  }
+
+                  isExpired = now > endDate;
+                } else if (event.date) {
+                  // No end date, so check if it's past the start date
+                  const eventDate = new Date(event.date);
+
+                  // If we have a start time, use it
+                  if (event.time) {
+                    const timeParts = event.time.split(":");
+                    if (timeParts.length >= 2) {
+                      // For single-day events without end time, assume 8-hour duration
+                      const startHours = parseInt(timeParts[0]);
+                      const startMinutes = parseInt(timeParts[1]);
+                      eventDate.setHours(startHours + 8, startMinutes, 0, 0); // Add 8 hours
+                    } else {
+                      // No valid time, assume end of day
+                      eventDate.setHours(23, 59, 59, 999);
+                    }
+                  } else {
+                    // No time specified, assume end of day
+                    eventDate.setHours(23, 59, 59, 999);
+                  }
+
+                  isExpired = now > eventDate;
+                }
+
+                return isExpired ? (
+                  <span className="px-1.5 py-0.5 bg-red-100 text-red-600 text-xs rounded font-medium">
+                    Expired
+                  </span>
+                ) : null;
+              })()}
             </div>
           </div>
-          <div className="flex items-start gap-2.5 text-sm">
-            <span className="text-purple-500 text-lg mt-0.5 shrink-0">📍</span>
-            <span className="text-gray-700 font-medium line-clamp-1 flex-1 min-w-0">
+
+          {/* Location */}
+          <div className="flex items-center gap-2 text-sm">
+            <span className="text-purple-500 shrink-0">📍</span>
+            <span className="text-gray-600 text-xs line-clamp-1 flex-1 min-w-0">
               {event.location}
             </span>
           </div>

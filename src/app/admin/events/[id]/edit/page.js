@@ -16,6 +16,7 @@ export default function EditEventPage() {
     date: "",
     endDate: "",
     time: "",
+    endTime: "",
     location: "",
     venue: "",
     capacity: "",
@@ -89,6 +90,7 @@ export default function EditEventPage() {
         date: eventDate.toISOString().split("T")[0],
         endDate: eventEndDate ? eventEndDate.toISOString().split("T")[0] : "",
         time: data.event.time || "",
+        endTime: data.event.endTime || data.event.endtime || "", // Handle both camelCase and lowercase
         location: data.event.location || "",
         venue: data.event.venue || "",
         capacity: data.event.capacity || "",
@@ -439,7 +441,7 @@ export default function EditEventPage() {
               </div>
 
               {/* Date and Time */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <label className="block text-white font-medium">
                     Start Date *
@@ -468,10 +470,13 @@ export default function EditEventPage() {
                     placeholder="Optional - for multi-day events"
                   />
                 </div>
+              </div>
 
+              {/* Time Fields */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <label className="block text-white font-medium">
-                    Event Time *
+                    Start Time *
                   </label>
                   <input
                     type="time"
@@ -480,6 +485,20 @@ export default function EditEventPage() {
                     onChange={handleInputChange}
                     required
                     className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-xl text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-white font-medium">
+                    End Time
+                  </label>
+                  <input
+                    type="time"
+                    name="endTime"
+                    value={formData.endTime}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-xl text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    placeholder="Optional - event ending time"
                   />
                 </div>
               </div>

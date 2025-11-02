@@ -42,6 +42,15 @@ export async function GET(request, { params }) {
     console.log("Capacity:", event.capacity);
     console.log("Available spots:", event.capacity - (bookingsCount || 0));
 
+    // Debug endtime fields
+    console.log("=== DEBUG EVENT TIME FIELDS ===");
+    console.log("event.time:", event.time);
+    console.log("event.endtime:", event.endtime);
+    console.log("event.endTime:", event.endTime);
+    console.log("event.enddate:", event.enddate);
+    console.log("event.endDate:", event.endDate);
+    console.log("================================");
+
     // Add bookings count to event object
     const eventWithCount = {
       ...event,
