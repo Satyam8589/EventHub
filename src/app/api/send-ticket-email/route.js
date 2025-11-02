@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 import { generateTicketImage } from "@/lib/generateTicketImage";
-import { generateBookingEmailHTML, sendTicketEmail } from "@/lib/email";
+import {
+  generateBookingEmailHTML,
+  sendTicketEmailWithRetry,
+} from "@/lib/email";
 
 export async function POST(request) {
   try {
@@ -70,20 +73,23 @@ export async function POST(request) {
       booking.user
     );
 
-    // Send email using the existing email utility with ticket attachment
+    // Send email using enhanced retry logic
     console.log("Sending ticket email to:", booking.user.email);
-    const emailResult = await sendTicketEmail({
-      to: booking.user.email,
-      subject: `Your Ticket for ${booking.event.title}`,
-      html: emailHTML,
-      attachments: [
-        {
-          filename: `ticket-${booking.id}.png`,
-          content: ticketImageBuffer,
-          contentType: "image/png",
-        },
-      ],
-    });
+    const emailResult = await sendTicketEmailWithRetry(
+      {
+        to: booking.user.email,
+        subject: `Your Ticket for ${booking.event.title}`,
+        html: emailHTML,
+        attachments: [
+          {
+            filename: `ticket-${booking.id}.png`,
+            content: ticketImageBuffer,
+            contentType: "image/png",
+          },
+        ],
+      },
+      3
+    ); // 3 retry attempts
 
     if (emailResult.success) {
       console.log("Ticket email sent successfully for booking:", bookingId);

@@ -4,10 +4,18 @@ import { supabase } from "@/lib/supabase";
 // POST /api/admin/scan-ticket - Scan and verify ticket
 export async function POST(request) {
   try {
-    const { bookingId, scannedBy, eventId } = await request.json();
+    const {
+      bookingId: rawBookingId,
+      scannedBy,
+      eventId,
+    } = await request.json();
+
+    // Clean and validate booking ID
+    const bookingId = rawBookingId?.toString().trim();
 
     console.log("=== SCAN TICKET REQUEST ===");
-    console.log("Booking ID received:", bookingId);
+    console.log("Raw Booking ID received:", rawBookingId);
+    console.log("Cleaned Booking ID:", bookingId);
     console.log("Booking ID type:", typeof bookingId);
     console.log("Booking ID length:", bookingId?.length);
     console.log("Scanner ID:", scannedBy);
@@ -16,6 +24,31 @@ export async function POST(request) {
     if (!bookingId || !scannedBy || !eventId) {
       return NextResponse.json(
         { error: "Booking ID, scanner ID, and event ID are required" },
+        { status: 400 }
+      );
+    }
+
+    // Validate booking ID format (should be UUID)
+    const uuidRegex =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(bookingId)) {
+      console.error("INVALID BOOKING ID FORMAT:", {
+        scannedData: bookingId,
+        dataLength: bookingId?.length,
+        expectedFormat: "UUID (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)",
+      });
+
+      return NextResponse.json(
+        {
+          error: "Invalid QR code format",
+          isValid: false,
+          message: "QR code appears to be corrupted or invalid",
+          debugInfo: {
+            scannedData: bookingId,
+            dataLength: bookingId?.length,
+            expectedFormat: "UUID format required",
+          },
+        },
         { status: 400 }
       );
     }
@@ -72,11 +105,27 @@ export async function POST(request) {
     }
 
     if (bookingError || !booking) {
+      console.error("BOOKING LOOKUP FAILED:", {
+        searchedId: bookingId,
+        searchedIdLength: bookingId?.length,
+        searchedIdType: typeof bookingId,
+        eventId: eventId,
+        errorDetails: bookingError?.message || "No booking found",
+        sqlError: bookingError,
+      });
+
       return NextResponse.json(
         {
-          error: "Invalid ticket",
+          error: "Ticket not found",
           isValid: false,
-          message: "Booking not found",
+          message:
+            "This QR code does not match any valid tickets in our system",
+          debugInfo: {
+            scannedData: bookingId,
+            dataLength: bookingId?.length,
+            searchedInEvent: eventId,
+            errorType: bookingError ? "Database Error" : "Booking Not Found",
+          },
         },
         { status: 404 }
       );

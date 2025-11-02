@@ -30,7 +30,7 @@ export async function sendTicketEmail({ to, subject, html, attachments }) {
 
     if (!transport) {
       console.warn("Email transporter not configured. Skipping email send.");
-      return { success: false, message: "Email not configured" };
+      return { success: false, error: "Email not configured" };
     }
 
     const mailOptions = {
@@ -41,12 +41,50 @@ export async function sendTicketEmail({ to, subject, html, attachments }) {
       attachments,
     };
 
+    console.log("Attempting to send email to:", to);
     const info = await transport.sendMail(mailOptions);
     console.log("Email sent successfully:", info.messageId);
     return { success: true, messageId: info.messageId };
   } catch (error) {
     console.error("Error sending email:", error);
     return { success: false, error: error.message };
+  }
+}
+
+// Enhanced email sending with retry logic
+export async function sendTicketEmailWithRetry(
+  { to, subject, html, attachments },
+  maxRetries = 3
+) {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`Email sending attempt ${attempt}/${maxRetries} to: ${to}`);
+
+      const result = await sendTicketEmail({ to, subject, html, attachments });
+
+      if (result.success) {
+        console.log(`✅ Email sent successfully on attempt ${attempt}`);
+        return result;
+      }
+
+      if (attempt < maxRetries) {
+        console.log(`❌ Email attempt ${attempt} failed: ${result.error}`);
+        console.log(`⏳ Waiting 2 seconds before retry...`);
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+      } else {
+        console.log(`❌ All ${maxRetries} email attempts failed`);
+        return result;
+      }
+    } catch (error) {
+      console.error(`❌ Email attempt ${attempt} threw error:`, error.message);
+
+      if (attempt === maxRetries) {
+        return { success: false, error: error.message };
+      }
+
+      console.log(`⏳ Waiting 2 seconds before retry...`);
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+    }
   }
 }
 
