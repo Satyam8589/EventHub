@@ -1,6 +1,6 @@
 # EventHub 🎟️
 
-![EventHub Banner](https://github.com/Satyam8589/EventHub/blob/main/image.png?raw=true) <!-- Update the path if needed -->
+![EventHub Banner](https://github.com/Satyam8589/EventHub/blob/main/image.png?raw=true) 
 
 A **modern event booking and ticketing web platform** built using **Next.js** and **Supabase**, designed to make event management, booking, and digital ticket generation effortless and secure.
 
