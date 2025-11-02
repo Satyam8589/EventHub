@@ -11,11 +11,27 @@ export async function POST(request) {
     } = await request.json();
 
     // Clean and validate booking ID
-    const bookingId = rawBookingId?.toString().trim();
+    let bookingId = rawBookingId?.toString().trim();
+    let scannedDay = null;
+    let totalDaysInQR = null;
 
     console.log("=== SCAN TICKET REQUEST ===");
     console.log("Raw Booking ID received:", rawBookingId);
     console.log("Cleaned Booking ID:", bookingId);
+
+    // Check if this is a day-specific QR code format: bookingId_DAY_X_OF_Y
+    const dayQRMatch = bookingId?.match(/^(.+)_DAY_(\d+)_OF_(\d+)$/);
+    if (dayQRMatch) {
+      bookingId = dayQRMatch[1]; // Extract the actual booking ID
+      scannedDay = parseInt(dayQRMatch[2]); // Extract the day number
+      totalDaysInQR = parseInt(dayQRMatch[3]); // Extract total days
+      
+      console.log("🎯 Day-specific QR detected:");
+      console.log("- Booking ID:", bookingId);
+      console.log("- QR Day:", scannedDay);
+      console.log("- Total Days in QR:", totalDaysInQR);
+    }
+
     console.log("Booking ID type:", typeof bookingId);
     console.log("Booking ID length:", bookingId?.length);
     console.log("Scanner ID:", scannedBy);
@@ -173,32 +189,145 @@ export async function POST(request) {
       );
     }
 
-    // Check if this booking has already been scanned
-    // We'll use the paymentId field to store scan timestamp (creative use of existing field)
-    if (booking.paymentId && booking.paymentId.startsWith("SCANNED_")) {
-      const scannedTime = new Date(booking.paymentId.replace("SCANNED_", ""));
+    // Progressive ticket scanning logic - only allow scanning specific ticket numbers on specific days
+    const totalTickets = booking.tickets || 1;
+    console.log("=== PROGRESSIVE TICKET SCANNING ===");
+    console.log("Total tickets in booking:", totalTickets);
+
+    // Calculate which day of the event it is (starting from day 1)
+    const eventStartDate = new Date(event.date);
+    const currentDate = new Date();
+
+    // Reset time to midnight for accurate day calculation
+    eventStartDate.setHours(0, 0, 0, 0);
+    currentDate.setHours(0, 0, 0, 0);
+
+    const daysDifference = Math.floor(
+      (currentDate - eventStartDate) / (1000 * 60 * 60 * 24)
+    );
+    const currentEventDay = daysDifference + 1; // Day 1, 2, 3, etc.
+
+    console.log("Event start date:", eventStartDate.toISOString());
+    console.log("Current date:", currentDate.toISOString());
+    console.log("Days difference:", daysDifference);
+    console.log("Current event day:", currentEventDay);
+
+    // If this is a day-specific QR code, validate that it matches the current day
+    if (scannedDay !== null) {
+      console.log("🔍 Validating day-specific QR code:");
+      console.log("- QR is for day:", scannedDay);
+      console.log("- Current event day:", currentEventDay);
+      
+      if (scannedDay !== currentEventDay) {
+        return NextResponse.json(
+          {
+            error: "Wrong day for this QR code",
+            isValid: false,
+            message: scannedDay < currentEventDay 
+              ? `This QR code was for Day ${scannedDay} which has already passed. Please use today's QR code (Day ${currentEventDay}).`
+              : `This QR code is for Day ${scannedDay} but today is Day ${currentEventDay}. Please come back on the correct day.`,
+            booking: {
+              id: booking.id,
+              eventTitle: booking.event.title,
+              userName: booking.user.name,
+              qrDay: scannedDay,
+              currentDay: currentEventDay,
+              totalTickets: totalTickets,
+            },
+          },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Check if we're within the valid event period
+    if (currentEventDay < 1) {
       return NextResponse.json(
         {
-          error: "Ticket already scanned",
+          error: "Event not started yet",
           isValid: false,
-          message: `This ticket was already used on ${scannedTime.toLocaleString()}. Thank you for visiting, enjoy the event!`,
+          message: `Event starts on ${eventStartDate.toLocaleDateString()}. Please come back on the event day.`,
           booking: {
             id: booking.id,
             eventTitle: booking.event.title,
             userName: booking.user.name,
-            usedAt: booking.paymentId.replace("SCANNED_", ""),
+            eventStartDate: eventStartDate.toLocaleDateString(),
           },
         },
         { status: 400 }
       );
     }
 
-    // Mark ticket as scanned by updating paymentId with scan timestamp
+    if (currentEventDay > totalTickets) {
+      return NextResponse.json(
+        {
+          error: "All tickets used",
+          isValid: false,
+          message: `All ${totalTickets} ticket(s) for this booking have been used. Thank you for visiting!`,
+          booking: {
+            id: booking.id,
+            eventTitle: booking.event.title,
+            userName: booking.user.name,
+            totalTickets: totalTickets,
+            daysElapsed: currentEventDay - 1,
+          },
+        },
+        { status: 400 }
+      );
+    }
+
+    // Parse existing scanned tickets data
+    let scannedTicketsData = {};
+    if (booking.paymentId && booking.paymentId.startsWith("SCANNED_TICKETS_")) {
+      try {
+        const ticketsDataString = booking.paymentId.replace(
+          "SCANNED_TICKETS_",
+          ""
+        );
+        scannedTicketsData = JSON.parse(ticketsDataString);
+        console.log("Existing scanned tickets:", scannedTicketsData);
+      } catch (e) {
+        console.log(
+          "Could not parse existing scanned tickets data, starting fresh"
+        );
+        scannedTicketsData = {};
+      }
+    }
+
+    // Check if the current day's ticket has already been scanned
+    const ticketNumberForToday = currentEventDay;
+    if (scannedTicketsData[ticketNumberForToday]) {
+      const scannedTime = new Date(scannedTicketsData[ticketNumberForToday]);
+      return NextResponse.json(
+        {
+          error: "Today's ticket already scanned",
+          isValid: false,
+          message: `Ticket ${ticketNumberForToday} was already used on ${scannedTime.toLocaleString()}. Thank you for visiting! ✓`,
+          booking: {
+            id: booking.id,
+            eventTitle: booking.event.title,
+            userName: booking.user.name,
+            ticketNumber: ticketNumberForToday,
+            totalTickets: totalTickets,
+            usedAt: scannedTime.toLocaleString(),
+            nextTicketAvailable:
+              ticketNumberForToday < totalTickets
+                ? `Day ${ticketNumberForToday + 1}`
+                : "All tickets used",
+          },
+        },
+        { status: 400 }
+      );
+    }
+
+    // Mark the current day's ticket as scanned
     const scannedAt = new Date().toISOString();
+    scannedTicketsData[ticketNumberForToday] = scannedAt;
+
     const { error: scanError } = await supabase
       .from("bookings")
       .update({
-        paymentId: `SCANNED_${scannedAt}`,
+        paymentId: `SCANNED_TICKETS_${JSON.stringify(scannedTicketsData)}`,
         updatedAt: scannedAt,
       })
       .eq("id", booking.id);
@@ -211,21 +340,46 @@ export async function POST(request) {
       );
     }
 
+    // Determine the success message and next ticket info
+    const isLastTicket = ticketNumberForToday === totalTickets;
+    const nextTicketDay = isLastTicket ? null : ticketNumberForToday + 1;
+    const nextTicketDate = nextTicketDay
+      ? new Date(
+          eventStartDate.getTime() + (nextTicketDay - 1) * 24 * 60 * 60 * 1000
+        )
+      : null;
+
     return NextResponse.json({
       isValid: true,
-      message:
-        "Ticket verified successfully. Entry allowed. Thank you for visiting, enjoy the event!",
+      message: "Thank You for Visiting! ✓",
       booking: {
         id: booking.id,
         eventTitle: booking.event.title,
         userName: booking.user.name,
         userEmail: booking.user.email,
-        tickets: booking.tickets,
-        totalAmount: booking.totalAmount,
+        ticketNumber: ticketNumberForToday,
+        totalTickets: totalTickets,
         scannedAt: scannedAt,
         scannedBy: scanner.name,
-        status: booking.status, // Keep original status
+        status: booking.status,
         isScanned: true,
+        progressInfo: {
+          currentDay: currentEventDay,
+          ticketUsedToday: ticketNumberForToday,
+          remainingTickets: totalTickets - ticketNumberForToday,
+          nextTicketAvailable: nextTicketDay
+            ? `Day ${nextTicketDay} (${nextTicketDate.toLocaleDateString()})`
+            : "All tickets used",
+          allScannedTickets: scannedTicketsData,
+        },
+        qrInfo: scannedDay ? {
+          scannedQRDay: scannedDay,
+          expectedDay: currentEventDay,
+          isCorrectDay: scannedDay === currentEventDay,
+          qrFormat: "day-specific"
+        } : {
+          qrFormat: "booking-id-only"
+        },
       },
     });
   } catch (error) {
@@ -309,6 +463,58 @@ export async function GET(request) {
       0
     );
 
+    // Calculate progressive scanning statistics
+    let scannedTicketsCount = 0;
+    let progressiveScannedBookings = 0;
+    let scannedBookingsData = [];
+
+    bookings.forEach((booking) => {
+      let bookingScannedTickets = 0;
+      let scannedTicketsData = {};
+
+      // Parse scanned tickets data
+      if (
+        booking.paymentId &&
+        booking.paymentId.startsWith("SCANNED_TICKETS_")
+      ) {
+        try {
+          const ticketsDataString = booking.paymentId.replace(
+            "SCANNED_TICKETS_",
+            ""
+          );
+          scannedTicketsData = JSON.parse(ticketsDataString);
+          bookingScannedTickets = Object.keys(scannedTicketsData).length;
+          scannedTicketsCount += bookingScannedTickets;
+
+          if (bookingScannedTickets > 0) {
+            progressiveScannedBookings++;
+          }
+        } catch (e) {
+          // If parsing fails, it's not progressive scanning data
+        }
+      } else if (
+        booking.paymentId &&
+        booking.paymentId.startsWith("SCANNED_")
+      ) {
+        // Legacy single scan format
+        bookingScannedTickets = 1;
+        scannedTicketsCount += 1;
+        progressiveScannedBookings++;
+      }
+
+      if (bookingScannedTickets > 0) {
+        scannedBookingsData.push({
+          id: booking.id,
+          userName: booking.user.name,
+          userEmail: booking.user.email,
+          totalTickets: booking.tickets,
+          scannedTickets: bookingScannedTickets,
+          scannedTicketsData: scannedTicketsData,
+          lastScannedAt: booking.updatedAt,
+        });
+      }
+    });
+
     return NextResponse.json({
       event: {
         id: event.id,
@@ -320,9 +526,16 @@ export async function GET(request) {
       statistics: {
         totalBookings: bookings.length,
         totalTickets,
+        scannedTickets: scannedTicketsCount,
+        scannedBookings: progressiveScannedBookings,
         confirmedBookings: bookings.length,
         availableTickets: event.capacity - totalTickets,
+        scanProgress:
+          totalTickets > 0
+            ? ((scannedTicketsCount / totalTickets) * 100).toFixed(1)
+            : 0,
       },
+      scannedBookings: scannedBookingsData,
       recentBookings: bookings.slice(-10).map((booking) => ({
         id: booking.id,
         userName: booking.user.name,

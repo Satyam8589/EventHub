@@ -280,22 +280,26 @@ export default function TicketScanner() {
                     </div>
                     <div className="text-center p-3 bg-green-500/20 rounded-lg">
                       <div className="text-2xl font-bold text-green-300">
-                        {statistics.statistics.verifiedBookings}
+                        {statistics.statistics.scannedTickets || 0}
                       </div>
-                      <div className="text-sm text-green-200">Verified</div>
+                      <div className="text-sm text-green-200">
+                        Scanned Tickets
+                      </div>
                     </div>
                     <div className="text-center p-3 bg-yellow-500/20 rounded-lg">
                       <div className="text-2xl font-bold text-yellow-300">
-                        {statistics.statistics.pendingVerification}
+                        {statistics.statistics.totalTickets}
                       </div>
-                      <div className="text-sm text-yellow-200">Pending</div>
+                      <div className="text-sm text-yellow-200">
+                        Total Tickets
+                      </div>
                     </div>
                     <div className="text-center p-3 bg-purple-500/20 rounded-lg">
                       <div className="text-2xl font-bold text-purple-300">
-                        {statistics.statistics.totalTickets}
+                        {statistics.statistics.scanProgress || 0}%
                       </div>
                       <div className="text-sm text-purple-200">
-                        Total Tickets
+                        Scan Progress
                       </div>
                     </div>
                   </div>
@@ -459,8 +463,46 @@ export default function TicketScanner() {
                 </div>
                 {scanResult.booking.tickets && (
                   <div className="text-gray-300">
-                    <span className="font-medium">Tickets:</span>{" "}
-                    {scanResult.booking.tickets}
+                    <span className="font-medium">Total Tickets:</span>{" "}
+                    {scanResult.booking.totalTickets ||
+                      scanResult.booking.tickets}
+                  </div>
+                )}
+                {scanResult.booking.ticketNumber && (
+                  <div className="text-gray-300">
+                    <span className="font-medium">Ticket Used Today:</span>{" "}
+                    <span className="text-green-400 font-semibold">
+                      #{scanResult.booking.ticketNumber}
+                    </span>
+                  </div>
+                )}
+                {scanResult.booking.progressInfo && (
+                  <div className="mt-3 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                    <div className="text-sm text-blue-200 space-y-1">
+                      <div>
+                        <span className="font-medium">Event Day:</span>{" "}
+                        {scanResult.booking.progressInfo.currentDay}
+                      </div>
+                      <div>
+                        <span className="font-medium">Remaining Tickets:</span>{" "}
+                        {scanResult.booking.progressInfo.remainingTickets}
+                      </div>
+                      {scanResult.booking.progressInfo.nextTicketAvailable !==
+                        "All tickets used" && (
+                        <div>
+                          <span className="font-medium">
+                            Next Ticket Available:
+                          </span>{" "}
+                          {scanResult.booking.progressInfo.nextTicketAvailable}
+                        </div>
+                      )}
+                      {scanResult.booking.progressInfo.remainingTickets ===
+                        0 && (
+                        <div className="text-green-300 font-medium">
+                          🎉 All tickets have been used!
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
                 {scanResult.booking.status && (
