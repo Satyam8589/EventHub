@@ -43,35 +43,10 @@ export default function AboutPage() {
   const teamMembers = [
     {
       id: 1,
-      name: "Sarah Johnson",
+      name: "Satyam Kumar Singh",
       position: "CEO & Founder",
-      image:
-        "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=300&h=300&fit=crop&crop=face",
-      bio: "Passionate about connecting people through meaningful events.",
-    },
-    {
-      id: 2,
-      name: "Mike Chen",
-      position: "CTO",
-      image:
-        "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=300&h=300&fit=crop&crop=face",
-      bio: "Technology enthusiast building the future of event management.",
-    },
-    {
-      id: 3,
-      name: "Emma Wilson",
-      position: "Head of Marketing",
-      image:
-        "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=300&h=300&fit=crop&crop=face",
-      bio: "Creative strategist helping events reach their full potential.",
-    },
-    {
-      id: 4,
-      name: "James Brown",
-      position: "Head of Operations",
-      image:
-        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop&crop=face",
-      bio: "Operations expert ensuring seamless event experiences.",
+      image: "/satyam.jpeg",
+      bio: "Passionate visionary dedicated to revolutionizing event management and creating unforgettable experiences for communities worldwide.",
     },
   ];
 

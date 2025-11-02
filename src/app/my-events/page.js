@@ -15,6 +15,8 @@ export default function MyEventsPage() {
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [showTicketModal, setShowTicketModal] = useState(false);
   const [redirectCountdown, setRedirectCountdown] = useState(5);
+  const [sendingEmail, setSendingEmail] = useState(null); // Track which booking is sending email
+  const [emailSent, setEmailSent] = useState(new Set()); // Track which bookings had email sent
 
   const { user, loading: authLoading, signOut } = useAuth();
   const router = useRouter();
@@ -42,6 +44,19 @@ export default function MyEventsPage() {
     };
 
     generateParticles();
+  }, []);
+
+  // Load emailSent state from localStorage on component mount
+  useEffect(() => {
+    try {
+      const savedEmailSent = localStorage.getItem("emailSent");
+      if (savedEmailSent) {
+        const parsedEmailSent = JSON.parse(savedEmailSent);
+        setEmailSent(new Set(parsedEmailSent));
+      }
+    } catch (error) {
+      console.error("Error loading emailSent state from localStorage:", error);
+    }
   }, []);
 
   // Redirect countdown when user is not authenticated
@@ -175,7 +190,7 @@ export default function MyEventsPage() {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
   }, [user]);
 
-  // Filter bookings by upcoming/past with endDate support
+  // Filter bookings by upcoming/ongoing/past with precise date and time support
   const filterBookings = (bookings, type) => {
     const now = new Date();
     console.log(`Filtering ${bookings.length} bookings for ${type} events`);
@@ -192,29 +207,109 @@ export default function MyEventsPage() {
         return false; // Skip bookings without valid event data
       }
 
-      // Use endDate if available, otherwise use start date
-      const eventEndDate = booking.event.endDate
-        ? new Date(booking.event.endDate)
-        : new Date(booking.event.date);
-
+      // Calculate start and end date/time for the event
       const eventStartDate = new Date(booking.event.date);
 
-      // For upcoming events: start date is in the future OR event is currently ongoing
-      // For past events: end date is in the past
-      const isUpcoming = eventEndDate >= now;
-      const isExpired = eventEndDate < now;
+      // Validate start date
+      if (isNaN(eventStartDate.getTime())) {
+        console.error("Invalid start date for booking:", {
+          bookingId: booking?.id || "unknown",
+          eventDate: booking?.event?.date || "undefined",
+          eventTitle: booking?.event?.title || "undefined",
+          fullBooking: booking,
+        });
+        return false; // Skip bookings with invalid start dates
+      }
 
-      console.log(`Booking ${booking.id}:`, {
-        eventName: booking.event.name,
-        eventStartDate: booking.event.date,
-        eventEndDate: booking.event.endDate,
+      let eventEndDateTime;
+      if (booking.event.endDate || booking.event.enddate) {
+        // Event has an end date/time
+        eventEndDateTime = new Date(
+          booking.event.endDate || booking.event.enddate
+        );
+
+        // Validate end date
+        if (isNaN(eventEndDateTime.getTime())) {
+          console.error("Invalid end date for booking:", {
+            bookingId: booking?.id || "unknown",
+            endDate:
+              booking?.event?.endDate || booking?.event?.enddate || "undefined",
+            eventTitle: booking?.event?.title || "undefined",
+            fullBooking: booking,
+          });
+          // Fall back to creating end time from start date
+          eventEndDateTime = new Date(eventStartDate);
+          eventEndDateTime.setHours(23, 59, 59, 999);
+        }
+      } else {
+        // No end date, create end time from start date + time
+        if (booking.event.time) {
+          // If event has a specific time, use that date with time
+          eventEndDateTime = new Date(
+            `${booking.event.date}T${booking.event.time}`
+          );
+
+          // Validate combined date/time
+          if (isNaN(eventEndDateTime.getTime())) {
+            console.error("Invalid date/time combination for booking:", {
+              bookingId: booking?.id || "unknown",
+              eventDate: booking?.event?.date || "undefined",
+              eventTime: booking?.event?.time || "undefined",
+              eventTitle: booking?.event?.title || "undefined",
+              fullBooking: booking,
+            });
+            // Fall back to end of day
+            eventEndDateTime = new Date(eventStartDate);
+            eventEndDateTime.setHours(23, 59, 59, 999);
+          }
+        } else {
+          // If no specific time, assume event ends at end of day
+          eventEndDateTime = new Date(eventStartDate);
+          eventEndDateTime.setHours(23, 59, 59, 999);
+        }
+      }
+
+      // Determine event status
+      const isUpcoming = now < eventStartDate;
+      const isOngoing = now >= eventStartDate && now <= eventEndDateTime;
+      const isPast = now > eventEndDateTime;
+
+      let result = false;
+      switch (type) {
+        case "upcoming":
+          result = isUpcoming;
+          break;
+        case "ongoing":
+          result = isOngoing;
+          break;
+        case "past":
+          result = isPast;
+          break;
+        default:
+          result = false;
+      }
+
+      console.log(`Booking ${booking?.id || "unknown"}:`, {
+        eventName: booking?.event?.title || "undefined",
+        eventStartDate: booking?.event?.date || "undefined",
+        eventEndDate:
+          booking?.event?.endDate || booking?.event?.enddate || "undefined",
+        eventTime: booking?.event?.time || "undefined",
+        calculatedStartDateTime: isNaN(eventStartDate.getTime())
+          ? "Invalid Date"
+          : eventStartDate.toISOString(),
+        calculatedEndDateTime: isNaN(eventEndDateTime.getTime())
+          ? "Invalid Date"
+          : eventEndDateTime.toISOString(),
+        currentTime: now.toISOString(),
         isUpcoming,
-        isExpired,
+        isOngoing,
+        isPast,
         typeFilter: type,
-        included: type === "upcoming" ? isUpcoming : !isUpcoming,
+        included: result,
       });
 
-      return type === "upcoming" ? isUpcoming : !isUpcoming;
+      return result;
     });
 
     console.log(`Filtered result: ${filtered.length} ${type} bookings`);
@@ -222,20 +317,90 @@ export default function MyEventsPage() {
   };
 
   const upcomingBookings = filterBookings(bookings, "upcoming");
+  const ongoingBookings = filterBookings(bookings, "ongoing");
   const pastBookings = filterBookings(bookings, "past");
 
-  // Helper function to check if an event is expired
+  // Function to send ticket email on demand
+  const sendTicketEmail = async (booking) => {
+    // Prevent double-clicking if already sent or currently sending
+    if (sendingEmail === booking.id || emailSent.has(booking.id)) {
+      return;
+    }
+
+    try {
+      setSendingEmail(booking.id);
+
+      const response = await fetch("/api/send-ticket-email", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          bookingId: booking.id,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        // Mark this booking as having email sent
+        setEmailSent((prev) => {
+          const newSet = new Set([...prev, booking.id]);
+          // Persist to localStorage
+          localStorage.setItem(
+            "emailSentBookings",
+            JSON.stringify([...newSet])
+          );
+          return newSet;
+        });
+
+        // Show success message without alert
+        console.log(
+          "✅ Ticket sent to Gmail successfully for booking:",
+          booking.id
+        );
+
+        // Optional: You can add a toast notification here instead of alert
+        // For now, the green button state provides sufficient feedback
+      } else {
+        console.error("❌ Failed to send ticket email:", result.error);
+        alert(
+          "❌ Failed to send ticket email: " + (result.error || "Unknown error")
+        );
+      }
+    } catch (error) {
+      console.error("Error sending ticket email:", error);
+      alert("❌ Failed to send ticket email. Please try again.");
+    } finally {
+      setSendingEmail(null);
+    }
+  };
+
+  // Helper function to check if an event is expired (with precise date and time)
   const isEventExpired = (event) => {
     if (!event || !event.date) return false;
 
     const now = new Date();
-    // Use endDate if available (for multi-day events), otherwise use start date
-    const eventEndDate =
-      event.endDate || event.enddate
-        ? new Date(event.endDate || event.enddate)
-        : new Date(event.date);
 
-    return eventEndDate < now;
+    // Use endDate if available (includes both date and time), otherwise use start date
+    let eventEndDateTime;
+    if (event.endDate || event.enddate) {
+      // Event has an end date/time
+      eventEndDateTime = new Date(event.endDate || event.enddate);
+    } else {
+      // No end date, create end time from start date + time
+      const eventDate = new Date(event.date);
+      if (event.time) {
+        // If event has a specific time, use that date with time
+        eventEndDateTime = eventDate;
+      } else {
+        // If no specific time, assume event ends at end of day
+        eventEndDateTime = new Date(eventDate);
+        eventEndDateTime.setHours(23, 59, 59, 999);
+      }
+    }
+
+    return eventEndDateTime < now;
   };
 
   // Format date for display
@@ -536,6 +701,16 @@ export default function MyEventsPage() {
               Upcoming ({upcomingBookings.length})
             </button>
             <button
+              onClick={() => setActiveTab("ongoing")}
+              className={`px-6 py-3 rounded-xl font-medium transition-all ${
+                activeTab === "ongoing"
+                  ? "bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-lg"
+                  : "text-white/70 hover:text-white"
+              }`}
+            >
+              Ongoing ({ongoingBookings.length})
+            </button>
+            <button
               onClick={() => setActiveTab("past")}
               className={`px-6 py-3 rounded-xl font-medium transition-all ${
                 activeTab === "past"
@@ -556,40 +731,22 @@ export default function MyEventsPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {(activeTab === "upcoming" ? upcomingBookings : pastBookings)
-              .length === 0 ? (
-              <div className="col-span-full text-center py-12">
-                <div className="bg-white/10 backdrop-blur-md rounded-3xl p-12 border border-white/20 max-w-md mx-auto">
-                  <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-blue-600/20 to-purple-600/20 rounded-full flex items-center justify-center border border-blue-500/30">
-                    <svg
-                      className="w-10 h-10 text-blue-400"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"
-                      />
-                    </svg>
-                  </div>
-                  <h3 className="text-2xl font-bold text-white mb-4">
-                    No {activeTab} events
-                  </h3>
-                  <p className="text-gray-300 mb-6">
-                    {activeTab === "upcoming"
-                      ? "You haven't booked any upcoming events yet. Discover amazing events happening near you!"
-                      : "You don't have any past events yet. Your attended events will appear here."}
-                  </p>
-                  {activeTab === "upcoming" && (
-                    <Link
-                      href="/events"
-                      className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-xl font-medium hover:from-blue-700 hover:to-purple-700 transition-all transform hover:scale-105 shadow-lg shadow-blue-500/25"
-                    >
+            {(() => {
+              let currentBookings;
+              if (activeTab === "upcoming") {
+                currentBookings = upcomingBookings;
+              } else if (activeTab === "ongoing") {
+                currentBookings = ongoingBookings;
+              } else {
+                currentBookings = pastBookings;
+              }
+
+              return currentBookings.length === 0 ? (
+                <div className="col-span-full text-center py-12">
+                  <div className="bg-white/10 backdrop-blur-md rounded-3xl p-12 border border-white/20 max-w-md mx-auto">
+                    <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-blue-600/20 to-purple-600/20 rounded-full flex items-center justify-center border border-blue-500/30">
                       <svg
-                        className="w-5 h-5"
+                        className="w-10 h-10 text-blue-400"
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
@@ -598,17 +755,45 @@ export default function MyEventsPage() {
                           strokeLinecap="round"
                           strokeLinejoin="round"
                           strokeWidth={2}
-                          d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                          d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"
                         />
                       </svg>
-                      Browse Events
-                    </Link>
-                  )}
+                    </div>
+                    <h3 className="text-2xl font-bold text-white mb-4">
+                      No {activeTab} events
+                    </h3>
+                    <p className="text-gray-300 mb-6">
+                      {activeTab === "upcoming"
+                        ? "You haven't booked any upcoming events yet. Discover amazing events happening near you!"
+                        : activeTab === "ongoing"
+                        ? "You don't have any ongoing events right now. Events that are currently happening will appear here."
+                        : "You don't have any past events yet. Your attended events will appear here."}
+                    </p>
+                    {activeTab === "upcoming" && (
+                      <Link
+                        href="/events"
+                        className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-xl font-medium hover:from-blue-700 hover:to-purple-700 transition-all transform hover:scale-105 shadow-lg shadow-blue-500/25"
+                      >
+                        <svg
+                          className="w-5 h-5"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                          />
+                        </svg>
+                        Browse Events
+                      </Link>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ) : (
-              (activeTab === "upcoming" ? upcomingBookings : pastBookings).map(
-                (booking) => (
+              ) : (
+                currentBookings.map((booking) => (
                   <div
                     key={booking.id}
                     className="bg-white/10 backdrop-blur-md rounded-xl border border-white/20 overflow-hidden hover:bg-white/15 transition-all duration-200 group"
@@ -625,27 +810,49 @@ export default function MyEventsPage() {
                       <div className="absolute top-2 left-2">
                         {(() => {
                           const now = new Date();
-                          const eventEndDate = booking.event.endDate
-                            ? new Date(booking.event.endDate)
-                            : new Date(booking.event.date);
-                          const isExpired = eventEndDate < now;
+                          const eventStartDate = new Date(booking.event.date);
 
-                          if (activeTab === "past" && isExpired) {
+                          let eventEndDateTime;
+                          if (booking.event.endDate || booking.event.enddate) {
+                            eventEndDateTime = new Date(
+                              booking.event.endDate || booking.event.enddate
+                            );
+                          } else if (booking.event.time) {
+                            eventEndDateTime = new Date(
+                              `${booking.event.date}T${booking.event.time}`
+                            );
+                          } else {
+                            eventEndDateTime = new Date(eventStartDate);
+                            eventEndDateTime.setHours(23, 59, 59, 999);
+                          }
+
+                          const isUpcoming = now < eventStartDate;
+                          const isOngoing =
+                            now >= eventStartDate && now <= eventEndDateTime;
+                          const isPast = now > eventEndDateTime;
+
+                          if (isUpcoming) {
                             return (
-                              <span className="px-2 py-1 rounded-md text-xs font-medium bg-red-500/80 text-white">
-                                Expired
+                              <span className="px-2 py-1 rounded-md text-xs font-medium bg-blue-500/80 text-white">
+                                Upcoming
                               </span>
                             );
-                          } else if (activeTab === "past") {
+                          } else if (isOngoing) {
+                            return (
+                              <span className="px-2 py-1 rounded-md text-xs font-medium bg-green-500/80 text-white animate-pulse">
+                                Live Now
+                              </span>
+                            );
+                          } else if (isPast) {
                             return (
                               <span className="px-2 py-1 rounded-md text-xs font-medium bg-gray-500/80 text-white">
-                                Attended
+                                Finished
                               </span>
                             );
                           } else {
                             return (
-                              <span className="px-2 py-1 rounded-md text-xs font-medium bg-green-500/80 text-white">
-                                Upcoming
+                              <span className="px-2 py-1 rounded-md text-xs font-medium bg-gray-500/80 text-white">
+                                Event
                               </span>
                             );
                           }
@@ -709,55 +916,153 @@ export default function MyEventsPage() {
                       </div>
 
                       {/* Action Buttons or Completed Stamp */}
-                      {isEventExpired(booking.event) ? (
-                        // Show "Event Completed" stamp for expired events
-                        <div className="relative flex items-center justify-center py-4 px-4">
+                      {activeTab === "past" ? (
+                        // Show "Event Completed" circular stamp for past events
+                        <div className="relative flex items-center justify-center py-6 px-4">
                           <div className="relative">
-                            {/* Stamp Background */}
-                            <div className="absolute inset-0 bg-red-600/20 border-2 border-red-500/40 rounded-lg transform rotate-[-2deg]"></div>
-                            <div className="relative bg-red-600/10 border-2 border-red-500/50 border-dashed rounded-lg px-4 py-2 transform rotate-[1deg]">
-                              <div className="flex flex-col items-center gap-1">
-                                <div className="w-6 h-6 rounded-full bg-red-500/30 flex items-center justify-center border border-red-400">
-                                  <span className="text-red-200 text-sm font-bold">
-                                    ✓
-                                  </span>
+                            {/* Outer Ring - Shadow Effect */}
+                            <div className="absolute inset-0 w-24 h-24 rounded-full bg-green-800/30 border-4 border-green-600/40 transform rotate-12"></div>
+
+                            {/* Main Stamp Circle */}
+                            <div className="relative w-24 h-24 rounded-full bg-gradient-to-br from-green-600/40 to-green-800/60 border-4 border-green-500/60 flex flex-col items-center justify-center transform -rotate-6 transition-transform hover:rotate-0 duration-300">
+                              {/* Inner Circle */}
+                              <div className="w-16 h-16 rounded-full border-2 border-green-400/50 border-dashed flex flex-col items-center justify-center">
+                                {/* Checkmark Icon */}
+                                <div className="w-8 h-8 rounded-full bg-green-500/80 flex items-center justify-center mb-1">
+                                  <svg
+                                    className="w-5 h-5 text-white"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={3}
+                                      d="M5 13l4 4L19 7"
+                                    />
+                                  </svg>
                                 </div>
-                                <span className="text-red-200 text-xs font-bold uppercase tracking-wide">
-                                  Event
-                                </span>
-                                <span className="text-red-200 text-xs font-bold uppercase tracking-wide">
-                                  Completed
-                                </span>
+
+                                {/* Text */}
+                                <div className="text-center">
+                                  <div className="text-green-200 text-[8px] font-bold uppercase tracking-wider leading-none">
+                                    EVENT
+                                  </div>
+                                  <div className="text-green-100 text-[8px] font-bold uppercase tracking-wider leading-none">
+                                    COMPLETED
+                                  </div>
+                                </div>
                               </div>
+
+                              {/* Decorative elements */}
+                              <div className="absolute top-1 left-3 w-1 h-1 rounded-full bg-green-300/60"></div>
+                              <div className="absolute top-3 right-1 w-1 h-1 rounded-full bg-green-300/60"></div>
+                              <div className="absolute bottom-1 right-3 w-1 h-1 rounded-full bg-green-300/60"></div>
+                              <div className="absolute bottom-3 left-1 w-1 h-1 rounded-full bg-green-300/60"></div>
+                            </div>
+
+                            {/* Date stamp effect */}
+                            <div className="absolute -bottom-2 -right-2 bg-green-700/80 text-green-100 text-[6px] font-mono px-1 py-0.5 rounded transform rotate-12">
+                              {new Date(
+                                booking.event.endDate ||
+                                  booking.event.enddate ||
+                                  booking.event.date
+                              ).toLocaleDateString("en-US", {
+                                month: "2-digit",
+                                day: "2-digit",
+                                year: "2-digit",
+                              })}
                             </div>
                           </div>
                         </div>
                       ) : (
                         // Show buttons for upcoming/active events
-                        <div className="flex gap-2">
+                        <div className="space-y-2">
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => {
+                                console.log("View Ticket clicked:", booking);
+                                setSelectedTicket(booking);
+                                setShowTicketModal(true);
+                              }}
+                              className="flex-1 bg-blue-600/20 text-white px-3 py-2 rounded-lg text-xs font-medium border border-blue-500/30 hover:bg-blue-600/30 transition-all"
+                            >
+                              View Ticket
+                            </button>
+                            <Link
+                              href={`/events/${booking.event.id}`}
+                              className="flex-1 bg-white/10 text-white px-3 py-2 rounded-lg text-xs font-medium border border-white/20 hover:bg-white/20 transition-all text-center"
+                            >
+                              Details
+                            </Link>
+                          </div>
+
+                          {/* Send Ticket to Email Button */}
                           <button
-                            onClick={() => {
-                              console.log("View Ticket clicked:", booking);
-                              setSelectedTicket(booking);
-                              setShowTicketModal(true);
-                            }}
-                            className="flex-1 bg-blue-600/20 text-white px-3 py-2 rounded-lg text-xs font-medium border border-blue-500/30 hover:bg-blue-600/30 transition-all"
+                            onClick={() => sendTicketEmail(booking)}
+                            disabled={
+                              sendingEmail === booking.id ||
+                              emailSent.has(booking.id)
+                            }
+                            className={`w-full px-3 py-2 rounded-lg text-xs font-medium border transition-all ${
+                              emailSent.has(booking.id)
+                                ? "bg-green-600/30 text-green-200 border-green-500/50 cursor-not-allowed"
+                                : sendingEmail === booking.id
+                                ? "bg-gray-600/20 text-gray-300 border-gray-500/30 cursor-not-allowed"
+                                : "bg-purple-600/20 text-purple-300 border-purple-500/30 hover:bg-purple-600/30 cursor-pointer"
+                            }`}
                           >
-                            View Ticket
+                            {sendingEmail === booking.id ? (
+                              <div className="flex items-center justify-center gap-2">
+                                <div className="animate-spin rounded-full h-3 w-3 border border-gray-300 border-t-transparent"></div>
+                                <span>Sending...</span>
+                              </div>
+                            ) : emailSent.has(booking.id) ? (
+                              <div className="flex items-center justify-center gap-2">
+                                <svg
+                                  className="w-4 h-4 text-green-300"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M5 13l4 4L19 7"
+                                  />
+                                </svg>
+                                <span className="font-semibold">
+                                  Ticket Sent to Gmail
+                                </span>
+                              </div>
+                            ) : (
+                              <div className="flex items-center justify-center gap-2">
+                                <svg
+                                  className="w-4 h-4 text-purple-300"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                                  />
+                                </svg>
+                                <span>Send Ticket to Gmail</span>
+                              </div>
+                            )}
                           </button>
-                          <Link
-                            href={`/events/${booking.event.id}`}
-                            className="flex-1 bg-white/10 text-white px-3 py-2 rounded-lg text-xs font-medium border border-white/20 hover:bg-white/20 transition-all text-center"
-                          >
-                            Details
-                          </Link>
                         </div>
                       )}
                     </div>
                   </div>
-                )
-              )
-            )}
+                ))
+              );
+            })()}
           </div>
         )}
       </div>

@@ -165,8 +165,14 @@ export default function EventsPage() {
   console.log("Events page - Filtered events:", filteredEvents.length);
   console.log("Events page - Loading state:", loading);
   console.log("Events page - Error state:", error);
-  console.log("Events page - Events data:", events.map(e => ({ id: e.id, title: e.title })));
-  console.log("Events page - Filtered data:", filteredEvents.map(e => ({ id: e.id, title: e.title })));
+  console.log(
+    "Events page - Events data:",
+    events.map((e) => ({ id: e.id, title: e.title }))
+  );
+  console.log(
+    "Events page - Filtered data:",
+    filteredEvents.map((e) => ({ id: e.id, title: e.title }))
+  );
 
   // Format date for display
   const formatEventDate = (dateString, timeString) => {
