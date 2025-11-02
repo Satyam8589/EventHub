@@ -6,6 +6,54 @@ export default function TicketModal({ booking, isOpen, onClose }) {
 
   if (!isOpen || !booking) return null;
 
+  // Parse scanned tickets data from progressive scanning format
+  const getScannedTicketsData = () => {
+    if (!booking.paymentId) return {};
+    
+    // Check for new progressive scanning format
+    if (booking.paymentId.startsWith("SCANNED_TICKETS_")) {
+      try {
+        const ticketsDataString = booking.paymentId.replace("SCANNED_TICKETS_", "");
+        return JSON.parse(ticketsDataString);
+      } catch (e) {
+        console.warn("Could not parse scanned tickets data:", e);
+        return {};
+      }
+    }
+    
+    // Check for legacy single scan format
+    if (booking.paymentId.startsWith("SCANNED_")) {
+      // Legacy format means all tickets were scanned
+      const scannedData = {};
+      for (let i = 1; i <= (booking.tickets || 1); i++) {
+        scannedData[i] = booking.paymentId.replace("SCANNED_", "");
+      }
+      return scannedData;
+    }
+    
+    return {};
+  };
+
+  // Check if a specific day/ticket has been scanned
+  const isTicketScanned = (dayNumber) => {
+    const scannedTickets = getScannedTicketsData();
+    return !!scannedTickets[dayNumber];
+  };
+
+  // Get scan timestamp for a specific ticket
+  const getTicketScanTime = (dayNumber) => {
+    const scannedTickets = getScannedTicketsData();
+    return scannedTickets[dayNumber] ? new Date(scannedTickets[dayNumber]) : null;
+  };
+
+  // Check if all tickets are scanned
+  const areAllTicketsScanned = () => {
+    const scannedTickets = getScannedTicketsData();
+    const totalTickets = booking.tickets || 1;
+    const scannedCount = Object.keys(scannedTickets).length;
+    return scannedCount >= totalTickets;
+  };
+
   const generateQRCode = (ticketId, dayIndex = null, totalDays = null) => {
     // For multi-day events, append day index to create unique QR codes per day
     // Match the format used in server-side generateTicketImage.js
@@ -689,10 +737,8 @@ export default function TicketModal({ booking, isOpen, onClose }) {
             </div>
             <div>
               <h2 className="text-lg font-bold">EventHub E-Ticket</h2>
-              {/* Hide download button if ticket is verified */}
-              {!(
-                booking.paymentId && booking.paymentId.startsWith("SCANNED_")
-              ) ? (
+              {/* Hide download button if all tickets are verified */}
+              {!areAllTicketsScanned() ? (
                 <button
                   onClick={handleDownload}
                   disabled={isDownloading}
@@ -925,8 +971,8 @@ export default function TicketModal({ booking, isOpen, onClose }) {
 
           {/* QR Code Section */}
           <div className="border-t border-gray-200 pt-4">
-            {booking.paymentId && booking.paymentId.startsWith("SCANNED_") ? (
-              /* Ticket Already Verified */
+            {areAllTicketsScanned() ? (
+              /* All Tickets Verified - Show completion message */
               <div className="text-center py-8">
                 <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-green-100 flex items-center justify-center">
                   <svg
@@ -942,38 +988,32 @@ export default function TicketModal({ booking, isOpen, onClose }) {
                   </svg>
                 </div>
                 <h3 className="text-2xl font-bold text-green-600 mb-2">
-                  Thank You for Visiting! ✓
+                  🎉 All Tickets Used! Thank You for Visiting! ✓
                 </h3>
-                <p className="text-lg text-gray-700 mb-3">Enjoy the Event!</p>
+                <p className="text-lg text-gray-700 mb-3">Thank you for joining us throughout the event!</p>
                 <p className="text-gray-600 mb-4">
-                  Your ticket has been successfully verified
+                  All your tickets have been successfully verified
                 </p>
                 <div className="bg-green-50 border border-green-200 rounded-lg p-3 mx-4">
                   <p className="text-sm text-green-800 mb-2">
-                    <strong>Verified At:</strong>{" "}
-                    {new Date(
-                      booking.paymentId.replace("SCANNED_", "")
-                    ).toLocaleString()}
+                    <strong>Event:</strong> {booking.event?.title || "N/A"}
                   </p>
                   <p className="text-sm text-green-700">
                     <strong>Attendee:</strong> {booking.user?.name || "N/A"}
                   </p>
                   <p className="text-sm text-green-700">
-                    <strong>Email:</strong> {booking.user?.email || "N/A"}
+                    <strong>Total Tickets:</strong> {booking.tickets || 1}
                   </p>
                   <p className="text-sm text-green-700">
-                    <strong>Phone:</strong> {booking.user?.phone || "N/A"}
-                  </p>
-                  <p className="text-sm text-green-700">
-                    <strong>Tickets:</strong> {booking.tickets || 1}
+                    <strong>Days Attended:</strong> {Object.keys(getScannedTicketsData()).sort().join(", ")}
                   </p>
                 </div>
                 <div className="mt-4 text-sm text-gray-500">
-                  This ticket has been used and cannot be scanned again.
+                  Booking completed - All tickets have been used.
                 </div>
               </div>
             ) : (
-              /* Show QR Code(s) for Unverified Tickets */
+              /* Show QR Code(s) for Tickets (individual status) */
               <>
                 <div className="flex items-center justify-between mb-3">
                   <h4 className="font-semibold text-gray-800">
@@ -989,62 +1029,144 @@ export default function TicketModal({ booking, isOpen, onClose }) {
                 {isMultiDay ? (
                   /* Multiple QR Codes for Multi-day Events */
                   <div className="space-y-4 max-h-64 overflow-y-auto">
-                    {eventDays.map((day, index) => (
-                      <div
-                        key={index}
-                        className="border border-gray-200 rounded-lg p-3"
-                      >
-                        <div className="flex items-center justify-between mb-2">
-                          <h5 className="font-medium text-gray-700">
-                            Day {index + 1}
-                          </h5>
-                          <span className="text-xs text-gray-500">
-                            {day.toLocaleDateString("en-US", {
-                              month: "short",
-                              day: "numeric",
-                              year: "numeric",
-                            })}
-                          </span>
-                        </div>
-                        <div className="flex justify-center">
-                          <div className="bg-white p-2 rounded border">
-                            <img
-                              src={generateQRCode(
-                                booking.id,
-                                index,
-                                eventDays.length
-                              )}
-                              alt={`QR Code for Day ${index + 1}`}
-                              className="w-24 h-24"
-                            />
+                    {eventDays.map((day, index) => {
+                      const dayNumber = index + 1;
+                      const isScanned = isTicketScanned(dayNumber);
+                      const scanTime = getTicketScanTime(dayNumber);
+                      
+                      return (
+                        <div
+                          key={index}
+                          className={`border rounded-lg p-3 ${
+                            isScanned 
+                              ? "border-green-300 bg-green-50" 
+                              : "border-gray-200"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <h5 className="font-medium text-gray-700">
+                              Day {dayNumber}
+                            </h5>
+                            <span className="text-xs text-gray-500">
+                              {day.toLocaleDateString("en-US", {
+                                month: "short",
+                                day: "numeric",
+                                year: "numeric",
+                              })}
+                            </span>
+                            {isScanned && (
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                ✓ Used
+                              </span>
+                            )}
                           </div>
+                          
+                          {isScanned ? (
+                            /* Show Thank You message for scanned ticket */
+                            <div className="text-center py-4">
+                              <div className="w-12 h-12 mx-auto mb-2 rounded-full bg-green-100 flex items-center justify-center">
+                                <svg
+                                  className="w-8 h-8 text-green-600"
+                                  fill="currentColor"
+                                  viewBox="0 0 20 20"
+                                >
+                                  <path
+                                    fillRule="evenodd"
+                                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                    clipRule="evenodd"
+                                  />
+                                </svg>
+                              </div>
+                              <h6 className="text-lg font-bold text-green-600 mb-1">
+                                Thank You for Visiting! ✓
+                              </h6>
+                              <p className="text-sm text-gray-600">
+                                Scanned on {scanTime?.toLocaleDateString()}
+                              </p>
+                              <p className="text-xs text-gray-500 mt-1">
+                                at {scanTime?.toLocaleTimeString()}
+                              </p>
+                            </div>
+                          ) : (
+                            /* Show QR code for unscanned ticket */
+                            <>
+                              <div className="flex justify-center">
+                                <div className="bg-white p-2 rounded border">
+                                  <img
+                                    src={generateQRCode(
+                                      booking.id,
+                                      index,
+                                      eventDays.length
+                                    )}
+                                    alt={`QR Code for Day ${dayNumber}`}
+                                    className="w-24 h-24"
+                                  />
+                                </div>
+                              </div>
+                              <div className="text-center mt-1">
+                                <p className="text-xs font-mono text-gray-600">
+                                  {booking.id}_DAY_{dayNumber}
+                                </p>
+                              </div>
+                            </>
+                          )}
                         </div>
-                        <div className="text-center mt-1">
-                          <p className="text-xs font-mono text-gray-600">
-                            {booking.id}_DAY_{index + 1}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 ) : (
                   /* Single QR Code for Single-day Events */
                   <>
-                    <div className="flex justify-center">
-                      <div className="bg-white p-4 rounded-lg border-2 border-gray-200">
-                        <img
-                          src={generateQRCode(booking.id, null, 1)}
-                          alt="QR Code for ticket verification"
-                          className="w-40 h-40"
-                        />
+                    {isTicketScanned(1) ? (
+                      /* Show Thank You message for scanned single-day ticket */
+                      <div className="text-center py-8">
+                        <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-green-100 flex items-center justify-center">
+                          <svg
+                            className="w-10 h-10 text-green-600"
+                            fill="currentColor"
+                            viewBox="0 0 20 20"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                        </div>
+                        <h3 className="text-2xl font-bold text-green-600 mb-2">
+                          Thank You for Visiting! ✓
+                        </h3>
+                        <p className="text-lg text-gray-700 mb-3">Enjoy the Event!</p>
+                        <p className="text-gray-600 mb-4">
+                          Your ticket has been successfully verified
+                        </p>
+                        {getTicketScanTime(1) && (
+                          <div className="text-sm text-gray-500">
+                            <p>Scanned on {getTicketScanTime(1).toLocaleDateString()}</p>
+                            <p>at {getTicketScanTime(1).toLocaleTimeString()}</p>
+                          </div>
+                        )}
                       </div>
-                    </div>
+                    ) : (
+                      /* Show QR code for unscanned single-day ticket */
+                      <>
+                        <div className="flex justify-center">
+                          <div className="bg-white p-4 rounded-lg border-2 border-gray-200">
+                            <img
+                              src={generateQRCode(booking.id, null, 1)}
+                              alt="QR Code for ticket verification"
+                              className="w-40 h-40"
+                            />
+                          </div>
+                        </div>
 
-                    <div className="text-center mt-3">
-                      <p className="text-sm font-mono text-gray-600">
-                        {booking.id}
-                      </p>
-                    </div>
+                        <div className="text-center mt-3">
+                          <p className="text-sm font-mono text-gray-600">
+                            {booking.id}
+                          </p>
+                        </div>
+                      </>
+                    )}
                   </>
                 )}
 
@@ -1079,8 +1201,8 @@ export default function TicketModal({ booking, isOpen, onClose }) {
             )}
           </div>
 
-          {/* Download Ticket Button - Hide if verified */}
-          {!(booking.paymentId && booking.paymentId.startsWith("SCANNED_")) ? (
+          {/* Download Ticket Button - Hide only if ALL tickets are verified */}
+          {!areAllTicketsScanned() ? (
             <div className="border-t border-gray-200 pt-4">
               <button
                 onClick={handleDownload}

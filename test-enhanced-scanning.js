@@ -2,11 +2,13 @@
 const testEnhancedScanning = async () => {
   console.log("🎯 ENHANCED PROGRESSIVE SCANNING TEST");
   console.log("=".repeat(60));
-  
+
   console.log("🆕 NEW FEATURES IMPLEMENTED:");
   console.log("✅ 1. Booking marked as COMPLETED when all tickets are used");
   console.log("✅ 2. Enhanced success message for final ticket scan");
-  console.log("✅ 3. Admin scanner shows user booking details with ticket counts");
+  console.log(
+    "✅ 3. Admin scanner shows user booking details with ticket counts"
+  );
   console.log("✅ 4. Progress tracking per user (X/Y tickets used)");
   console.log("✅ 5. Completion status indicators");
   console.log("✅ 6. Statistics include completion rates");
@@ -15,7 +17,9 @@ const testEnhancedScanning = async () => {
   console.log("🎫 COMPLETION BEHAVIOR:");
   console.log("- When scanning the LAST ticket for a booking:");
   console.log("  * Status changes from CONFIRMED → COMPLETED");
-  console.log("  * Message: '🎉 All Tickets Used! Thank You for Visiting Throughout the Event! ✓'");
+  console.log(
+    "  * Message: '🎉 All Tickets Used! Thank You for Visiting Throughout the Event! ✓'"
+  );
   console.log("  * completedAt timestamp is set");
   console.log("  * isFullyCompleted flag is true in response");
   console.log("");
@@ -47,7 +51,9 @@ const testEnhancedScanning = async () => {
   console.log("");
   console.log("Day 1: Scan → 'Thank You for Visiting! ✓' (1/3 tickets used)");
   console.log("Day 2: Scan → 'Thank You for Visiting! ✓' (2/3 tickets used)");
-  console.log("Day 3: Scan → '🎉 All Tickets Used! Thank You for Visiting Throughout the Event! ✓'");
+  console.log(
+    "Day 3: Scan → '🎉 All Tickets Used! Thank You for Visiting Throughout the Event! ✓'"
+  );
   console.log("        Status: CONFIRMED → COMPLETED");
   console.log("        Booking marked as fully completed");
   console.log("");
@@ -115,7 +121,7 @@ const testEnhancedScanning = async () => {
 
   console.log("🎉 BENEFITS:");
   console.log("✅ Clear completion tracking");
-  console.log("✅ Better admin visibility of user progress"); 
+  console.log("✅ Better admin visibility of user progress");
   console.log("✅ Automatic booking lifecycle management");
   console.log("✅ Enhanced user experience with completion celebration");
   console.log("✅ Comprehensive statistics and reporting");

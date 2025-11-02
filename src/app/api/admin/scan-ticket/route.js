@@ -380,7 +380,7 @@ export async function POST(request) {
     }
 
     // Determine success message based on completion status
-    const successMessage = isLastTicket 
+    const successMessage = isLastTicket
       ? "🎉 All Tickets Used! Thank You for Visiting Throughout the Event! ✓"
       : "Thank You for Visiting! ✓";
 
@@ -407,7 +407,9 @@ export async function POST(request) {
             ? `Day ${nextTicketDay} (${nextTicketDate.toLocaleDateString()})`
             : "All tickets used",
           allScannedTickets: scannedTicketsData,
-          completionStatus: isLastTicket ? "All tickets used - Booking completed!" : "More tickets available",
+          completionStatus: isLastTicket
+            ? "All tickets used - Booking completed!"
+            : "More tickets available",
         },
         qrInfo: scannedDay
           ? {
@@ -512,7 +514,7 @@ export async function GET(request) {
     bookings.forEach((booking) => {
       let bookingScannedTickets = 0;
       let scannedTicketsData = {};
-      
+
       // Parse scanned tickets data
       if (
         booking.paymentId &&
@@ -544,7 +546,9 @@ export async function GET(request) {
       }
 
       // Track completion status
-      const isBookingCompleted = booking.status === "COMPLETED" || bookingScannedTickets === booking.tickets;
+      const isBookingCompleted =
+        booking.status === "COMPLETED" ||
+        bookingScannedTickets === booking.tickets;
       if (isBookingCompleted) {
         completedBookings++;
       }
@@ -562,8 +566,13 @@ export async function GET(request) {
         isCompleted: isBookingCompleted,
         bookedAt: booking.createdAt,
         lastActivity: booking.updatedAt,
-        scannedDays: Object.keys(scannedTicketsData).map(day => parseInt(day)).sort(),
-        progressPercentage: ((bookingScannedTickets / booking.tickets) * 100).toFixed(0),
+        scannedDays: Object.keys(scannedTicketsData)
+          .map((day) => parseInt(day))
+          .sort(),
+        progressPercentage: (
+          (bookingScannedTickets / booking.tickets) *
+          100
+        ).toFixed(0),
       });
 
       if (bookingScannedTickets > 0) {
@@ -594,7 +603,8 @@ export async function GET(request) {
         scannedTickets: scannedTicketsCount,
         scannedBookings: progressiveScannedBookings,
         completedBookings: completedBookings,
-        confirmedBookings: bookings.filter(b => b.status === "CONFIRMED").length,
+        confirmedBookings: bookings.filter((b) => b.status === "CONFIRMED")
+          .length,
         availableTickets: event.capacity - totalTickets,
         scanProgress:
           totalTickets > 0
@@ -605,7 +615,9 @@ export async function GET(request) {
             ? ((completedBookings / bookings.length) * 100).toFixed(1)
             : 0,
       },
-      userBookings: userBookingStats.sort((a, b) => b.scannedTickets - a.scannedTickets), // Sort by most scanned first
+      userBookings: userBookingStats.sort(
+        (a, b) => b.scannedTickets - a.scannedTickets
+      ), // Sort by most scanned first
       scannedBookings: scannedBookingsData,
       recentBookings: bookings.slice(-10).map((booking) => ({
         id: booking.id,
