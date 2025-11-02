@@ -269,7 +269,7 @@ export default function TicketScanner() {
                   <h2 className="text-lg font-semibold text-white mb-4">
                     Scan Statistics
                   </h2>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                     <div className="text-center p-3 bg-blue-500/20 rounded-lg">
                       <div className="text-2xl font-bold text-blue-300">
                         {statistics.statistics.totalBookings}
@@ -302,10 +302,103 @@ export default function TicketScanner() {
                         Scan Progress
                       </div>
                     </div>
+                    {statistics.statistics.completedBookings !== undefined && (
+                      <div className="text-center p-3 bg-emerald-500/20 rounded-lg">
+                        <div className="text-2xl font-bold text-emerald-300">
+                          {statistics.statistics.completedBookings}
+                        </div>
+                        <div className="text-sm text-emerald-200">
+                          Fully Completed
+                        </div>
+                      </div>
+                    )}
+                    {statistics.statistics.completionRate !== undefined && (
+                      <div className="text-center p-3 bg-teal-500/20 rounded-lg">
+                        <div className="text-2xl font-bold text-teal-300">
+                          {statistics.statistics.completionRate}%
+                        </div>
+                        <div className="text-sm text-teal-200">
+                          Completion Rate
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
             </div>
+
+            {/* User Bookings Overview */}
+            {statistics && statistics.userBookings && statistics.userBookings.length > 0 && (
+              <div className="bg-white/5 backdrop-blur-md rounded-xl border border-white/10 p-6">
+                <h2 className="text-lg font-semibold text-white mb-4">
+                  👥 User Bookings ({statistics.userBookings.length} users)
+                </h2>
+                <div className="space-y-3 max-h-96 overflow-y-auto">
+                  {statistics.userBookings.map((userBooking, index) => (
+                    <div
+                      key={userBooking.id}
+                      className={`p-4 rounded-lg border ${
+                        userBooking.isCompleted
+                          ? "bg-green-500/10 border-green-500/20"
+                          : userBooking.scannedTickets > 0
+                          ? "bg-yellow-500/10 border-yellow-500/20"
+                          : "bg-white/5 border-white/10"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-3">
+                            <div className="font-medium text-white">
+                              {userBooking.userName}
+                            </div>
+                            {userBooking.isCompleted && (
+                              <span className="px-2 py-1 text-xs bg-green-500/20 text-green-300 rounded-full">
+                                ✅ Completed
+                              </span>
+                            )}
+                            {!userBooking.isCompleted && userBooking.scannedTickets > 0 && (
+                              <span className="px-2 py-1 text-xs bg-yellow-500/20 text-yellow-300 rounded-full">
+                                🟡 In Progress
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-sm text-gray-400 mt-1">
+                            {userBooking.userEmail}
+                          </div>
+                          {userBooking.userPhone !== "Not provided" && (
+                            <div className="text-sm text-gray-400">
+                              📞 {userBooking.userPhone}
+                            </div>
+                          )}
+                        </div>
+                        <div className="text-right">
+                          <div className="text-lg font-bold text-white">
+                            {userBooking.scannedTickets}/{userBooking.totalTickets}
+                          </div>
+                          <div className="text-sm text-gray-300">
+                            tickets used
+                          </div>
+                          <div className="text-xs text-gray-400 mt-1">
+                            {userBooking.progressPercentage}% complete
+                          </div>
+                          {userBooking.scannedDays.length > 0 && (
+                            <div className="text-xs text-blue-300 mt-1">
+                              Days: {userBooking.scannedDays.join(", ")}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      
+                      {userBooking.remainingTickets > 0 && (
+                        <div className="mt-2 text-xs text-gray-400">
+                          {userBooking.remainingTickets} ticket(s) remaining
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Scanner Interface */}
             <div className="bg-white/5 backdrop-blur-md rounded-xl border border-white/10 p-6">
@@ -500,6 +593,13 @@ export default function TicketScanner() {
                         0 && (
                         <div className="text-green-300 font-medium">
                           🎉 All tickets have been used!
+                        </div>
+                      )}
+                      {scanResult.booking.isFullyCompleted && (
+                        <div className="mt-2 p-2 bg-green-500/20 border border-green-500/30 rounded-lg">
+                          <div className="text-green-300 font-medium text-sm">
+                            ✨ This booking is now fully completed and marked as COMPLETED in the system.
+                          </div>
                         </div>
                       )}
                     </div>

@@ -25,7 +25,7 @@ export async function POST(request) {
       bookingId = dayQRMatch[1]; // Extract the actual booking ID
       scannedDay = parseInt(dayQRMatch[2]); // Extract the day number
       totalDaysInQR = parseInt(dayQRMatch[3]); // Extract total days
-      
+
       console.log("🎯 Day-specific QR detected:");
       console.log("- Booking ID:", bookingId);
       console.log("- QR Day:", scannedDay);
@@ -217,15 +217,16 @@ export async function POST(request) {
       console.log("🔍 Validating day-specific QR code:");
       console.log("- QR is for day:", scannedDay);
       console.log("- Current event day:", currentEventDay);
-      
+
       if (scannedDay !== currentEventDay) {
         return NextResponse.json(
           {
             error: "Wrong day for this QR code",
             isValid: false,
-            message: scannedDay < currentEventDay 
-              ? `This QR code was for Day ${scannedDay} which has already passed. Please use today's QR code (Day ${currentEventDay}).`
-              : `This QR code is for Day ${scannedDay} but today is Day ${currentEventDay}. Please come back on the correct day.`,
+            message:
+              scannedDay < currentEventDay
+                ? `This QR code was for Day ${scannedDay} which has already passed. Please use today's QR code (Day ${currentEventDay}).`
+                : `This QR code is for Day ${scannedDay} but today is Day ${currentEventDay}. Please come back on the correct day.`,
             booking: {
               id: booking.id,
               eventTitle: booking.event.title,
@@ -349,9 +350,43 @@ export async function POST(request) {
         )
       : null;
 
+    // If this was the last ticket, mark booking as fully completed
+    let completionUpdate = {};
+    if (isLastTicket) {
+      console.log("🎯 All tickets used - marking booking as completed");
+      completionUpdate = {
+        status: "COMPLETED", // Change status to completed
+        completedAt: scannedAt, // Add completion timestamp
+        // Note: We keep the scanned tickets data for record keeping
+      };
+    }
+
+    // Update booking with scan data and completion status if needed
+    const { error: updateError } = await supabase
+      .from("bookings")
+      .update({
+        paymentId: `SCANNED_TICKETS_${JSON.stringify(scannedTicketsData)}`,
+        updatedAt: scannedAt,
+        ...completionUpdate,
+      })
+      .eq("id", booking.id);
+
+    if (updateError) {
+      console.error("Error marking ticket as scanned:", updateError);
+      return NextResponse.json(
+        { error: "Failed to process ticket scan" },
+        { status: 500 }
+      );
+    }
+
+    // Determine success message based on completion status
+    const successMessage = isLastTicket 
+      ? "🎉 All Tickets Used! Thank You for Visiting Throughout the Event! ✓"
+      : "Thank You for Visiting! ✓";
+
     return NextResponse.json({
       isValid: true,
-      message: "Thank You for Visiting! ✓",
+      message: successMessage,
       booking: {
         id: booking.id,
         eventTitle: booking.event.title,
@@ -361,8 +396,9 @@ export async function POST(request) {
         totalTickets: totalTickets,
         scannedAt: scannedAt,
         scannedBy: scanner.name,
-        status: booking.status,
+        status: isLastTicket ? "COMPLETED" : booking.status,
         isScanned: true,
+        isFullyCompleted: isLastTicket,
         progressInfo: {
           currentDay: currentEventDay,
           ticketUsedToday: ticketNumberForToday,
@@ -371,15 +407,18 @@ export async function POST(request) {
             ? `Day ${nextTicketDay} (${nextTicketDate.toLocaleDateString()})`
             : "All tickets used",
           allScannedTickets: scannedTicketsData,
+          completionStatus: isLastTicket ? "All tickets used - Booking completed!" : "More tickets available",
         },
-        qrInfo: scannedDay ? {
-          scannedQRDay: scannedDay,
-          expectedDay: currentEventDay,
-          isCorrectDay: scannedDay === currentEventDay,
-          qrFormat: "day-specific"
-        } : {
-          qrFormat: "booking-id-only"
-        },
+        qrInfo: scannedDay
+          ? {
+              scannedQRDay: scannedDay,
+              expectedDay: currentEventDay,
+              isCorrectDay: scannedDay === currentEventDay,
+              qrFormat: "day-specific",
+            }
+          : {
+              qrFormat: "booking-id-only",
+            },
       },
     });
   } catch (error) {
@@ -438,17 +477,17 @@ export async function GET(request) {
       return NextResponse.json({ error: "Event not found" }, { status: 404 });
     }
 
-    // Get all confirmed bookings for this event
+    // Get all confirmed bookings for this event (including completed ones)
     const { data: bookings, error: bookingsError } = await supabase
       .from("bookings")
       .select(
         `
         *,
-        user:users(id, name, email)
+        user:users(id, name, email, phone)
       `
       )
       .eq("eventId", eventId)
-      .eq("status", "CONFIRMED");
+      .in("status", ["CONFIRMED", "COMPLETED"]);
 
     if (bookingsError) {
       console.error("Error fetching bookings:", bookingsError);
@@ -463,15 +502,17 @@ export async function GET(request) {
       0
     );
 
-    // Calculate progressive scanning statistics
+    // Calculate progressive scanning statistics and user details
     let scannedTicketsCount = 0;
     let progressiveScannedBookings = 0;
+    let completedBookings = 0;
     let scannedBookingsData = [];
+    let userBookingStats = [];
 
     bookings.forEach((booking) => {
       let bookingScannedTickets = 0;
       let scannedTicketsData = {};
-
+      
       // Parse scanned tickets data
       if (
         booking.paymentId &&
@@ -502,6 +543,29 @@ export async function GET(request) {
         progressiveScannedBookings++;
       }
 
+      // Track completion status
+      const isBookingCompleted = booking.status === "COMPLETED" || bookingScannedTickets === booking.tickets;
+      if (isBookingCompleted) {
+        completedBookings++;
+      }
+
+      // Add to user booking stats for admin display
+      userBookingStats.push({
+        id: booking.id,
+        userName: booking.user.name,
+        userEmail: booking.user.email,
+        userPhone: booking.user.phone || "Not provided",
+        totalTickets: booking.tickets,
+        scannedTickets: bookingScannedTickets,
+        remainingTickets: booking.tickets - bookingScannedTickets,
+        status: booking.status,
+        isCompleted: isBookingCompleted,
+        bookedAt: booking.createdAt,
+        lastActivity: booking.updatedAt,
+        scannedDays: Object.keys(scannedTicketsData).map(day => parseInt(day)).sort(),
+        progressPercentage: ((bookingScannedTickets / booking.tickets) * 100).toFixed(0),
+      });
+
       if (bookingScannedTickets > 0) {
         scannedBookingsData.push({
           id: booking.id,
@@ -511,6 +575,7 @@ export async function GET(request) {
           scannedTickets: bookingScannedTickets,
           scannedTicketsData: scannedTicketsData,
           lastScannedAt: booking.updatedAt,
+          isCompleted: isBookingCompleted,
         });
       }
     });
@@ -528,13 +593,19 @@ export async function GET(request) {
         totalTickets,
         scannedTickets: scannedTicketsCount,
         scannedBookings: progressiveScannedBookings,
-        confirmedBookings: bookings.length,
+        completedBookings: completedBookings,
+        confirmedBookings: bookings.filter(b => b.status === "CONFIRMED").length,
         availableTickets: event.capacity - totalTickets,
         scanProgress:
           totalTickets > 0
             ? ((scannedTicketsCount / totalTickets) * 100).toFixed(1)
             : 0,
+        completionRate:
+          bookings.length > 0
+            ? ((completedBookings / bookings.length) * 100).toFixed(1)
+            : 0,
       },
+      userBookings: userBookingStats.sort((a, b) => b.scannedTickets - a.scannedTickets), // Sort by most scanned first
       scannedBookings: scannedBookingsData,
       recentBookings: bookings.slice(-10).map((booking) => ({
         id: booking.id,

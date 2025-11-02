@@ -2,29 +2,29 @@
 const testProgressiveScanning = async () => {
   console.log("🎯 PROGRESSIVE TICKET SCANNING TEST");
   console.log("=".repeat(60));
-  
+
   // Test different QR code formats
   const testCases = [
     {
       name: "Regular Booking ID (should work for current day)",
       qrCode: "a1b2c3d4-e5f6-7890-abcd-ef1234567890", // Example UUID
-      expectedBehavior: "Should scan ticket for current event day"
+      expectedBehavior: "Should scan ticket for current event day",
     },
     {
       name: "Day 1 Specific QR Code",
       qrCode: "a1b2c3d4-e5f6-7890-abcd-ef1234567890_DAY_1_OF_3",
-      expectedBehavior: "Should only work on Day 1 of event"
+      expectedBehavior: "Should only work on Day 1 of event",
     },
     {
-      name: "Day 2 Specific QR Code", 
+      name: "Day 2 Specific QR Code",
       qrCode: "a1b2c3d4-e5f6-7890-abcd-ef1234567890_DAY_2_OF_3",
-      expectedBehavior: "Should only work on Day 2 of event"
+      expectedBehavior: "Should only work on Day 2 of event",
     },
     {
       name: "Day 3 Specific QR Code",
-      qrCode: "a1b2c3d4-e5f6-7890-abcd-ef1234567890_DAY_3_OF_3", 
-      expectedBehavior: "Should only work on Day 3 of event"
-    }
+      qrCode: "a1b2c3d4-e5f6-7890-abcd-ef1234567890_DAY_3_OF_3",
+      expectedBehavior: "Should only work on Day 3 of event",
+    },
   ];
 
   console.log("📋 Test Cases:");
@@ -50,16 +50,24 @@ const testProgressiveScanning = async () => {
   });
 
   console.log("📅 Current Event Day Calculation:");
-  console.log("- To test different days, modify your system date or event date in database");
+  console.log(
+    "- To test different days, modify your system date or event date in database"
+  );
   console.log("- Day 1: Event start date");
   console.log("- Day 2: Event start date + 1 day");
   console.log("- Day 3: Event start date + 2 days");
   console.log("");
 
   console.log("🎫 Progressive Scanning Behavior:");
-  console.log("✅ Day 1: Can scan Ticket #1 (QR with DAY_1 or regular booking ID)");
-  console.log("✅ Day 2: Can scan Ticket #2 (QR with DAY_2 or regular booking ID)");
-  console.log("✅ Day 3: Can scan Ticket #3 (QR with DAY_3 or regular booking ID)");
+  console.log(
+    "✅ Day 1: Can scan Ticket #1 (QR with DAY_1 or regular booking ID)"
+  );
+  console.log(
+    "✅ Day 2: Can scan Ticket #2 (QR with DAY_2 or regular booking ID)"
+  );
+  console.log(
+    "✅ Day 3: Can scan Ticket #3 (QR with DAY_3 or regular booking ID)"
+  );
   console.log("");
   console.log("❌ Day 1: Cannot scan DAY_2 or DAY_3 QR codes");
   console.log("❌ Day 2: Cannot scan DAY_1 or DAY_3 QR codes");
@@ -71,7 +79,9 @@ const testProgressiveScanning = async () => {
   console.log("");
 
   console.log("💾 Database Storage Format:");
-  console.log("paymentId: 'SCANNED_TICKETS_{\"1\":\"2025-11-02T10:30:00Z\",\"2\":\"2025-11-03T11:15:00Z\"}'");
+  console.log(
+    'paymentId: \'SCANNED_TICKETS_{"1":"2025-11-02T10:30:00Z","2":"2025-11-03T11:15:00Z"}\''
+  );
   console.log("- Key: Day number (1, 2, 3, etc.)");
   console.log("- Value: Timestamp when scanned");
   console.log("");
