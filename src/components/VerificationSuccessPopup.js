@@ -94,10 +94,18 @@ export default function VerificationSuccessPopup({
 
           {/* Success message */}
           <h2 className="text-2xl font-bold text-green-400 mb-2">
-            🎉 Ticket Verified!
+            {bookingData?.isFullyCompleted
+              ? "🎉 All Tickets Used!"
+              : "✅ Ticket Verified!"}
           </h2>
           <p className="text-green-200 mb-6">
-            Welcome to the event! Entry approved.
+            {bookingData?.isFullyCompleted
+              ? "Booking completed! Thank you for visiting throughout the event!"
+              : bookingData?.totalTickets > 1
+              ? `Ticket ${bookingData.ticketNumber || 1} of ${
+                  bookingData.totalTickets
+                } used. Welcome to the event!`
+              : "Welcome to the event! Entry approved."}
           </p>
 
           {/* Booking details */}
@@ -125,14 +133,59 @@ export default function VerificationSuccessPopup({
                     {bookingData.eventTitle}
                   </span>
                 </div>
+
+                {/* Enhanced ticket information */}
                 <div className="flex justify-between">
-                  <span className="text-green-200">Tickets:</span>
-                  <span className="text-white">{bookingData.tickets}</span>
+                  <span className="text-green-200">Total Tickets Booked:</span>
+                  <span className="text-white font-medium">
+                    {bookingData.totalTickets || bookingData.tickets || 1}
+                  </span>
                 </div>
+
+                {/* Current ticket information */}
+                {bookingData.ticketNumber && (
+                  <div className="flex justify-between">
+                    <span className="text-green-200">Ticket Used Today:</span>
+                    <span className="text-white font-medium">
+                      #{bookingData.ticketNumber}
+                    </span>
+                  </div>
+                )}
+
+                {/* Progress information */}
+                {bookingData.progressInfo && (
+                  <>
+                    <div className="flex justify-between">
+                      <span className="text-green-200">Event Day:</span>
+                      <span className="text-white">
+                        Day {bookingData.progressInfo.currentDay}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-green-200">Remaining Tickets:</span>
+                      <span className="text-white">
+                        {bookingData.progressInfo.remainingTickets}
+                      </span>
+                    </div>
+                  </>
+                )}
+
+                {/* Completion status for fully completed bookings */}
+                {bookingData.isFullyCompleted && (
+                  <div className="flex justify-between">
+                    <span className="text-green-200">Status:</span>
+                    <span className="text-green-400 font-medium">
+                      🎉 All Tickets Used!
+                    </span>
+                  </div>
+                )}
+
                 <div className="flex justify-between">
                   <span className="text-green-200">Verified At:</span>
                   <span className="text-white">
-                    {new Date(bookingData.verifiedAt).toLocaleString()}
+                    {new Date(
+                      bookingData.scannedAt || bookingData.verifiedAt
+                    ).toLocaleString()}
                   </span>
                 </div>
               </div>
