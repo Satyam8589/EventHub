@@ -19,7 +19,7 @@ function getTransporter() {
     }
 
     try {
-      transporter = nodemailer.createTransporter({
+      transporter = nodemailer.createTransport({
         service: "gmail",
         auth: {
           user: process.env.GMAIL_USER,
