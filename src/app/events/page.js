@@ -123,9 +123,10 @@ export default function EventsPage() {
         // Check if event is not expired
         const currentDate = new Date();
         const isNotExpired = (() => {
-          if (event.endDate) {
+          if (event.endDate || event.enddate) {
             // If event has an end date, check if it's not past the end date
-            return new Date(event.endDate) >= currentDate;
+            const endDateValue = event.endDate || event.enddate;
+            return new Date(endDateValue) >= currentDate;
           } else {
             // If no end date, check if it's not past the event date
             return new Date(event.date) >= currentDate;
@@ -162,6 +163,10 @@ export default function EventsPage() {
 
   console.log("Events page - Total events:", events.length);
   console.log("Events page - Filtered events:", filteredEvents.length);
+  console.log("Events page - Loading state:", loading);
+  console.log("Events page - Error state:", error);
+  console.log("Events page - Events data:", events.map(e => ({ id: e.id, title: e.title })));
+  console.log("Events page - Filtered data:", filteredEvents.map(e => ({ id: e.id, title: e.title })));
 
   // Format date for display
   const formatEventDate = (dateString, timeString) => {
