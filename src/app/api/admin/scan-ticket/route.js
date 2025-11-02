@@ -19,12 +19,17 @@ export async function POST(request) {
     console.log("Raw Booking ID received:", rawBookingId);
     console.log("Cleaned Booking ID:", bookingId);
 
-    // Check if this is a day-specific QR code format: bookingId_DAY_X_OF_Y
-    const dayQRMatch = bookingId?.match(/^(.+)_DAY_(\d+)_OF_(\d+)$/);
+    // Check if this is a day-specific QR code format: bookingId_DAY_X_OF_Y or bookingId_DAY_X
+    let dayQRMatch = bookingId?.match(/^(.+)_DAY_(\d+)_OF_(\d+)$/);
+    if (!dayQRMatch) {
+      // Try the simplified format: bookingId_DAY_X
+      dayQRMatch = bookingId?.match(/^(.+)_DAY_(\d+)$/);
+    }
+
     if (dayQRMatch) {
       bookingId = dayQRMatch[1]; // Extract the actual booking ID
       scannedDay = parseInt(dayQRMatch[2]); // Extract the day number
-      totalDaysInQR = parseInt(dayQRMatch[3]); // Extract total days
+      totalDaysInQR = dayQRMatch[3] ? parseInt(dayQRMatch[3]) : null; // Extract total days if present
 
       console.log("🎯 Day-specific QR detected:");
       console.log("- Booking ID:", bookingId);
@@ -118,6 +123,30 @@ export async function POST(request) {
       console.log("Booking Status:", booking.status);
       console.log("Event ID in booking:", booking.eventId);
       console.log("Event ID requested:", eventId);
+      console.log(
+        "Booking belongs to requested event:",
+        booking.eventId === eventId
+      );
+    } else {
+      console.log("=== ADDITIONAL DEBUGGING ===");
+      // Try to find the booking without event restriction
+      const { data: anyBooking, error: anyBookingError } = await supabase
+        .from("bookings")
+        .select("id, eventId, status")
+        .eq("id", bookingId)
+        .single();
+
+      if (anyBooking) {
+        console.log("Booking exists but for different event:");
+        console.log("- Booking Event ID:", anyBooking.eventId);
+        console.log("- Requested Event ID:", eventId);
+        console.log("- Booking Status:", anyBooking.status);
+      } else {
+        console.log("Booking does not exist in database at all");
+        console.log("Searched booking ID:", bookingId);
+        console.log("Booking ID type:", typeof bookingId);
+        console.log("Booking ID length:", bookingId?.length);
+      }
     }
 
     if (bookingError || !booking) {
@@ -149,15 +178,26 @@ export async function POST(request) {
 
     // Check if booking is for the correct event
     if (booking.eventId !== eventId) {
+      console.log("=== BOOKING FOR DIFFERENT EVENT ===");
+      console.log("Booking Event ID:", booking.eventId);
+      console.log("Requested Event ID:", eventId);
+      console.log("Booking Event Title:", booking.event?.title);
+
       return NextResponse.json(
         {
-          error: "Invalid ticket",
+          error: "Wrong event",
           isValid: false,
-          message: "This ticket is not for this event",
+          message: `This ticket is for "${
+            booking.event?.title || "another event"
+          }", not the currently selected event.`,
+          details:
+            "Please select the correct event in the admin panel or use a ticket for this event.",
           booking: {
             id: booking.id,
             eventTitle: booking.event.title,
             userName: booking.user.name,
+            actualEventId: booking.eventId,
+            requestedEventId: eventId,
           },
         },
         { status: 400 }
@@ -295,6 +335,32 @@ export async function POST(request) {
       }
     }
 
+    // Check if ALL tickets have already been scanned (booking completed)
+    const scannedTicketsCount = Object.keys(scannedTicketsData).length;
+    if (scannedTicketsCount >= totalTickets) {
+      console.log("🎉 All tickets already used - booking fully completed");
+      return NextResponse.json(
+        {
+          error: "All tickets already used",
+          isValid: false,
+          message: `🎉 All ${totalTickets} ticket(s) for this booking have already been used. Thank you for visiting throughout the event!`,
+          booking: {
+            id: booking.id,
+            eventTitle: booking.event.title,
+            userName: booking.user.name,
+            userEmail: booking.user.email,
+            totalTickets: totalTickets,
+            scannedTickets: scannedTicketsCount,
+            daysAttended: Object.keys(scannedTicketsData).sort().join(", "),
+            isFullyCompleted: true,
+            completionMessage:
+              "This booking is fully completed - all tickets have been used successfully!",
+          },
+        },
+        { status: 200 } // Changed to 200 since this is a successful recognition, not an error
+      );
+    }
+
     // Check if the current day's ticket has already been scanned
     const ticketNumberForToday = currentEventDay;
     if (scannedTicketsData[ticketNumberForToday]) {
@@ -353,12 +419,13 @@ export async function POST(request) {
     // If this was the last ticket, mark booking as fully completed
     let completionUpdate = {};
     if (isLastTicket) {
-      console.log("🎯 All tickets used - marking booking as completed");
-      completionUpdate = {
-        status: "COMPLETED", // Change status to completed
-        completedAt: scannedAt, // Add completion timestamp
-        // Note: We keep the scanned tickets data for record keeping
-      };
+      console.log("🎯 All tickets used - keeping status as CONFIRMED for now");
+      // TODO: After adding COMPLETED to enum, uncomment this:
+      // completionUpdate = {
+      //   status: "COMPLETED", // Change status to completed
+      //   completedAt: scannedAt, // Add completion timestamp
+      //   // Note: We keep the scanned tickets data for record keeping
+      // };
     }
 
     // Update booking with scan data and completion status if needed

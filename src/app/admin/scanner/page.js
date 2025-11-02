@@ -99,13 +99,17 @@ export default function TicketScanner() {
       });
 
       const data = await response.json();
+
+      // Special handling for "all tickets already used" case
+      const isAllTicketsUsed = data.booking?.isFullyCompleted === true;
+
       setScanResult({
-        success: response.ok,
+        success: response.ok || isAllTicketsUsed, // Treat fully completed as success
         ...data,
       });
 
-      if (response.ok) {
-        // Show success popup for successful scans
+      if (response.ok || isAllTicketsUsed) {
+        // Show success popup for successful scans or completed bookings
         setSuccessData(data.booking);
         setShowSuccessPopup(true);
 
@@ -530,7 +534,11 @@ export default function TicketScanner() {
                   scanResult.success ? "text-green-300" : "text-red-300"
                 }`}
               >
-                {scanResult.success ? "Valid Ticket" : "Invalid Ticket"}
+                {scanResult.booking?.isFullyCompleted
+                  ? "🎉 Booking Completed"
+                  : scanResult.success
+                  ? "Valid Ticket"
+                  : "Invalid Ticket"}
               </h3>
             </div>
 
@@ -565,6 +573,30 @@ export default function TicketScanner() {
                       scanResult.booking.tickets}
                   </div>
                 )}
+
+                {/* Special display for completed bookings */}
+                {scanResult.booking.isFullyCompleted && (
+                  <div className="mt-3 p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
+                    <div className="text-sm text-green-200 space-y-1">
+                      <div className="text-green-300 font-medium text-center mb-2">
+                        🎉 Booking Fully Completed!
+                      </div>
+                      <div>
+                        <span className="font-medium">Scanned Tickets:</span>{" "}
+                        {scanResult.booking.scannedTickets} /{" "}
+                        {scanResult.booking.totalTickets}
+                      </div>
+                      <div>
+                        <span className="font-medium">Days Attended:</span>{" "}
+                        {scanResult.booking.daysAttended}
+                      </div>
+                      <div className="text-center text-green-200 text-xs mt-2">
+                        {scanResult.booking.completionMessage}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {scanResult.booking.ticketNumber && (
                   <div className="text-gray-300">
                     <span className="font-medium">Ticket Used Today:</span>{" "}

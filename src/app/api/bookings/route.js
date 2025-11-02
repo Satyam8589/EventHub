@@ -22,9 +22,16 @@ export async function GET(request) {
       query = query.eq("userId", userId);
     }
 
-    // Filter by status if provided (e.g., "CONFIRMED", "PENDING", "FAILED")
+    // Filter by status if provided (e.g., "CONFIRMED", "PENDING", "FAILED" or "CONFIRMED,COMPLETED")
     if (status) {
-      query = query.eq("status", status);
+      if (status.includes(",")) {
+        // Handle multiple statuses
+        const statusArray = status.split(",").map((s) => s.trim());
+        query = query.in("status", statusArray);
+      } else {
+        // Handle single status
+        query = query.eq("status", status);
+      }
     }
 
     const { data: bookings, error } = await query;

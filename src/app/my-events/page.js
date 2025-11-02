@@ -89,7 +89,7 @@ export default function MyEventsPage() {
         setLoading(true);
         console.log("Fetching bookings for user:", user.uid);
 
-        // Add cache buster and fetch only CONFIRMED bookings
+        // Add cache buster and fetch only CONFIRMED bookings (for now)
         const cacheBuster = Date.now();
         const response = await fetch(
           `/api/bookings?userId=${user.uid}&status=CONFIRMED&_=${cacheBuster}`,

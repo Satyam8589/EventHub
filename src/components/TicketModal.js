@@ -9,18 +9,21 @@ export default function TicketModal({ booking, isOpen, onClose }) {
   // Parse scanned tickets data from progressive scanning format
   const getScannedTicketsData = () => {
     if (!booking.paymentId) return {};
-    
+
     // Check for new progressive scanning format
     if (booking.paymentId.startsWith("SCANNED_TICKETS_")) {
       try {
-        const ticketsDataString = booking.paymentId.replace("SCANNED_TICKETS_", "");
+        const ticketsDataString = booking.paymentId.replace(
+          "SCANNED_TICKETS_",
+          ""
+        );
         return JSON.parse(ticketsDataString);
       } catch (e) {
         console.warn("Could not parse scanned tickets data:", e);
         return {};
       }
     }
-    
+
     // Check for legacy single scan format
     if (booking.paymentId.startsWith("SCANNED_")) {
       // Legacy format means all tickets were scanned
@@ -30,7 +33,7 @@ export default function TicketModal({ booking, isOpen, onClose }) {
       }
       return scannedData;
     }
-    
+
     return {};
   };
 
@@ -43,14 +46,24 @@ export default function TicketModal({ booking, isOpen, onClose }) {
   // Get scan timestamp for a specific ticket
   const getTicketScanTime = (dayNumber) => {
     const scannedTickets = getScannedTicketsData();
-    return scannedTickets[dayNumber] ? new Date(scannedTickets[dayNumber]) : null;
+    return scannedTickets[dayNumber]
+      ? new Date(scannedTickets[dayNumber])
+      : null;
   };
 
-  // Check if all tickets are scanned
+  // Check if all tickets are scanned (only show completion message for multi-ticket bookings)
   const areAllTicketsScanned = () => {
     const scannedTickets = getScannedTicketsData();
     const totalTickets = booking.tickets || 1;
     const scannedCount = Object.keys(scannedTickets).length;
+
+    // NEW LOGIC: If user has only 1 ticket, ALWAYS show individual status
+    // This covers both single-day events AND single-ticket purchases for multi-day events
+    if (totalTickets === 1) {
+      return false;
+    }
+
+    // For multi-ticket bookings, only show completion message when ALL tickets are used
     return scannedCount >= totalTickets;
   };
 
@@ -990,7 +1003,9 @@ export default function TicketModal({ booking, isOpen, onClose }) {
                 <h3 className="text-2xl font-bold text-green-600 mb-2">
                   🎉 All Tickets Used! Thank You for Visiting! ✓
                 </h3>
-                <p className="text-lg text-gray-700 mb-3">Thank you for joining us throughout the event!</p>
+                <p className="text-lg text-gray-700 mb-3">
+                  Thank you for joining us throughout the event!
+                </p>
                 <p className="text-gray-600 mb-4">
                   All your tickets have been successfully verified
                 </p>
@@ -1005,7 +1020,8 @@ export default function TicketModal({ booking, isOpen, onClose }) {
                     <strong>Total Tickets:</strong> {booking.tickets || 1}
                   </p>
                   <p className="text-sm text-green-700">
-                    <strong>Days Attended:</strong> {Object.keys(getScannedTicketsData()).sort().join(", ")}
+                    <strong>Days Attended:</strong>{" "}
+                    {Object.keys(getScannedTicketsData()).sort().join(", ")}
                   </p>
                 </div>
                 <div className="mt-4 text-sm text-gray-500">
@@ -1033,13 +1049,13 @@ export default function TicketModal({ booking, isOpen, onClose }) {
                       const dayNumber = index + 1;
                       const isScanned = isTicketScanned(dayNumber);
                       const scanTime = getTicketScanTime(dayNumber);
-                      
+
                       return (
                         <div
                           key={index}
                           className={`border rounded-lg p-3 ${
-                            isScanned 
-                              ? "border-green-300 bg-green-50" 
+                            isScanned
+                              ? "border-green-300 bg-green-50"
                               : "border-gray-200"
                           }`}
                         >
@@ -1060,7 +1076,7 @@ export default function TicketModal({ booking, isOpen, onClose }) {
                               </span>
                             )}
                           </div>
-                          
+
                           {isScanned ? (
                             /* Show Thank You message for scanned ticket */
                             <div className="text-center py-4">
@@ -1105,7 +1121,8 @@ export default function TicketModal({ booking, isOpen, onClose }) {
                               </div>
                               <div className="text-center mt-1">
                                 <p className="text-xs font-mono text-gray-600">
-                                  {booking.id}_DAY_{dayNumber}
+                                  {booking.id}_DAY_{dayNumber}_OF_
+                                  {eventDays.length}
                                 </p>
                               </div>
                             </>
@@ -1136,14 +1153,21 @@ export default function TicketModal({ booking, isOpen, onClose }) {
                         <h3 className="text-2xl font-bold text-green-600 mb-2">
                           Thank You for Visiting! ✓
                         </h3>
-                        <p className="text-lg text-gray-700 mb-3">Enjoy the Event!</p>
+                        <p className="text-lg text-gray-700 mb-3">
+                          Enjoy the Event!
+                        </p>
                         <p className="text-gray-600 mb-4">
                           Your ticket has been successfully verified
                         </p>
                         {getTicketScanTime(1) && (
                           <div className="text-sm text-gray-500">
-                            <p>Scanned on {getTicketScanTime(1).toLocaleDateString()}</p>
-                            <p>at {getTicketScanTime(1).toLocaleTimeString()}</p>
+                            <p>
+                              Scanned on{" "}
+                              {getTicketScanTime(1).toLocaleDateString()}
+                            </p>
+                            <p>
+                              at {getTicketScanTime(1).toLocaleTimeString()}
+                            </p>
                           </div>
                         )}
                       </div>
