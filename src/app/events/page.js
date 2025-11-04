@@ -105,6 +105,15 @@ export default function EventsPage() {
     "Education",
     "Entertainment",
     "Health & Wellness",
+    "TESTING", // Added for test events
+    "CONFERENCE",
+    "WORKSHOP",
+    "SEMINAR",
+    "NETWORKING",
+    "CULTURAL",
+    "EDUCATIONAL",
+    "CHARITY",
+    "OTHER",
   ];
 
   // Filter events based on search and category
@@ -120,16 +129,27 @@ export default function EventsPage() {
           selectedCategory === "All Categories" ||
           event.category === selectedCategory;
 
-        // Check if event is not expired
+        // Check if event is not expired - proper event lifecycle filtering
         const currentDate = new Date();
         const isNotExpired = (() => {
-          if (event.endDate || event.enddate) {
-            // If event has an end date, check if it's not past the end date
-            const endDateValue = event.endDate || event.enddate;
+          // If event has an end date, check if it's not past the end date (event is still running or upcoming)
+          const endDateValue = event.endDate || event.enddate;
+          if (endDateValue) {
             return new Date(endDateValue) >= currentDate;
           } else {
-            // If no end date, check if it's not past the event date
-            return new Date(event.date) >= currentDate;
+            // If no end date, consider it a single-day event - show if it's today or in the future
+            const eventDate = new Date(event.date);
+            const eventDateOnly = new Date(
+              eventDate.getFullYear(),
+              eventDate.getMonth(),
+              eventDate.getDate()
+            );
+            const currentDateOnly = new Date(
+              currentDate.getFullYear(),
+              currentDate.getMonth(),
+              currentDate.getDate()
+            );
+            return eventDateOnly >= currentDateOnly;
           }
         })();
 

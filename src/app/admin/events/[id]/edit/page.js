@@ -243,7 +243,9 @@ export default function EditEventPage() {
       ).toISOString();
 
       const eventEndDateTime = formData.endDate
-        ? new Date(`${formData.endDate}T${formData.time}`).toISOString()
+        ? new Date(
+            `${formData.endDate}T${formData.endTime || formData.time}`
+          ).toISOString()
         : null;
 
       const eventData = {
