@@ -100,16 +100,18 @@ export default function TicketScanner() {
 
       const data = await response.json();
 
-      // Special handling for "all tickets already used" case
+      // Special handling for different response types
       const isAllTicketsUsed = data.booking?.isFullyCompleted === true;
+      const isAlreadyScanned = data.isAlreadyScanned === true;
 
       setScanResult({
-        success: response.ok || isAllTicketsUsed, // Treat fully completed as success
+        success: response.ok || isAllTicketsUsed, // Treat fully completed as success, but not already scanned
+        isAlreadyScanned: isAlreadyScanned, // Flag for red popup styling
         ...data,
       });
 
-      if (response.ok || isAllTicketsUsed) {
-        // Show success popup for successful scans or completed bookings
+      if (response.ok && !isAlreadyScanned) {
+        // Show success popup only for new successful scans
         setSuccessData(data.booking);
         setShowSuccessPopup(true);
 
@@ -122,6 +124,14 @@ export default function TicketScanner() {
         await fetchEventStatistics(selectedEvent);
 
         // Hide camera after successful scan
+        if (showCamera) {
+          setShowCamera(false);
+        }
+      } else if (isAllTicketsUsed && !isAlreadyScanned) {
+        // Handle fully completed bookings (all days attended)
+        setSuccessData(data.booking);
+        setShowSuccessPopup(true);
+
         if (showCamera) {
           setShowCamera(false);
         }
@@ -516,7 +526,9 @@ export default function TicketScanner() {
         {scanResult && (
           <div
             className={`rounded-xl border p-6 ${
-              scanResult.success
+              scanResult.isAlreadyScanned
+                ? "bg-red-500/10 border-red-500/20" // Red styling for already scanned
+                : scanResult.success
                 ? "bg-green-500/10 border-green-500/20"
                 : "bg-red-500/10 border-red-500/20"
             }`}
@@ -524,17 +536,31 @@ export default function TicketScanner() {
             <div className="flex items-center space-x-3 mb-4">
               <div
                 className={`text-2xl ${
-                  scanResult.success ? "text-green-300" : "text-red-300"
+                  scanResult.isAlreadyScanned
+                    ? "text-red-300" // Red text for already scanned
+                    : scanResult.success
+                    ? "text-green-300"
+                    : "text-red-300"
                 }`}
               >
-                {scanResult.success ? "✅" : "❌"}
+                {scanResult.isAlreadyScanned
+                  ? "⚠️" // Warning icon for already scanned
+                  : scanResult.success
+                  ? "✅"
+                  : "❌"}
               </div>
               <h3
                 className={`text-lg font-semibold ${
-                  scanResult.success ? "text-green-300" : "text-red-300"
+                  scanResult.isAlreadyScanned
+                    ? "text-red-300" // Red text for already scanned
+                    : scanResult.success
+                    ? "text-green-300"
+                    : "text-red-300"
                 }`}
               >
-                {scanResult.booking?.isFullyCompleted
+                {scanResult.isAlreadyScanned
+                  ? "Already Verified"
+                  : scanResult.booking?.isFullyCompleted
                   ? "🎉 Booking Completed"
                   : scanResult.success
                   ? "Valid Ticket"
@@ -566,7 +592,36 @@ export default function TicketScanner() {
                   <span className="font-medium">Event:</span>{" "}
                   {scanResult.booking.eventTitle}
                 </div>
-                {scanResult.booking.tickets && (
+
+                {/* Special display for already scanned tickets */}
+                {scanResult.isAlreadyScanned && (
+                  <div className="mt-3 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
+                    <div className="text-sm text-red-200 space-y-1">
+                      <div className="text-red-300 font-medium text-center mb-2">
+                        ⚠️ Already Verified
+                      </div>
+                      {scanResult.booking.eventDay && (
+                        <div>
+                          <span className="font-medium">Event Day:</span>{" "}
+                          {scanResult.booking.eventDay}
+                        </div>
+                      )}
+                      {scanResult.booking.verifiedAt && (
+                        <div>
+                          <span className="font-medium">
+                            Previously verified at:
+                          </span>{" "}
+                          {scanResult.booking.verifiedAt}
+                        </div>
+                      )}
+                      <div className="text-center text-red-200 text-xs mt-2">
+                        This ticket has already been used for today's event.
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {scanResult.booking.tickets && !scanResult.isAlreadyScanned && (
                   <div className="text-gray-300">
                     <span className="font-medium">Total Tickets:</span>{" "}
                     {scanResult.booking.totalTickets ||
@@ -605,43 +660,49 @@ export default function TicketScanner() {
                     </span>
                   </div>
                 )}
-                {scanResult.booking.progressInfo && (
-                  <div className="mt-3 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-                    <div className="text-sm text-blue-200 space-y-1">
-                      <div>
-                        <span className="font-medium">Event Day:</span>{" "}
-                        {scanResult.booking.progressInfo.currentDay}
-                      </div>
-                      <div>
-                        <span className="font-medium">Remaining Tickets:</span>{" "}
-                        {scanResult.booking.progressInfo.remainingTickets}
-                      </div>
-                      {scanResult.booking.progressInfo.nextTicketAvailable !==
-                        "All tickets used" && (
+                {scanResult.booking.progressInfo &&
+                  !scanResult.isAlreadyScanned && (
+                    <div className="mt-3 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                      <div className="text-sm text-blue-200 space-y-1">
+                        <div>
+                          <span className="font-medium">Event Day:</span>{" "}
+                          {scanResult.booking.progressInfo.currentDay}
+                        </div>
                         <div>
                           <span className="font-medium">
-                            Next Ticket Available:
+                            Remaining Tickets:
                           </span>{" "}
-                          {scanResult.booking.progressInfo.nextTicketAvailable}
+                          {scanResult.booking.progressInfo.remainingTickets}
                         </div>
-                      )}
-                      {scanResult.booking.progressInfo.remainingTickets ===
-                        0 && (
-                        <div className="text-green-300 font-medium">
-                          🎉 All tickets have been used!
-                        </div>
-                      )}
-                      {scanResult.booking.isFullyCompleted && (
-                        <div className="mt-2 p-2 bg-green-500/20 border border-green-500/30 rounded-lg">
-                          <div className="text-green-300 font-medium text-sm">
-                            ✨ This booking is now fully completed and marked as
-                            COMPLETED in the system.
+                        {scanResult.booking.progressInfo.nextTicketAvailable !==
+                          "All tickets used" && (
+                          <div>
+                            <span className="font-medium">
+                              Next Ticket Available:
+                            </span>{" "}
+                            {
+                              scanResult.booking.progressInfo
+                                .nextTicketAvailable
+                            }
                           </div>
-                        </div>
-                      )}
+                        )}
+                        {scanResult.booking.progressInfo.remainingTickets ===
+                          0 && (
+                          <div className="text-green-300 font-medium">
+                            🎉 All tickets have been used!
+                          </div>
+                        )}
+                        {scanResult.booking.isFullyCompleted && (
+                          <div className="mt-2 p-2 bg-green-500/20 border border-green-500/30 rounded-lg">
+                            <div className="text-green-300 font-medium text-sm">
+                              ✨ This booking is now fully completed and marked
+                              as COMPLETED in the system.
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
                 {scanResult.booking.status && (
                   <div className="text-gray-300">
                     <span className="font-medium">Booking Status:</span>{" "}

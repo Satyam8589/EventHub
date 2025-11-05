@@ -1,13 +1,14 @@
 // Test the scan-ticket API directly
-const fetch = require("node-fetch");
+// Using built-in fetch available in Node.js 18+
 
 async function testScanTicket() {
-  const bookingId = "cmh2jcw280001tvn0ku8hh78n";
-  const scannedBy = "ir3s39E7QIcLd5TjO2X8ELCSxHF2";
-  const eventId = "cmh2ht0in0003tvwoqux04xiz";
+  // Use an existing booking ID we know has scanned data for migration test
+  const qrCode = "28c3bfe1-1ab3-4494-aa43-dda7c6bbe94f_DAY_1_OF_2";
+  const scannedBy = "test-admin-migration";
+  const eventId = "test-event-migration";
 
-  console.log("Testing scan-ticket API...\n");
-  console.log("Booking ID:", bookingId);
+  console.log("Testing scan-ticket API migration logic...\n");
+  console.log("QR Code:", qrCode);
   console.log("Scanner ID:", scannedBy);
   console.log("Event ID:", eventId);
   console.log("\n");
@@ -21,7 +22,7 @@ async function testScanTicket() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          bookingId: bookingId,
+          bookingId: qrCode,
           scannedBy: scannedBy,
           eventId: eventId,
         }),

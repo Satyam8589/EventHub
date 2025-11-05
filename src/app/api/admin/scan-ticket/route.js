@@ -231,8 +231,12 @@ export async function POST(request) {
 
     // Progressive ticket scanning logic - only allow scanning specific ticket numbers on specific days
     const totalTickets = booking.tickets || 1;
+    // For multi-day events, use the total days from QR code, otherwise use tickets count
+    const totalEventDays = totalDaysInQR || totalTickets;
+
     console.log("=== PROGRESSIVE TICKET SCANNING ===");
     console.log("Total tickets in booking:", totalTickets);
+    console.log("Total event days:", totalEventDays);
 
     // Calculate which day of the event it is (starting from day 1)
     const eventStartDate = new Date(event.date);
@@ -299,16 +303,17 @@ export async function POST(request) {
       );
     }
 
-    if (currentEventDay > totalTickets) {
+    if (currentEventDay > totalEventDays) {
       return NextResponse.json(
         {
           error: "All tickets used",
           isValid: false,
-          message: `All ${totalTickets} ticket(s) for this booking have been used. Thank you for visiting!`,
+          message: `All ${totalEventDays} day(s) for this event have passed. Thank you for visiting!`,
           booking: {
             id: booking.id,
             eventTitle: booking.event.title,
             userName: booking.user.name,
+            totalEventDays: totalEventDays,
             totalTickets: totalTickets,
             daysElapsed: currentEventDay - 1,
           },
@@ -317,16 +322,58 @@ export async function POST(request) {
       );
     }
 
-    // Parse existing scanned tickets data
+    // Parse existing scanned tickets data from scannedqrs column
     let scannedTicketsData = {};
-    if (booking.paymentId && booking.paymentId.startsWith("SCANNED_TICKETS_")) {
+
+    // First, check if we have data in the new scannedqrs column
+    if (booking.scannedqrs) {
+      try {
+        scannedTicketsData =
+          typeof booking.scannedqrs === "string"
+            ? JSON.parse(booking.scannedqrs)
+            : booking.scannedqrs;
+        console.log(
+          "Existing scanned tickets from scannedqrs:",
+          scannedTicketsData
+        );
+      } catch (error) {
+        console.error("Error parsing scannedqrs:", error);
+        scannedTicketsData = {};
+      }
+    }
+    // Fallback: check legacy paymentId format for migration
+    else if (
+      booking.paymentId &&
+      booking.paymentId.startsWith("SCANNED_TICKETS_")
+    ) {
       try {
         const ticketsDataString = booking.paymentId.replace(
           "SCANNED_TICKETS_",
           ""
         );
         scannedTicketsData = JSON.parse(ticketsDataString);
-        console.log("Existing scanned tickets:", scannedTicketsData);
+        console.log(
+          "Migrating scanned tickets from paymentId:",
+          scannedTicketsData
+        );
+
+        // Migrate data to scannedqrs column and clean up paymentId
+        const { error: migrationError } = await supabase
+          .from("bookings")
+          .update({
+            scannedqrs: scannedTicketsData,
+            paymentId: null, // Clear the legacy paymentId
+          })
+          .eq("id", booking.id);
+
+        if (migrationError) {
+          console.error(
+            "Error migrating scanned tickets data:",
+            migrationError
+          );
+        } else {
+          console.log("Successfully migrated scanned tickets to scannedqrs");
+        }
       } catch (e) {
         console.log(
           "Could not parse existing scanned tickets data, starting fresh"
@@ -335,26 +382,31 @@ export async function POST(request) {
       }
     }
 
-    // Check if ALL tickets have already been scanned (booking completed)
+    // Check if ALL days have already been scanned (booking completed)
     const scannedTicketsCount = Object.keys(scannedTicketsData).length;
-    if (scannedTicketsCount >= totalTickets) {
-      console.log("🎉 All tickets already used - booking fully completed");
+
+    if (scannedTicketsCount >= totalEventDays) {
+      console.log(
+        "🎉 All event days already attended - booking fully completed"
+      );
       return NextResponse.json(
         {
-          error: "All tickets already used",
+          error: "All days already attended",
           isValid: false,
-          message: `🎉 All ${totalTickets} ticket(s) for this booking have already been used. Thank you for visiting throughout the event!`,
+          isAlreadyScanned: true, // Flag for red popup
+          message: `🎉 All ${totalEventDays} day(s) for this event have already been attended. Thank you for visiting throughout the event!`,
           booking: {
             id: booking.id,
             eventTitle: booking.event.title,
             userName: booking.user.name,
             userEmail: booking.user.email,
-            totalTickets: totalTickets,
-            scannedTickets: scannedTicketsCount,
+            totalEventDays: totalEventDays,
+            scannedDays: scannedTicketsCount,
             daysAttended: Object.keys(scannedTicketsData).sort().join(", "),
             isFullyCompleted: true,
             completionMessage:
-              "This booking is fully completed - all tickets have been used successfully!",
+              "This booking is fully completed - all event days have been attended successfully!",
+            // Removed remaining tickets field as requested
           },
         },
         { status: 200 } // Changed to 200 since this is a successful recognition, not an error
@@ -367,20 +419,19 @@ export async function POST(request) {
       const scannedTime = new Date(scannedTicketsData[ticketNumberForToday]);
       return NextResponse.json(
         {
-          error: "Today's ticket already scanned",
+          error: "Already verified",
           isValid: false,
-          message: `Ticket ${ticketNumberForToday} was already used on ${scannedTime.toLocaleString()}. Thank you for visiting! ✓`,
+          isAlreadyScanned: true, // Flag for red popup
+          message: `This ticket was already verified on ${scannedTime.toLocaleString()}. Thank you for visiting!`,
           booking: {
             id: booking.id,
             eventTitle: booking.event.title,
             userName: booking.user.name,
-            ticketNumber: ticketNumberForToday,
-            totalTickets: totalTickets,
-            usedAt: scannedTime.toLocaleString(),
-            nextTicketAvailable:
-              ticketNumberForToday < totalTickets
-                ? `Day ${ticketNumberForToday + 1}`
-                : "All tickets used",
+            userEmail: booking.user.email,
+            eventDay: `Day ${ticketNumberForToday}`,
+            totalEventDays: totalEventDays,
+            verifiedAt: scannedTime.toLocaleString(),
+            // Removed remaining tickets field as requested
           },
         },
         { status: 400 }
@@ -394,7 +445,7 @@ export async function POST(request) {
     const { error: scanError } = await supabase
       .from("bookings")
       .update({
-        paymentId: `SCANNED_TICKETS_${JSON.stringify(scannedTicketsData)}`,
+        scannedqrs: scannedTicketsData,
         updatedAt: scannedAt,
       })
       .eq("id", booking.id);

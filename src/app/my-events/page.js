@@ -224,16 +224,25 @@ export default function MyEventsPage() {
       let eventEndDateTime;
       if (booking.event.endDate || booking.event.enddate) {
         // Event has an end date/time
-        eventEndDateTime = new Date(
-          booking.event.endDate || booking.event.enddate
-        );
+        const endDateValue = booking.event.endDate || booking.event.enddate;
+
+        // Check if we also have endtime to combine
+        if (booking.event.endtime && !endDateValue.includes("T")) {
+          // If enddate doesn't include time (just date) and we have endtime, combine them
+          eventEndDateTime = new Date(
+            `${endDateValue}T${booking.event.endtime}`
+          );
+        } else {
+          // Use enddate as-is (already includes time)
+          eventEndDateTime = new Date(endDateValue);
+        }
 
         // Validate end date
         if (isNaN(eventEndDateTime.getTime())) {
           console.error("Invalid end date for booking:", {
             bookingId: booking?.id || "unknown",
-            endDate:
-              booking?.event?.endDate || booking?.event?.enddate || "undefined",
+            endDate: endDateValue,
+            endTime: booking?.event?.endtime || "undefined",
             eventTitle: booking?.event?.title || "undefined",
             fullBooking: booking,
           });

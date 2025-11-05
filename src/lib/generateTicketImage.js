@@ -4,6 +4,7 @@ import { createCanvas, loadImage } from "canvas";
 function calculateEventDays(event) {
   console.log("🔍 Calculating event days for:", {
     eventId: event.id,
+    eventTitle: event.title,
     date: event.date,
     endDate: event.endDate,
     enddate: event.enddate,
@@ -11,34 +12,46 @@ function calculateEventDays(event) {
   });
 
   const startDate = new Date(event.date);
-  const endDate =
-    event.endDate || event.enddate
-      ? new Date(event.endDate || event.enddate)
-      : null;
+  const endDateValue = event.endDate || event.enddate;
 
-  console.log("📅 Date calculation:", {
+  console.log("📅 Date parsing:", {
     startDate: startDate.toISOString(),
-    endDate: endDate ? endDate.toISOString() : null,
-    hasEndDate: !!endDate,
+    endDateValue: endDateValue,
+    hasEndDate: !!endDateValue,
   });
 
-  if (!endDate) {
+  if (!endDateValue) {
     console.log("❌ No end date found, returning 1 day");
+    console.log("💡 This explains why event appears as single-day!");
     return 1; // Single day event
   }
 
-  // Calculate difference in days
-  const timeDiff = endDate.getTime() - startDate.getTime();
-  const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1; // +1 to include both start and end days
+  const endDate = new Date(endDateValue);
 
-  const finalDays = Math.max(1, daysDiff);
-  console.log("✅ Event duration calculated:", {
-    timeDiff,
-    daysDiff,
-    finalDays,
+  console.log("📅 Date calculation:", {
+    startDate: startDate.toISOString(),
+    endDate: endDate.toISOString(),
+    hasEndDate: !!endDate,
   });
 
-  return finalDays; // Ensure at least 1 day
+  // Use the same logic as TicketModal.js for consistency
+  const days = [];
+  const currentDate = new Date(startDate);
+  while (currentDate <= endDate) {
+    days.push(new Date(currentDate));
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
+
+  const finalDays = Math.max(1, days.length);
+  console.log("✅ Event duration calculated:", {
+    startDate: startDate.toDateString(),
+    endDate: endDate.toDateString(),
+    daysCount: days.length,
+    finalDays,
+    calculatedDays: days.map((d) => d.toDateString()),
+  });
+
+  return finalDays;
 }
 
 // Helper function to generate day-specific QR data
@@ -84,9 +97,45 @@ export async function generateTicketImage(booking, event, user) {
       userPhone: user?.phone,
     });
 
-    // Calculate event days to determine canvas height
-    const eventDays = calculateEventDays(event);
-    console.log("📏 Event days calculated for canvas sizing:", eventDays);
+    console.log("🎯 Event data received:", {
+      eventId: event?.id,
+      eventTitle: event?.title,
+      eventDate: event?.date,
+      eventEndDate: event?.endDate,
+      eventEnddate: event?.enddate,
+      allKeys: Object.keys(event || {}),
+    });
+
+    // SPECIAL HANDLING: If we have scanned QR data, use that to determine event days
+    let eventDays = 1;
+    let isMultiDayFromScans = false;
+
+    if (booking.scannedqrs) {
+      try {
+        const scannedData =
+          typeof booking.scannedqrs === "string"
+            ? JSON.parse(booking.scannedqrs)
+            : booking.scannedqrs;
+        const scannedDayCount = Object.keys(scannedData).length;
+        if (scannedDayCount > 1) {
+          eventDays = scannedDayCount;
+          isMultiDayFromScans = true;
+          console.log(
+            "🎫 Using scanned QR data to determine event days:",
+            eventDays
+          );
+        }
+      } catch (e) {
+        console.warn("Could not parse scanned QR data:", e);
+      }
+    }
+
+    // If not determined from scans, calculate from event dates
+    if (!isMultiDayFromScans) {
+      eventDays = calculateEventDays(event);
+    }
+
+    console.log("📏 Final event days calculated:", eventDays);
 
     // Calculate dynamic height based on content
     let canvasHeight = 800; // Base height
@@ -107,7 +156,7 @@ export async function generateTicketImage(booking, event, user) {
       const qrPerRow = Math.min(3, eventDays);
       const totalRows = Math.ceil(eventDays / qrPerRow);
       canvasHeight += 120; // Title and spacing
-      canvasHeight += totalRows * (qrSize + 80) + 60; // QR grid + extra spacing
+      canvasHeight += totalRows * (qrSize + 100) + 60; // QR grid + extra spacing for QR data text
     }
 
     // Add extra padding for footer
@@ -570,38 +619,99 @@ export async function generateTicketImage(booking, event, user) {
           const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(
             qrData
           )}`;
-          const qrImage = await loadImage(qrCodeUrl);
 
-          // Modern QR container with glow effect
-          ctx.fillStyle = "rgba(255, 255, 255, 0.05)";
-          ctx.fillRect(300, yPosition, 300, 300);
+          console.log("🔍 Loading QR code from URL:", qrCodeUrl);
 
-          // Border with gradient
-          const qrBorderGradient = ctx.createLinearGradient(
-            300,
-            yPosition,
-            600,
-            yPosition + 300
-          );
-          qrBorderGradient.addColorStop(0, "#3b82f6");
-          qrBorderGradient.addColorStop(0.5, "#8b5cf6");
-          qrBorderGradient.addColorStop(1, "#3b82f6");
-          ctx.strokeStyle = qrBorderGradient;
-          ctx.lineWidth = 3;
-          ctx.strokeRect(300, yPosition, 300, 300);
+          try {
+            const qrImage = await loadImage(qrCodeUrl);
+            console.log("✅ QR code loaded successfully");
 
-          // White background for QR
-          ctx.fillStyle = "#ffffff";
-          ctx.fillRect(320, yPosition + 20, 260, 260);
+            // Modern QR container with glow effect
+            ctx.fillStyle = "rgba(255, 255, 255, 0.05)";
+            ctx.fillRect(300, yPosition, 300, 300);
 
-          // Draw QR code
-          ctx.drawImage(qrImage, 320, yPosition + 20, 260, 260);
+            // Border with gradient
+            const qrBorderGradient = ctx.createLinearGradient(
+              300,
+              yPosition,
+              600,
+              yPosition + 300
+            );
+            qrBorderGradient.addColorStop(0, "#3b82f6");
+            qrBorderGradient.addColorStop(0.5, "#8b5cf6");
+            qrBorderGradient.addColorStop(1, "#3b82f6");
+            ctx.strokeStyle = qrBorderGradient;
+            ctx.lineWidth = 3;
+            ctx.strokeRect(300, yPosition, 300, 300);
+
+            // White background for QR
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(320, yPosition + 20, 260, 260);
+
+            // Draw QR code
+            ctx.drawImage(qrImage, 320, yPosition + 20, 260, 260);
+          } catch (qrError) {
+            console.error("❌ Failed to load QR code:", qrError);
+
+            // Try alternative QR service
+            try {
+              const altQrUrl = `https://chart.googleapis.com/chart?chs=300x300&cht=qr&chl=${encodeURIComponent(
+                qrData
+              )}`;
+              console.log("🔄 Trying alternative QR service:", altQrUrl);
+              const altQrImage = await loadImage(altQrUrl);
+
+              // Draw with alternative QR
+              ctx.fillStyle = "rgba(255, 255, 255, 0.05)";
+              ctx.fillRect(300, yPosition, 300, 300);
+
+              ctx.strokeStyle = "#10b981";
+              ctx.lineWidth = 3;
+              ctx.strokeRect(300, yPosition, 300, 300);
+
+              ctx.fillStyle = "#ffffff";
+              ctx.fillRect(320, yPosition + 20, 260, 260);
+
+              ctx.drawImage(altQrImage, 320, yPosition + 20, 260, 260);
+              console.log("✅ Alternative QR service worked");
+            } catch (altError) {
+              console.error("❌ Alternative QR service also failed:", altError);
+
+              // Final fallback: Draw a text-based QR placeholder
+              ctx.fillStyle = "rgba(255, 255, 255, 0.1)";
+              ctx.fillRect(300, yPosition, 300, 300);
+
+              ctx.strokeStyle = "#f59e0b";
+              ctx.lineWidth = 3;
+              ctx.strokeRect(300, yPosition, 300, 300);
+
+              ctx.fillStyle = "#f59e0b";
+              ctx.font = "16px Arial";
+              ctx.textAlign = "center";
+              ctx.fillText("QR CODE", 450, yPosition + 120);
+              ctx.fillText("(Scan Data Below)", 450, yPosition + 140);
+
+              // Show QR data prominently
+              ctx.fillStyle = "#ffffff";
+              ctx.font = "12px monospace";
+              const maxWidth = 280;
+              const lines = qrData.match(/.{1,25}/g) || [qrData];
+              lines.forEach((line, index) => {
+                ctx.fillText(line, 450, yPosition + 170 + index * 15);
+              });
+
+              ctx.textAlign = "left";
+            }
+          }
         }
 
         // QR Code ID below
         ctx.fillStyle = "#64748b";
         ctx.font = "12px monospace";
-        ctx.fillText(booking.id, 450, yPosition + 330);
+        ctx.textAlign = "center";
+        // Show the actual QR data instead of just booking ID
+        ctx.fillText(qrData, 450, yPosition + 330);
+        ctx.textAlign = "left";
 
         yPosition += 400; // Increased spacing from 350 to 400
       } else {
@@ -753,10 +863,19 @@ export async function generateTicketImage(booking, event, user) {
             qrX + qrSize / 2,
             qrY + qrSize + 35
           );
+
+          // QR Code data below (show actual QR content)
+          ctx.fillStyle = "#6b7280";
+          ctx.font = "8px monospace";
+          const qrText =
+            dayQRData.length > 25
+              ? dayQRData.substring(0, 25) + "..."
+              : dayQRData;
+          ctx.fillText(qrText, qrX + qrSize / 2, qrY + qrSize + 50);
         }
 
         // Update yPosition based on the number of rows
-        yPosition += totalRows * (qrSize + 80) + 80; // Increased spacing from 40 to 80
+        yPosition += totalRows * (qrSize + 100) + 80; // Increased spacing to match canvas calculation
       }
     }
 
