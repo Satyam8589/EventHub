@@ -1,11 +1,9 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 
 // GET /api/health - Health check endpoint
 export async function GET() {
   try {
-    console.log("Health check started");
-
     // Check environment variables
     const envCheck = {
       hasSupabaseUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -13,9 +11,6 @@ export async function GET() {
       hasDatabaseUrl: !!process.env.DATABASE_URL,
       nodeEnv: process.env.NODE_ENV,
     };
-
-    console.log("Environment check:", envCheck);
-
     // Try to fetch ALL events to test database connection
     const { data: events, error } = await supabase
       .from("events")
@@ -23,7 +18,6 @@ export async function GET() {
       .order("createdAt", { ascending: false });
 
     if (error) {
-      console.error("Database query error:", error);
       return NextResponse.json(
         {
           status: "unhealthy",
@@ -34,9 +28,6 @@ export async function GET() {
         { status: 500 }
       );
     }
-
-    console.log("All events found:", events);
-
     return NextResponse.json({
       status: "healthy",
       message: "API is working correctly",
@@ -46,7 +37,6 @@ export async function GET() {
       env: envCheck,
     });
   } catch (error) {
-    console.error("Health check error:", error);
     return NextResponse.json(
       {
         status: "error",

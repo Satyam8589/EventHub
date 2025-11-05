@@ -1,13 +1,9 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 
 // GET /api/leaderboard - Get all events (including expired) for leaderboard
 export async function GET() {
   try {
-    console.log("=== LEADERBOARD API ===");
-    console.log("Starting GET /api/leaderboard");
-    console.log("DATABASE_URL exists:", !!process.env.DATABASE_URL);
-
     // First get all events
     const { data: events, error } = await supabase
       .from("events")
@@ -15,11 +11,8 @@ export async function GET() {
       .order("date", { ascending: false }); // Most recent first
 
     if (error) {
-      console.error("Supabase query error:", error);
       throw error;
     }
-
-    console.log("Raw events from database:", events?.length || 0);
     console.log(
       "Events details:",
       events?.map((e) => ({
@@ -63,10 +56,6 @@ export async function GET() {
             .eq("eventId", event.id);
 
           if (countError) {
-            console.error(
-              `Error counting bookings for event ${event.id}:`,
-              countError
-            );
           }
 
           return {
@@ -76,7 +65,6 @@ export async function GET() {
             },
           };
         } catch (error) {
-          console.error(`Error processing event ${event.id}:`, error.message);
           return {
             ...event,
             _count: {
@@ -85,11 +73,6 @@ export async function GET() {
           };
         }
       })
-    );
-
-    console.log(
-      "Successfully fetched leaderboard events:",
-      eventsWithCounts.length
     );
     console.log(
       "Leaderboard events data:",
@@ -112,12 +95,6 @@ export async function GET() {
     response.headers.set("Expires", "0");
     return response;
   } catch (error) {
-    console.error("Error fetching leaderboard events:", error.message);
-    console.error("Error code:", error.code);
-    console.error("Error details:", error.details);
-    console.error("Error hint:", error.hint);
-    console.error("Full error object:", error);
-
     return NextResponse.json(
       {
         error: "Failed to fetch events",

@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 
 export async function GET(request) {
@@ -12,10 +12,6 @@ export async function GET(request) {
         { status: 400 }
       );
     }
-
-    console.log("=== FETCHING EVENT ANALYTICS ===");
-    console.log("Event ID:", eventId);
-
     // Get event details
     const { data: event, error: eventError } = await supabase
       .from("events")
@@ -24,7 +20,6 @@ export async function GET(request) {
       .single();
 
     if (eventError) {
-      console.error("Error fetching event:", eventError);
       return NextResponse.json({ error: "Event not found" }, { status: 404 });
     }
 
@@ -41,18 +36,11 @@ export async function GET(request) {
       .order("createdAt", { ascending: false });
 
     if (bookingsError) {
-      console.error("Error fetching bookings:", bookingsError);
       return NextResponse.json(
         { error: "Failed to fetch bookings" },
         { status: 500 }
       );
     }
-
-    console.log(
-      "Raw bookings data sample:",
-      bookings[0] || "No bookings found"
-    );
-
     // Calculate analytics
     const totalBookings = bookings.length;
     const confirmedBookings = bookings.filter((b) => b.status === "CONFIRMED");
@@ -131,19 +119,8 @@ export async function GET(request) {
       recentBookings,
       allBookings: bookings.length <= 100 ? bookings : bookings.slice(0, 100), // Limit to 100 for performance
     };
-
-    console.log("Analytics generated successfully");
-    console.log("Summary:", analytics.summary);
-    console.log("Event details:", {
-      startDate: analytics.event.startDate,
-      endDate: analytics.event.endDate,
-      totalRevenue: analytics.summary.totalRevenue,
-      totalTickets: analytics.summary.totalTickets,
-    });
-
     return NextResponse.json(analytics);
   } catch (error) {
-    console.error("Error in analytics API:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

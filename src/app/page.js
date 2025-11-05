@@ -22,6 +22,25 @@ export default function Home() {
   const { user, loading: authLoading, mounted } = useAuth();
   const router = useRouter();
 
+  // Handle URL parameters for login/signup
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get("login") === "true") {
+        setShowLogin(true);
+        // Clean up URL
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, newUrl);
+      }
+      if (urlParams.get("signup") === "true") {
+        setShowSignup(true);
+        // Clean up URL
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, newUrl);
+      }
+    }
+  }, [mounted]);
+
   // Show loading screen until component is mounted to prevent hydration issues
   if (!mounted) {
     return (
@@ -71,33 +90,22 @@ export default function Home() {
   useEffect(() => {
     const fetchEvents = async () => {
       try {
-        console.log("Fetching events from /api/events...");
         const response = await fetch(`/api/events?_=${Date.now()}`, {
           cache: "no-store",
           headers: {
             "Cache-Control": "no-cache",
           },
         });
-        console.log("Response status:", response.status);
 
         if (!response.ok) {
           const errorText = await response.text();
-          console.error("API Error Response:", errorText);
           throw new Error(
             `Failed to fetch events: ${response.status} - ${errorText}`
           );
         }
 
         const data = await response.json();
-        console.log("Events data received:", data);
         const allEvents = data.events || [];
-        console.log("Total events fetched:", allEvents.length);
-
-        if (allEvents.length === 0) {
-          console.warn(
-            "No events found in database. This might be a deployment issue."
-          );
-        }
 
         setEvents(allEvents);
 
@@ -105,16 +113,8 @@ export default function Home() {
         const isEventActive = (event) => {
           const now = new Date();
 
-          console.log(`🔍 Checking event "${event.title}":`, {
-            date: event.date,
-            endDate: event.endDate,
-            status: event.status,
-            featured: event.featured,
-          });
-
           // Check if event is cancelled
           if (event.status === "CANCELLED") {
-            console.log(`❌ Event "${event.title}" is CANCELLED`);
             return false;
           }
 
@@ -124,11 +124,6 @@ export default function Home() {
             const endDate = new Date(endDateValue);
             // Be more strict - only show if end date is clearly in the future
             const isActive = endDate > now;
-            console.log(
-              `🗓️ Multi-day event "${
-                event.title
-              }": endDate=${endDate.toISOString()}, now=${now.toISOString()}, active=${isActive}`
-            );
             return isActive;
           }
 
@@ -147,11 +142,6 @@ export default function Home() {
           );
 
           const isActive = eventDateOnly >= nowDateOnly;
-          console.log(
-            `📅 Single-day event "${
-              event.title
-            }": eventDate=${eventDateOnly.toISOString()}, nowDate=${nowDateOnly.toISOString()}, active=${isActive}`
-          );
 
           return isActive;
         };
@@ -160,27 +150,16 @@ export default function Home() {
         const featured = allEvents
           .filter((event) => event.featured === true && isEventActive(event))
           .slice(0, 3);
-        console.log("Featured events:", featured.length);
 
         setFeaturedEvents(featured);
-        console.log("Total featured events to display:", featured.length);
 
         // For upcoming events, show latest non-featured active events
         const nonFeatured = allEvents.filter(
           (event) => event.featured !== true && isEventActive(event)
         );
         setUpcomingEvents(nonFeatured.slice(0, 3));
-        console.log(
-          "Upcoming events to display:",
-          nonFeatured.slice(0, 3).length
-        );
       } catch (error) {
-        console.error("Error fetching events:", error);
-        console.error("Error details:", error.message);
-        console.error("This error occurred in production. Please check:");
-        console.error("1. /api/events endpoint is accessible");
-        console.error("2. Environment variables are set correctly");
-        console.error("3. Database connection is working");
+        // Only log critical errors in production, not sensitive data
       } finally {
         setLoading(false);
       }

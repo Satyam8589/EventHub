@@ -4,19 +4,10 @@ import { supabase } from "@/lib/supabase";
 // POST /api/auth/sync-user - Sync Firebase user with our database
 export async function POST(request) {
   try {
-    console.log("=== SYNC-USER API CALLED ===");
-    console.log("Request method:", request.method);
-    console.log(
-      "Request headers:",
-      Object.fromEntries(request.headers.entries())
-    );
-
     let requestBody;
     try {
       requestBody = await request.json();
-      console.log("Request body:", requestBody);
     } catch (jsonError) {
-      console.error("JSON parsing error:", jsonError);
       return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
     }
 
@@ -29,8 +20,6 @@ export async function POST(request) {
       );
     }
 
-    console.log("Syncing user:", uid, email);
-
     // Check if user already exists in our database
     let user = null;
 
@@ -42,7 +31,6 @@ export async function POST(request) {
       .single();
 
     if (idError && idError.code !== "PGRST116") {
-      console.error("Error finding user by ID:", idError);
     } else if (userById) {
       user = userById;
     }
@@ -56,13 +44,10 @@ export async function POST(request) {
         .single();
 
       if (emailError && emailError.code !== "PGRST116") {
-        console.error("Error finding user by email:", emailError);
       } else if (userByEmail) {
         user = userByEmail;
       }
     }
-
-    console.log("Found existing user:", !!user, user?.email);
 
     if (user) {
       // Update existing user (preserve existing role)
@@ -82,10 +67,8 @@ export async function POST(request) {
         throw updateError;
       }
       user = updatedUser;
-      console.log("Updated existing user");
     } else {
       // Create new user
-      console.log("Creating new user with:", { uid, email, name, phone });
       const { data: newUser, error: createError } = await supabase
         .from("users")
         .insert([
@@ -104,18 +87,13 @@ export async function POST(request) {
         .single();
 
       if (createError) {
-        console.error("Error creating user:", createError);
         throw createError;
       }
       user = newUser;
-      console.log("Created new user successfully:", user?.id);
     }
 
     return NextResponse.json({ user });
   } catch (error) {
-    console.error("Error syncing user:", error.message);
-    console.error("Error code:", error.code);
-    console.error("Error details:", error);
     return NextResponse.json(
       { error: "Failed to sync user", details: error.message },
       { status: 500 }

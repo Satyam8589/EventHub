@@ -1,20 +1,15 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 
 export async function GET(request) {
   try {
-    console.log("=== ADMIN DASHBOARD API CALLED ===");
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get("userId");
-    console.log("Dashboard requested by userId:", userId);
-
     if (!userId) {
-      console.log("ERROR: No user ID provided");
       return NextResponse.json({ error: "User ID required" }, { status: 400 });
     }
 
     // Get user and check admin role
-    console.log("Fetching user data for userId:", userId);
     const { data: user, error: userError } = await supabase
       .from("users")
       .select("*")
@@ -22,7 +17,6 @@ export async function GET(request) {
       .single();
 
     if (userError) {
-      console.log("ERROR fetching user:", userError);
     }
 
     console.log(
@@ -31,7 +25,6 @@ export async function GET(request) {
     );
 
     if (!user || (user.role !== "SUPER_ADMIN" && user.role !== "EVENT_ADMIN")) {
-      console.log("UNAUTHORIZED: User not found or invalid role");
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
@@ -47,9 +40,7 @@ export async function GET(request) {
       const { data: events, error: eventsError } = await eventsQuery;
 
       if (eventsError) {
-        console.error("Error fetching events:", eventsError);
       } else {
-        console.log("Dashboard events fetched:", events?.length || 0, "events");
       }
 
       const { data: bookings, error: bookingsError } = await supabase
@@ -57,13 +48,7 @@ export async function GET(request) {
         .select("*");
 
       if (bookingsError) {
-        console.error("Error fetching bookings:", bookingsError);
       } else {
-        console.log(
-          "Dashboard bookings fetched:",
-          bookings?.length || 0,
-          "bookings"
-        );
       }
 
       // Calculate stats
@@ -91,7 +76,7 @@ export async function GET(request) {
             type: "booking",
             description: `${booking.tickets} ticket(s) booked for ${
               event?.title || "Unknown Event"
-            } - ₹${booking.totalAmount?.toLocaleString("en-IN")}`,
+            } - â‚¹${booking.totalAmount?.toLocaleString("en-IN")}`,
             timestamp: new Date(booking.createdAt).toLocaleString("en-US", {
               month: "short",
               day: "numeric",
@@ -140,7 +125,6 @@ export async function GET(request) {
         events: events || [], // Include events list for admin panel
       });
     } catch (statsError) {
-      console.error("Error fetching admin stats:", statsError);
       return NextResponse.json({
         stats: {
           totalEvents: 0,
@@ -153,7 +137,6 @@ export async function GET(request) {
       });
     }
   } catch (error) {
-    console.error("Admin dashboard error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

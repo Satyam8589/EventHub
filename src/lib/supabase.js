@@ -23,7 +23,6 @@ export const db = {
         .single();
 
       if (error && error.code !== "PGRST116") {
-        console.error("Error finding user:", error);
         return null;
       }
       return data;
@@ -37,7 +36,6 @@ export const db = {
         .single();
 
       if (error) {
-        console.error("Error creating user:", error);
         throw error;
       }
       return user;
@@ -52,7 +50,6 @@ export const db = {
         .single();
 
       if (error) {
-        console.error("Error updating user:", error);
         throw error;
       }
       return user;
@@ -78,7 +75,6 @@ export const db = {
       const { data, error } = await query;
 
       if (error) {
-        console.error("Error fetching events:", error);
         throw error;
       }
       return data || [];
@@ -92,7 +88,6 @@ export const db = {
         .single();
 
       if (error && error.code !== "PGRST116") {
-        console.error("Error finding event:", error);
         return null;
       }
       return data;
@@ -106,7 +101,6 @@ export const db = {
         .single();
 
       if (error) {
-        console.error("Error creating event:", error);
         throw error;
       }
       return event;
@@ -134,7 +128,6 @@ export const db = {
       const { data, error } = await query;
 
       if (error) {
-        console.error("Error fetching bookings:", error);
         throw error;
       }
       return data || [];
@@ -148,7 +141,6 @@ export const db = {
         .single();
 
       if (error) {
-        console.error("Error creating booking:", error);
         throw error;
       }
       return booking;
@@ -165,7 +157,6 @@ export const db = {
         .single();
 
       if (error) {
-        console.error("Error creating contact message:", error);
         throw error;
       }
       return message;
@@ -180,7 +171,6 @@ export const db = {
         .single();
 
       if (error) {
-        console.error("Error updating contact message:", error);
         throw error;
       }
       return message;

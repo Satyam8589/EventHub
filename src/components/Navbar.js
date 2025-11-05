@@ -114,7 +114,7 @@ export default function Navbar({ setShowLogin, setShowSignup }) {
                             window.location.reload();
                           }
                         } catch (error) {
-                          console.error("Error signing out:", error);
+                          // Silent error handling for security
                         }
                       }}
                       className="text-white/80 hover:text-white transition-colors p-2 hover:bg-white/10 rounded-lg"
@@ -154,8 +154,8 @@ export default function Navbar({ setShowLogin, setShowSignup }) {
               </>
             )}
 
-            {/* Mobile menu button */}
-            <div className="mobile-menu-container lg:hidden">
+            {/* Mobile menu button - Hidden since we have bottom nav */}
+            <div className="mobile-menu-container lg:hidden hidden">
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                 className="text-white/80 hover:text-white p-2 hover:bg-white/10 rounded-lg transition-colors"
@@ -182,8 +182,8 @@ export default function Navbar({ setShowLogin, setShowSignup }) {
           </div>
         </div>
 
-        {/* Mobile Navigation Menu */}
-        {mobileMenuOpen && (
+        {/* Mobile Navigation Menu - Hidden since we have bottom nav */}
+        {false && mobileMenuOpen && (
           <div className="lg:hidden mobile-menu-container">
             <div className="px-2 pt-2 pb-3 space-y-1 bg-black/40 backdrop-blur-md rounded-lg mt-2">
               <Link
@@ -270,7 +270,7 @@ export default function Navbar({ setShowLogin, setShowSignup }) {
                               setMobileMenuOpen(false);
                             }
                           } catch (error) {
-                            console.error("Error signing out:", error);
+                            // Silent error handling for security
                             setMobileMenuOpen(false);
                           }
                         }}

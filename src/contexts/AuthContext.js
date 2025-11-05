@@ -37,40 +37,25 @@ export const AuthProvider = ({ children }) => {
     const initializePersistence = async () => {
       try {
         await setPersistence(auth, browserLocalPersistence);
-        console.log("🔐 Auth persistence initialized on app load");
 
         // After setting persistence, check if there's an existing user
         // This helps with navigation between pages where auth state might not be immediately available
         setTimeout(() => {
           const currentUser = auth.currentUser;
           if (currentUser) {
-            console.log(
-              "🔄 Found persisted user after delay:",
-              currentUser.email
-            );
-            console.log(
-              "🔄 Current context user state:",
-              user ? user.email || "No email" : "null"
-            );
-
             // If we have a Firebase user but no context user, force trigger auth state change
             if (!user && !loading) {
-              console.log("🔥 Forcing auth state check for persisted user");
               // Force re-evaluation of auth state by triggering a re-check
               const forceAuthCheck = async () => {
                 try {
                   // This will force onAuthStateChanged to fire if there's a user
                   if (currentUser.accessToken) {
-                    console.log("🔥 Forcing auth state refresh");
                   }
-                } catch (e) {
-                  console.log("🔥 Auth check completed");
-                }
+                } catch (e) {}
               };
               forceAuthCheck();
             }
           } else {
-            console.log("👤 No persisted user found after delay");
           }
         }, 500);
 
@@ -78,33 +63,19 @@ export const AuthProvider = ({ children }) => {
         setTimeout(() => {
           const currentUser = auth.currentUser;
           if (currentUser && !user && !loading) {
-            console.log(
-              "🔥 LATE AUTH CHECK: Forcing delayed auth sync for:",
-              currentUser.email
-            );
             // Force the auth state to be re-evaluated by accessing the user
             // This should trigger onAuthStateChanged if it hasn't fired yet
-            console.log(
-              "🔥 Current user token available:",
-              !!currentUser.accessToken
-            );
             // Try to force a re-sync by checking auth state again
             setTimeout(() => {
               if (auth.currentUser && !user) {
-                console.log(
-                  "🔥 FINAL AUTH CHECK: Auth state still not synced, force refresh"
-                );
                 // Last resort: reload the page if auth is completely stuck
                 if (typeof window !== "undefined") {
-                  console.log("🔥 Auth state recovery needed");
                 }
               }
             }, 1000);
           }
         }, 2000);
-      } catch (error) {
-        console.warn("⚠️ Could not set auth persistence:", error);
-      }
+      } catch (error) {}
     };
 
     initializePersistence();
@@ -112,21 +83,9 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      console.log(
-        "🔐 Auth state changed:",
-        firebaseUser ? "User logged in" : "User logged out"
-      );
-      console.log("🔐 Firebase user:", firebaseUser?.email || "None");
-      console.log("🔐 Firebase UID:", firebaseUser?.uid || "None");
-      console.log(
-        "🔐 Page URL:",
-        typeof window !== "undefined" ? window.location.pathname : "Server"
-      );
-
       if (firebaseUser) {
         // Sync user with our database
         try {
-          console.log("🔄 Syncing user with database...");
           const response = await fetch("/api/auth/sync-user", {
             method: "POST",
             headers: {
@@ -144,7 +103,6 @@ export const AuthProvider = ({ children }) => {
 
           if (response.ok) {
             const userData = await response.json();
-            console.log("✅ User sync successful:", userData.user.email);
             setUser({
               ...firebaseUser,
               role: userData.user.role,
@@ -152,21 +110,17 @@ export const AuthProvider = ({ children }) => {
             });
           } else {
             const errorText = await response.text();
-            console.log("⚠️ User sync failed:", response.status, errorText);
             // Still set the Firebase user even if sync fails
             setUser(firebaseUser);
           }
         } catch (error) {
-          console.error("❌ Error syncing user:", error);
           // Still set the Firebase user even if sync fails
           setUser(firebaseUser);
         }
       } else {
-        console.log("👤 Setting user to null");
         setUser(null);
       }
       setLoading(false);
-      console.log("🔐 Auth loading set to false");
     });
 
     // Check for redirect result on page load
@@ -180,7 +134,6 @@ export const AuthProvider = ({ children }) => {
           // onAuthStateChanged will be triggered automatically by Firebase
         }
       } catch (error) {
-        console.error("Redirect authentication error:", error);
       } finally {
         // Only set loading false if no redirect result was found
         // If redirect result exists, onAuthStateChanged will handle loading
@@ -197,24 +150,9 @@ export const AuthProvider = ({ children }) => {
     const checkAuthState = () => {
       const currentUser = auth.currentUser;
       if (currentUser && !user) {
-        console.log(
-          "🔥 MANUAL AUTH CHECK: Found Firebase user but no context user"
-        );
-        console.log("🔥 MANUAL AUTH CHECK: Firebase user:", currentUser.email);
-        console.log(
-          "🔥 MANUAL AUTH CHECK: Context user:",
-          user ? "exists" : "null"
-        );
-        console.log(
-          "🔥 MANUAL AUTH CHECK: Triggering auth state check manually"
-        );
         // This should trigger onAuthStateChanged if state was somehow missed
       } else if (currentUser && user) {
-        console.log(
-          "✅ MANUAL AUTH CHECK: Both Firebase and context user exist"
-        );
       } else {
-        console.log("👤 MANUAL AUTH CHECK: No authenticated user found");
       }
     };
 
@@ -336,7 +274,6 @@ export const AuthProvider = ({ children }) => {
       await firebaseSignOut(auth);
       return { error: null };
     } catch (error) {
-      console.error("AuthContext - Sign out error:", error);
       return { error: error.message };
     }
   };
@@ -368,9 +305,7 @@ export const AuthProvider = ({ children }) => {
           dbUser: userData.user,
         });
       }
-    } catch (error) {
-      console.error("Error refreshing user role:", error);
-    }
+    } catch (error) {}
   };
 
   const value = {

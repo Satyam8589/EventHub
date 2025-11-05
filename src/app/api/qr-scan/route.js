@@ -1,13 +1,10 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 
 // POST /api/qr-scan - Handle QR code scanning
 export async function POST(request) {
   try {
     const { qrData } = await request.json();
-
-    console.log("🔍 QR Scan Request:", qrData);
-
     // Parse QR data to extract booking ID and day information
     let bookingId, dayNumber, totalDays;
 
@@ -27,14 +24,6 @@ export async function POST(request) {
       dayNumber = 1;
       totalDays = 1;
     }
-
-    console.log("📋 Parsed QR Data:", {
-      bookingId,
-      dayNumber,
-      totalDays,
-      originalQrData: qrData,
-    });
-
     // Validate booking exists
     const { data: booking, error: bookingError } = await supabase
       .from("bookings")
@@ -94,7 +83,7 @@ export async function POST(request) {
       );
       const currentEventDay = daysSinceStart + 1; // Day 1, 2, 3, etc.
 
-      console.log("📅 Date validation:", {
+      console.log("ðŸ“… Date validation:", {
         eventStartDate: eventStartDate.toISOString(),
         currentDate: currentDate.toISOString(),
         daysSinceStart,
@@ -146,9 +135,6 @@ export async function POST(request) {
 
       // Allow scanning of current day or previous days (for late entry)
       if (dayNumber < currentEventDay) {
-        console.log(
-          `⚠️ Late entry: Scanning Day ${dayNumber} QR on Day ${currentEventDay}`
-        );
       }
     } else {
       // Single day event - just check if event date matches today (with some tolerance)
@@ -170,7 +156,7 @@ export async function POST(request) {
       const dayDifference =
         (currentDateOnly - eventDateOnly) / (1000 * 60 * 60 * 24);
 
-      console.log("📅 Single day event validation:", {
+      console.log("ðŸ“… Single day event validation:", {
         eventDate: eventDate.toISOString(),
         currentDate: currentDate.toISOString(),
         dayDifference,
@@ -205,7 +191,6 @@ export async function POST(request) {
       try {
         scannedQRs = JSON.parse(booking.scannedQRs);
       } catch (e) {
-        console.warn("Could not parse existing scannedQRs, starting fresh");
         scannedQRs = [];
       }
     }
@@ -254,7 +239,6 @@ export async function POST(request) {
       .eq("id", bookingId);
 
     if (updateError) {
-      console.error("❌ Error updating booking with QR scan:", updateError);
       return NextResponse.json(
         {
           success: false,
@@ -264,14 +248,6 @@ export async function POST(request) {
         { status: 500 }
       );
     }
-
-    console.log("✅ QR Code scanned successfully:", {
-      bookingId,
-      dayNumber,
-      totalDays,
-      scannedAt: newScan.scannedAt,
-    });
-
     return NextResponse.json({
       success: true,
       message: `Entry confirmed for Day ${dayNumber}${
@@ -289,7 +265,6 @@ export async function POST(request) {
       },
     });
   } catch (error) {
-    console.error("❌ Error processing QR scan:", error);
     return NextResponse.json(
       {
         success: false,
@@ -329,7 +304,6 @@ export async function GET(request) {
       try {
         scannedQRs = JSON.parse(booking.scannedQRs);
       } catch (e) {
-        console.warn("Could not parse scannedQRs");
       }
     }
 
@@ -356,7 +330,6 @@ export async function GET(request) {
       remainingDays: totalDays - scannedQRs.length,
     });
   } catch (error) {
-    console.error("❌ Error fetching QR scan status:", error);
     return NextResponse.json(
       { error: "Failed to fetch QR scan status" },
       { status: 500 }

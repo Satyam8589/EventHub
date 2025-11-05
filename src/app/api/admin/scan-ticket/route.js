@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 
 // POST /api/admin/scan-ticket - Scan and verify ticket
@@ -14,11 +14,6 @@ export async function POST(request) {
     let bookingId = rawBookingId?.toString().trim();
     let scannedDay = null;
     let totalDaysInQR = null;
-
-    console.log("=== SCAN TICKET REQUEST ===");
-    console.log("Raw Booking ID received:", rawBookingId);
-    console.log("Cleaned Booking ID:", bookingId);
-
     // Check if this is a day-specific QR code format: bookingId_DAY_X_OF_Y or bookingId_DAY_X
     let dayQRMatch = bookingId?.match(/^(.+)_DAY_(\d+)_OF_(\d+)$/);
     if (!dayQRMatch) {
@@ -30,18 +25,7 @@ export async function POST(request) {
       bookingId = dayQRMatch[1]; // Extract the actual booking ID
       scannedDay = parseInt(dayQRMatch[2]); // Extract the day number
       totalDaysInQR = dayQRMatch[3] ? parseInt(dayQRMatch[3]) : null; // Extract total days if present
-
-      console.log("🎯 Day-specific QR detected:");
-      console.log("- Booking ID:", bookingId);
-      console.log("- QR Day:", scannedDay);
-      console.log("- Total Days in QR:", totalDaysInQR);
     }
-
-    console.log("Booking ID type:", typeof bookingId);
-    console.log("Booking ID length:", bookingId?.length);
-    console.log("Scanner ID:", scannedBy);
-    console.log("Event ID:", eventId);
-
     if (!bookingId || !scannedBy || !eventId) {
       return NextResponse.json(
         { error: "Booking ID, scanner ID, and event ID are required" },
@@ -53,12 +37,6 @@ export async function POST(request) {
     const uuidRegex =
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     if (!uuidRegex.test(bookingId)) {
-      console.error("INVALID BOOKING ID FORMAT:", {
-        scannedData: bookingId,
-        dataLength: bookingId?.length,
-        expectedFormat: "UUID (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)",
-      });
-
       return NextResponse.json(
         {
           error: "Invalid QR code format",
@@ -115,20 +93,8 @@ export async function POST(request) {
       )
       .eq("id", bookingId)
       .single();
-
-    console.log("=== BOOKING LOOKUP RESULT ===");
-    console.log("Booking found:", booking ? "YES" : "NO");
     if (booking) {
-      console.log("Booking ID in DB:", booking.id);
-      console.log("Booking Status:", booking.status);
-      console.log("Event ID in booking:", booking.eventId);
-      console.log("Event ID requested:", eventId);
-      console.log(
-        "Booking belongs to requested event:",
-        booking.eventId === eventId
-      );
     } else {
-      console.log("=== ADDITIONAL DEBUGGING ===");
       // Try to find the booking without event restriction
       const { data: anyBooking, error: anyBookingError } = await supabase
         .from("bookings")
@@ -137,28 +103,11 @@ export async function POST(request) {
         .single();
 
       if (anyBooking) {
-        console.log("Booking exists but for different event:");
-        console.log("- Booking Event ID:", anyBooking.eventId);
-        console.log("- Requested Event ID:", eventId);
-        console.log("- Booking Status:", anyBooking.status);
       } else {
-        console.log("Booking does not exist in database at all");
-        console.log("Searched booking ID:", bookingId);
-        console.log("Booking ID type:", typeof bookingId);
-        console.log("Booking ID length:", bookingId?.length);
       }
     }
 
     if (bookingError || !booking) {
-      console.error("BOOKING LOOKUP FAILED:", {
-        searchedId: bookingId,
-        searchedIdLength: bookingId?.length,
-        searchedIdType: typeof bookingId,
-        eventId: eventId,
-        errorDetails: bookingError?.message || "No booking found",
-        sqlError: bookingError,
-      });
-
       return NextResponse.json(
         {
           error: "Ticket not found",
@@ -178,11 +127,6 @@ export async function POST(request) {
 
     // Check if booking is for the correct event
     if (booking.eventId !== eventId) {
-      console.log("=== BOOKING FOR DIFFERENT EVENT ===");
-      console.log("Booking Event ID:", booking.eventId);
-      console.log("Requested Event ID:", eventId);
-      console.log("Booking Event Title:", booking.event?.title);
-
       return NextResponse.json(
         {
           error: "Wrong event",
@@ -206,9 +150,6 @@ export async function POST(request) {
 
     // Check if booking is confirmed
     if (booking.status !== "CONFIRMED") {
-      console.log("=== BOOKING NOT CONFIRMED ===");
-      console.log("Status:", booking.status);
-
       return NextResponse.json(
         {
           error: "Invalid ticket",
@@ -233,11 +174,6 @@ export async function POST(request) {
     const totalTickets = booking.tickets || 1;
     // For multi-day events, use the total days from QR code, otherwise use tickets count
     const totalEventDays = totalDaysInQR || totalTickets;
-
-    console.log("=== PROGRESSIVE TICKET SCANNING ===");
-    console.log("Total tickets in booking:", totalTickets);
-    console.log("Total event days:", totalEventDays);
-
     // Calculate which day of the event it is (starting from day 1)
     const eventStartDate = new Date(event.date);
     const currentDate = new Date();
@@ -251,17 +187,8 @@ export async function POST(request) {
     );
     const currentEventDay = daysDifference + 1; // Day 1, 2, 3, etc.
 
-    console.log("Event start date:", eventStartDate.toISOString());
-    console.log("Current date:", currentDate.toISOString());
-    console.log("Days difference:", daysDifference);
-    console.log("Current event day:", currentEventDay);
-
     // If this is a day-specific QR code, validate that it matches the current day
     if (scannedDay !== null) {
-      console.log("🔍 Validating day-specific QR code:");
-      console.log("- QR is for day:", scannedDay);
-      console.log("- Current event day:", currentEventDay);
-
       if (scannedDay !== currentEventDay) {
         return NextResponse.json(
           {
@@ -332,12 +259,7 @@ export async function POST(request) {
           typeof booking.scannedqrs === "string"
             ? JSON.parse(booking.scannedqrs)
             : booking.scannedqrs;
-        console.log(
-          "Existing scanned tickets from scannedqrs:",
-          scannedTicketsData
-        );
       } catch (error) {
-        console.error("Error parsing scannedqrs:", error);
         scannedTicketsData = {};
       }
     }
@@ -352,11 +274,6 @@ export async function POST(request) {
           ""
         );
         scannedTicketsData = JSON.parse(ticketsDataString);
-        console.log(
-          "Migrating scanned tickets from paymentId:",
-          scannedTicketsData
-        );
-
         // Migrate data to scannedqrs column and clean up paymentId
         const { error: migrationError } = await supabase
           .from("bookings")
@@ -367,17 +284,9 @@ export async function POST(request) {
           .eq("id", booking.id);
 
         if (migrationError) {
-          console.error(
-            "Error migrating scanned tickets data:",
-            migrationError
-          );
         } else {
-          console.log("Successfully migrated scanned tickets to scannedqrs");
         }
       } catch (e) {
-        console.log(
-          "Could not parse existing scanned tickets data, starting fresh"
-        );
         scannedTicketsData = {};
       }
     }
@@ -386,15 +295,12 @@ export async function POST(request) {
     const scannedTicketsCount = Object.keys(scannedTicketsData).length;
 
     if (scannedTicketsCount >= totalEventDays) {
-      console.log(
-        "🎉 All event days already attended - booking fully completed"
-      );
       return NextResponse.json(
         {
           error: "All days already attended",
           isValid: false,
           isAlreadyScanned: true, // Flag for red popup
-          message: `🎉 All ${totalEventDays} day(s) for this event have already been attended. Thank you for visiting throughout the event!`,
+          message: `ðŸŽ‰ All ${totalEventDays} day(s) for this event have already been attended. Thank you for visiting throughout the event!`,
           booking: {
             id: booking.id,
             eventTitle: booking.event.title,
@@ -451,7 +357,6 @@ export async function POST(request) {
       .eq("id", booking.id);
 
     if (scanError) {
-      console.error("Error marking ticket as scanned:", scanError);
       return NextResponse.json(
         { error: "Failed to process ticket scan" },
         { status: 500 }
@@ -470,7 +375,6 @@ export async function POST(request) {
     // If this was the last ticket, mark booking as fully completed
     let completionUpdate = {};
     if (isLastTicket) {
-      console.log("🎯 All tickets used - keeping status as CONFIRMED for now");
       // TODO: After adding COMPLETED to enum, uncomment this:
       // completionUpdate = {
       //   status: "COMPLETED", // Change status to completed
@@ -490,7 +394,6 @@ export async function POST(request) {
       .eq("id", booking.id);
 
     if (updateError) {
-      console.error("Error marking ticket as scanned:", updateError);
       return NextResponse.json(
         { error: "Failed to process ticket scan" },
         { status: 500 }
@@ -499,8 +402,8 @@ export async function POST(request) {
 
     // Determine success message based on completion status
     const successMessage = isLastTicket
-      ? "🎉 All Tickets Used! Thank You for Visiting Throughout the Event! ✓"
-      : "Thank You for Visiting! ✓";
+      ? "ðŸŽ‰ All Tickets Used! Thank You for Visiting Throughout the Event! âœ“"
+      : "Thank You for Visiting! âœ“";
 
     return NextResponse.json({
       isValid: true,
@@ -542,7 +445,6 @@ export async function POST(request) {
       },
     });
   } catch (error) {
-    console.error("Error scanning ticket:", error);
     return NextResponse.json(
       {
         error: "Failed to scan ticket",
@@ -610,7 +512,6 @@ export async function GET(request) {
       .in("status", ["CONFIRMED", "COMPLETED"]);
 
     if (bookingsError) {
-      console.error("Error fetching bookings:", bookingsError);
       return NextResponse.json(
         { error: "Failed to fetch event data" },
         { status: 500 }
@@ -747,7 +648,6 @@ export async function GET(request) {
       })),
     });
   } catch (error) {
-    console.error("Error getting scan statistics:", error);
     return NextResponse.json(
       { error: "Failed to get statistics" },
       { status: 500 }

@@ -1,11 +1,9 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 
 // Test endpoint to check database tables and structure
 export async function GET() {
   try {
-    console.log("Testing Supabase connection and tables...");
-
     // Try to get all table names
     const { data: tables, error: tablesError } = await supabase
       .from("information_schema.tables")
@@ -13,7 +11,6 @@ export async function GET() {
       .eq("table_schema", "public");
 
     if (tablesError) {
-      console.error("Error getting tables:", tablesError);
     } else {
       console.log(
         "Available tables:",
@@ -28,7 +25,6 @@ export async function GET() {
       .limit(1);
 
     if (usersError) {
-      console.error("Users table error:", usersError);
       return NextResponse.json({
         error: "Users table error",
         details: usersError,
@@ -36,7 +32,6 @@ export async function GET() {
           tables?.map((t) => t.table_name) || "Could not fetch tables",
       });
     } else {
-      console.log("Users table accessible, sample:", users);
       return NextResponse.json({
         success: true,
         usersCount: users?.length || 0,
@@ -45,7 +40,6 @@ export async function GET() {
       });
     }
   } catch (error) {
-    console.error("Database test error:", error);
     return NextResponse.json({
       error: "Database test failed",
       details: error.message,

@@ -1,56 +1,40 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 
 // GET /api/admin/events - Get events for admin
 export async function GET(request) {
   try {
-    console.log("=== ADMIN EVENTS API CALLED ===");
     const { searchParams } = new URL(request.url);
     const adminUserId = searchParams.get("adminUserId");
-    console.log("Admin User ID:", adminUserId);
-
     let events;
 
     if (adminUserId) {
       // Get user to check their role
-      console.log("Fetching user role for:", adminUserId);
       const { data: user, error: userError } = await supabase
         .from("users")
         .select("role")
         .eq("id", adminUserId)
         .single();
-
-      console.log("User role query result:", { user, error: userError });
-
       if (user?.role === "EVENT_ADMIN") {
         // Event Admin - get only events they are assigned to via junction table
-        console.log("Fetching assigned events for EVENT_ADMIN:", adminUserId);
-
         // First get the event assignments
         const { data: assignments, error: assignmentError } = await supabase
           .from("event_admins")
           .select("event_id, user_id")
           .eq("user_id", adminUserId);
-
-        console.log("event_admins assignments for user:", assignments);
-
         if (assignmentError) {
-          console.error("Error fetching assigned events:", assignmentError);
           events = [];
         } else if (!assignments || assignments.length === 0) {
-          console.log("EVENT_ADMIN has no assigned events");
           events = [];
         } else {
           // Get the actual events
           const eventIds = assignments.map((a) => a.event_id);
-          console.log("EVENT_ADMIN eventIds:", eventIds);
           const { data: adminEvents, error: eventsError } = await supabase
             .from("events")
             .select("*")
             .in("id", eventIds);
 
           if (eventsError) {
-            console.error("Error fetching events:", eventsError);
             events = [];
           } else {
             events = adminEvents || [];
@@ -62,31 +46,21 @@ export async function GET(request) {
         }
       } else {
         // Super Admin - get all events
-        console.log("Fetching all events for SUPER_ADMIN");
         const { data: allEvents, error: allEventsError } = await supabase
           .from("events")
           .select("*");
-
-        console.log("SUPER_ADMIN events result:", {
-          allEvents,
-          error: allEventsError,
-        });
         events = allEvents || [];
       }
     } else {
       // No admin user ID provided - get all events
-      console.log("No admin user ID provided - fetching all events");
       const { data: allEvents, error: allEventsError } = await supabase
         .from("events")
         .select("*")
         .order("createdAt", { ascending: false });
-
-      console.log("All events result:", { allEvents, error: allEventsError });
       events = allEvents || [];
     }
 
     // Fetch bookings data for all events
-    console.log("Fetching bookings data for events...");
     const eventsWithBookings = await Promise.all(
       events.map(async (event) => {
         try {
@@ -100,10 +74,6 @@ export async function GET(request) {
             .order("createdAt", { ascending: false });
 
           if (bookingsError) {
-            console.error(
-              `Error fetching bookings for event ${event.id}:`,
-              bookingsError
-            );
             return {
               ...event,
               bookings: [],
@@ -139,10 +109,6 @@ export async function GET(request) {
             },
           };
         } catch (err) {
-          console.error(
-            `Exception processing bookings for event ${event.id}:`,
-            err
-          );
           return {
             ...event,
             bookings: [],
@@ -156,11 +122,8 @@ export async function GET(request) {
         }
       })
     );
-
-    console.log("Final events with bookings count:", eventsWithBookings.length);
     return NextResponse.json({ events: eventsWithBookings });
   } catch (error) {
-    console.error("Error fetching admin events:", error);
     return NextResponse.json(
       { error: "Failed to fetch events" },
       { status: 500 }
@@ -230,10 +193,6 @@ export async function POST(request) {
       (createError.message.includes("endTime") ||
         createError.message.includes("endtime"))
     ) {
-      console.warn(
-        "endTime column doesn't exist in database, creating without endTime"
-      );
-
       const { data: retryEvent, error: retryCreateError } = await supabase
         .from("events")
         .insert([
@@ -271,7 +230,6 @@ export async function POST(request) {
     }
 
     if (createError) {
-      console.error("Error creating event:", createError);
       return NextResponse.json(
         { error: "Failed to create event" },
         { status: 500 }
@@ -280,7 +238,6 @@ export async function POST(request) {
 
     return NextResponse.json({ event });
   } catch (error) {
-    console.error("Error creating event:", error);
     return NextResponse.json(
       { error: "Failed to create event" },
       { status: 500 }

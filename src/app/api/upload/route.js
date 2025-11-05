@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { uploadToCloudinary, deleteFromCloudinary } from "@/lib/cloudinary";
 
 // POST /api/upload - Upload file to Cloudinary
@@ -87,7 +87,6 @@ export async function POST(request) {
       resourceType: uploadResult.resource_type,
     });
   } catch (error) {
-    console.error("Error uploading file:", error);
     return NextResponse.json(
       { error: "Failed to upload file" },
       { status: 500 }
@@ -116,7 +115,6 @@ export async function DELETE(request) {
       result: result.result,
     });
   } catch (error) {
-    console.error("Error deleting file:", error);
     return NextResponse.json(
       { error: "Failed to delete file" },
       { status: 500 }

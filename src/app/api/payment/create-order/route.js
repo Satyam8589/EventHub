@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import Razorpay from "razorpay";
 import crypto from "crypto";
 import { supabase } from "@/lib/supabase";
@@ -10,25 +10,11 @@ const razorpay = new Razorpay({
 });
 
 // Log presence of Razorpay environment variables (helps debug misconfiguration)
-console.log(
-  "RAZORPAY ENV CHECK - key present:",
-  !!process.env.RAZORPAY_KEY_ID,
-  "secret present:",
-  !!process.env.RAZORPAY_KEY_SECRET
-);
-
 // POST /api/payment/create-order - Create Razorpay order
 export async function POST(request) {
   try {
     const body = await request.json();
     const { userId, eventId, tickets, totalAmount, userDetails } = body;
-
-    console.log("=== CREATE PAYMENT ORDER REQUEST ===");
-    console.log("User ID:", userId);
-    console.log("Event ID:", eventId);
-    console.log("Tickets:", tickets);
-    console.log("Total Amount:", totalAmount);
-
     // Validate required fields
     if (!userId || !eventId || !tickets || !totalAmount) {
       return NextResponse.json(
@@ -80,14 +66,6 @@ export async function POST(request) {
       0,
       40
     );
-
-    console.log(
-      "Generated receipt:",
-      shortReceipt,
-      "Length:",
-      shortReceipt.length
-    );
-
     const razorpayOrder = await razorpay.orders.create({
       amount: totalAmount * 100, // Razorpay expects amount in paise (multiply by 100)
       currency: "INR",
@@ -99,11 +77,6 @@ export async function POST(request) {
         eventTitle: event.title,
       },
     });
-
-    console.log("=== RAZORPAY ORDER CREATED ===");
-    console.log("Order ID:", razorpayOrder.id);
-    console.log("Amount:", razorpayOrder.amount);
-
     // Create pending booking in database
     // Temporarily store razorpay order ID in paymentId field with PENDING_ prefix
     // until database migration adds razorpayOrderId column
@@ -127,13 +100,8 @@ export async function POST(request) {
       .single();
 
     if (bookingError) {
-      console.error("Error creating pending booking:", bookingError);
       throw bookingError;
     }
-
-    console.log("=== PENDING BOOKING CREATED ===");
-    console.log("Booking ID:", booking.id);
-
     // Update user profile with any new details provided during booking
     if (
       userDetails &&
@@ -144,24 +112,14 @@ export async function POST(request) {
       if (userDetails.phone) updateData.phone = userDetails.phone;
       if (userDetails.phoneNumber) updateData.phone = userDetails.phoneNumber; // Handle frontend phoneNumber field
       updateData.updatedAt = new Date().toISOString();
-
-      console.log(
-        "🔄 Updating user profile with:",
-        updateData,
-        "for userId:",
-        userId
-      );
-
       const { error: userUpdateError } = await supabase
         .from("users")
         .update(updateData)
         .eq("id", userId);
 
       if (userUpdateError) {
-        console.error("❌ Could not update user profile:", userUpdateError);
         // Don't throw error here, just log it as it's not critical for payment
       } else {
-        console.log("✅ User profile updated successfully");
       }
     }
 
@@ -182,7 +140,6 @@ export async function POST(request) {
       userDetails,
     });
   } catch (error) {
-    console.error("Error creating payment order:", error);
     return NextResponse.json(
       {
         error: "Failed to create payment order",

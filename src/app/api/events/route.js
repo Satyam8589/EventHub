@@ -1,14 +1,10 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 import { uploadToCloudinary } from "@/lib/cloudinary";
 
 // GET /api/events - Get all events
 export async function GET() {
   try {
-    console.log("=== MAIN EVENTS API v2.0 - CACHE BUST ===");
-    console.log("Starting GET /api/events");
-    console.log("DATABASE_URL exists:", !!process.env.DATABASE_URL);
-
     // First get all events
     const { data: events, error } = await supabase
       .from("events")
@@ -17,11 +13,8 @@ export async function GET() {
       .order("date", { ascending: false });
 
     if (error) {
-      console.error("Supabase query error:", error);
       throw error;
     }
-
-    console.log("Raw events from database:", events?.length || 0);
     console.log(
       "Events details:",
       events?.map((e) => ({
@@ -68,10 +61,6 @@ export async function GET() {
       // Show events that are today or in the future
       return eventDateOnly >= nowDateOnly;
     });
-
-    console.log(
-      `Active events: ${activeEvents.length} out of ${events.length} total`
-    );
     console.log(
       "Active events:",
       activeEvents.map((e) => ({
@@ -94,10 +83,6 @@ export async function GET() {
             .eq("eventId", event.id);
 
           if (bookingsError) {
-            console.error(
-              `Error fetching bookings for event ${event.id}:`,
-              bookingsError
-            );
             // Return event with 0 bookings if query fails
             return {
               ...event,
@@ -121,7 +106,6 @@ export async function GET() {
             },
           };
         } catch (err) {
-          console.error(`Exception processing event ${event.id}:`, err);
           // Return event with 0 bookings if exception occurs
           return {
             ...event,
@@ -132,8 +116,6 @@ export async function GET() {
         }
       })
     );
-
-    console.log("Successfully fetched events:", eventsWithCounts.length);
     console.log(
       "Events data:",
       eventsWithCounts.map((e) => ({
@@ -154,9 +136,6 @@ export async function GET() {
     response.headers.set("Expires", "0");
     return response;
   } catch (error) {
-    console.error("Error fetching events:", error.message);
-    console.error("Error code:", error.code);
-    console.error("Error details:", error);
     return NextResponse.json(
       { error: "Failed to fetch events", details: error.message },
       { status: 500 }
@@ -245,7 +224,6 @@ export async function POST(request) {
     // If imageUrl is provided in JSON body, use it
     if (providedImageUrl) {
       imageUrl = providedImageUrl;
-      console.log("Using provided image URL:", imageUrl);
     }
     // If imageFile exists (FormData), upload it
     else if (imageFile && imageFile.size > 0) {
@@ -266,9 +244,7 @@ export async function POST(request) {
         );
 
         imageUrl = uploadResult.secure_url;
-        console.log("Image uploaded to Cloudinary:", uploadResult.public_id);
       } catch (error) {
-        console.error("Error uploading image to Cloudinary:", error);
         // Continue with default image if upload fails
       }
     }
@@ -321,10 +297,6 @@ export async function POST(request) {
       (createError.message.includes("endDate") ||
         createError.message.includes("enddate"))
     ) {
-      console.warn(
-        "endDate column doesn't exist in database, creating event without endDate"
-      );
-
       // Remove endDate from event data
       const { enddate: _, endDate: __, ...eventDataWithoutEndDate } = eventData;
 
@@ -344,7 +316,6 @@ export async function POST(request) {
 
     return NextResponse.json({ event }, { status: 201 });
   } catch (error) {
-    console.error("Error creating event:", error);
     return NextResponse.json(
       { error: "Failed to create event" },
       { status: 500 }

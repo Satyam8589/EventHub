@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 
 // GET /api/bookings - Get all bookings (with optional user filter)
@@ -7,11 +7,6 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get("userId");
     const status = searchParams.get("status"); // Optional status filter
-
-    console.log("=== FETCHING BOOKINGS ===");
-    console.log("User ID filter:", userId);
-    console.log("Status filter:", status);
-
     // First get the bookings
     let query = supabase
       .from("bookings")
@@ -37,11 +32,8 @@ export async function GET(request) {
     const { data: bookings, error } = await query;
 
     if (error) {
-      console.error("Error fetching bookings:", error);
       throw error;
     }
-
-    console.log(`Found ${bookings?.length || 0} bookings`);
     console.log(
       "Booking statuses:",
       bookings?.map((b) => ({
@@ -53,7 +45,6 @@ export async function GET(request) {
     );
 
     if (!bookings || bookings.length === 0) {
-      console.log("⚠️ NO BOOKINGS FOUND FOR THIS QUERY");
       console.log(
         "Check: 1) userId exists in database, 2) bookings exist for this user, 3) status matches filter"
       );
@@ -89,17 +80,9 @@ export async function GET(request) {
           .single();
 
         if (eventError) {
-          console.warn(
-            `Could not fetch event for booking ${booking.id}:`,
-            eventError
-          );
         }
 
         if (userError) {
-          console.warn(
-            `Could not fetch user for booking ${booking.id}:`,
-            userError
-          );
         }
 
         return {
@@ -109,11 +92,6 @@ export async function GET(request) {
         };
       })
     );
-
-    console.log(
-      `Returning ${bookingsWithEventAndUser.length} bookings with event data`
-    );
-
     return NextResponse.json(
       { bookings: bookingsWithEventAndUser },
       {
@@ -125,11 +103,6 @@ export async function GET(request) {
       }
     );
   } catch (error) {
-    console.error("❌ Error fetching bookings:", error);
-    console.error("Error name:", error?.name);
-    console.error("Error message:", error?.message);
-    console.error("Error stack:", error?.stack);
-
     return NextResponse.json(
       {
         error: "Failed to fetch bookings",
@@ -219,7 +192,6 @@ export async function POST(request) {
     }
 
     // Update user profile with any new details provided during booking
-    console.log("📝 User Details from booking form:", userDetails);
     if (
       userDetails &&
       (userDetails.name || userDetails.phone || userDetails.phoneNumber)
@@ -229,23 +201,13 @@ export async function POST(request) {
       if (userDetails.phone) updateData.phone = userDetails.phone;
       if (userDetails.phoneNumber) updateData.phone = userDetails.phoneNumber; // Handle frontend phoneNumber field
       updateData.updatedAt = new Date().toISOString();
-
-      console.log(
-        "🔄 Updating user profile with:",
-        updateData,
-        "for userId:",
-        userId
-      );
-
       const { error: userUpdateError } = await supabase
         .from("users")
         .update(updateData)
         .eq("id", userId);
 
       if (userUpdateError) {
-        console.error("❌ Could not update user profile:", userUpdateError);
       } else {
-        console.log("✅ User profile updated successfully");
       }
     }
 
@@ -257,14 +219,7 @@ export async function POST(request) {
       .single();
 
     if (userError) {
-      console.error("❌ Could not fetch user details:", userError);
     } else {
-      console.log("👤 Retrieved user details:", {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-      });
     }
 
     // Return booking with user and event information for frontend
@@ -276,7 +231,6 @@ export async function POST(request) {
 
     return NextResponse.json({ booking: bookingWithDetails }, { status: 201 });
   } catch (error) {
-    console.error("Error creating booking:", error);
     return NextResponse.json(
       { error: "Failed to create booking" },
       { status: 500 }

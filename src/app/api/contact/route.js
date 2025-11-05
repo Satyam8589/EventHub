@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 const nodemailer = require("nodemailer");
 
 // Email configuration
@@ -12,7 +12,7 @@ const createEmailTransporter = () => {
     },
   };
 
-  console.log("🔧 Creating transporter with config:", {
+  console.log("ðŸ”§ Creating transporter with config:", {
     service: config.service,
     user: config.auth.user,
     hasPassword: !!config.auth.pass,
@@ -26,32 +26,16 @@ const createEmailTransporter = () => {
 // Function to send email
 async function sendContactEmail({ name, email, subject, message }) {
   try {
-    console.log("🚀 Starting email sending process...");
-    console.log("📧 Environment variables check:");
-    console.log("GMAIL_USER:", process.env.GMAIL_USER);
-    console.log("GMAIL_APP_PASSWORD exists:", !!process.env.GMAIL_APP_PASSWORD);
     console.log(
       "GMAIL_APP_PASSWORD format check:",
       process.env.GMAIL_APP_PASSWORD?.replace(/./g, "*")
     );
-    console.log("CONTACT_EMAIL:", process.env.CONTACT_EMAIL);
-
-    console.log("📧 Email config:", {
-      from: process.env.GMAIL_USER,
-      to: process.env.CONTACT_EMAIL || "join.eventhub@gmail.com",
-      hasPassword: !!process.env.GMAIL_APP_PASSWORD,
-    });
-
     const transporter = createEmailTransporter();
 
     // Test the transporter connection
-    console.log("🔍 Testing email connection...");
     try {
       await transporter.verify();
-      console.log("✅ Email connection verified successfully!");
     } catch (verifyError) {
-      console.error("❌ Email connection verification failed:");
-      console.error("Verify error:", verifyError.message);
       throw new Error(`Email connection failed: ${verifyError.message}`);
     }
 
@@ -93,15 +77,8 @@ async function sendContactEmail({ name, email, subject, message }) {
     };
 
     const result = await transporter.sendMail(mailOptions);
-    console.log("Email sent successfully:", result.messageId);
     return { success: true };
   } catch (error) {
-    console.error("❌ Email sending failed:");
-    console.error("Error type:", error.constructor.name);
-    console.error("Error message:", error.message);
-    console.error("Error code:", error.code);
-    console.error("Full error:", error);
-
     // Provide more specific error messages
     let userFriendlyError = error.message;
     if (error.code === "EAUTH" || error.responseCode === 535) {
@@ -165,15 +142,14 @@ export async function POST(request) {
 
       if (dbError) {
         console.log(
-          "📝 Database storage failed (continuing anyway):",
+          "ðŸ“ Database storage failed (continuing anyway):",
           dbError.message
         );
       } else {
-        console.log("✅ Message stored in database successfully");
       }
     } catch (dbError) {
       console.log(
-        "📝 Database not available (continuing anyway):",
+        "ðŸ“ Database not available (continuing anyway):",
         dbError.message
       );
     }
@@ -181,7 +157,6 @@ export async function POST(request) {
     // Try to send email (but don't fail the request if it doesn't work)
     let emailSent = false;
     try {
-      console.log("📤 Attempting to send email...");
       const emailResult = await sendContactEmail({
         name,
         email,
@@ -190,19 +165,10 @@ export async function POST(request) {
       });
 
       if (emailResult.success) {
-        console.log("✅ Email sent successfully!");
         emailSent = true;
       } else {
-        console.log(
-          "⚠️ Email failed but message was received:",
-          emailResult.error
-        );
       }
     } catch (emailError) {
-      console.log(
-        "⚠️ Email service unavailable but message was received:",
-        emailError.message
-      );
     }
 
     // Return success response (always succeed, even if email fails)
@@ -219,7 +185,6 @@ export async function POST(request) {
       { status: 200 }
     );
   } catch (error) {
-    console.error("Contact form error:", error);
     return NextResponse.json(
       { error: "Failed to send message. Please try again." },
       { status: 500 }
