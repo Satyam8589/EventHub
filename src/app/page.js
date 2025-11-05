@@ -7,6 +7,7 @@ import LoginForm from "../components/auth/LoginForm";
 import SignupForm from "../components/auth/SignupForm";
 import Navbar from "../components/Navbar";
 import EventHubLogo from "../components/EventHubLogo";
+import AuthStateSynchronizer from "../components/AuthStateSynchronizer";
 
 export default function Home() {
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
@@ -18,8 +19,20 @@ export default function Home() {
   const [showSignup, setShowSignup] = useState(false);
   const [particles, setParticles] = useState([]);
 
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, mounted } = useAuth();
   const router = useRouter();
+
+  // Show loading screen until component is mounted to prevent hydration issues
+  if (!mounted) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center">
+        <div className="text-white text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-4"></div>
+          <p>Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   // Close modals when user becomes authenticated
   useEffect(() => {
@@ -234,6 +247,9 @@ export default function Home() {
 
       {/* Navigation */}
       <Navbar setShowLogin={setShowLogin} setShowSignup={setShowSignup} />
+
+      {/* Hidden auth state synchronizer */}
+      <AuthStateSynchronizer />
 
       {/* Hero Section */}
       <section className="relative z-10 text-center py-12 sm:py-16 md:py-20 lg:py-24 px-4 sm:px-6 lg:px-8">

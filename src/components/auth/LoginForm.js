@@ -13,9 +13,14 @@ export default function LoginForm({ onClose, onSwitchToSignup }) {
   // Auto-close modal when user becomes authenticated
   useEffect(() => {
     if (user) {
-      if (onClose) {
-        onClose();
-      }
+      // Small delay to ensure auth state is fully propagated
+      const timer = setTimeout(() => {
+        if (onClose) {
+          onClose();
+        }
+      }, 100);
+
+      return () => clearTimeout(timer);
     }
   }, [user, onClose]);
 
@@ -36,46 +41,55 @@ export default function LoginForm({ onClose, onSwitchToSignup }) {
   };
 
   const handleGoogleSignIn = async (useRedirect = false) => {
-    setLoading(true);
-    setError("");
+    console.log("🔐 LoginForm: Google sign-in clicked in modal");
 
-    try {
-      const {
-        user,
-        error: signInError,
-        shouldRetryWithRedirect,
-        isRedirect,
-      } = await signInWithGoogle(useRedirect);
-
-      if (signInError) {
-        if (shouldRetryWithRedirect && !useRedirect) {
-          // Try with redirect method automatically
-          setError("Popup blocked. Redirecting to Google...");
-          // Small delay to show the message
-          setTimeout(() => {
-            handleGoogleSignIn(true);
-          }, 500);
-          return;
-        }
-        setError(signInError);
-      } else if (isRedirect) {
-        // Redirect is happening, show loading message
-        setError("Redirecting to Google... Please wait.");
-        // Don't close the modal, let the redirect handle it
-        return;
-      } else if (user) {
-        onClose();
-      }
-    } catch (error) {
-      setError("An unexpected error occurred. Please try again.");
+    // EXPERIMENTAL: Close modal before authentication to prevent interference
+    if (onClose) {
+      console.log("🔐 LoginForm: Closing modal before authentication");
+      onClose();
     }
 
-    setLoading(false);
+    // Small delay to ensure modal is closed
+    setTimeout(async () => {
+      setLoading(true);
+      setError("");
+
+      try {
+        console.log("🔐 LoginForm: Starting Google sign-in after modal close");
+
+        const {
+          user,
+          error: signInError,
+          shouldRetryWithRedirect,
+          isRedirect,
+        } = await signInWithGoogle(false); // Try popup without modal interference
+
+        console.log("🔐 LoginForm: Google sign-in result:", {
+          user: user ? user.email : "null",
+          error: signInError,
+          shouldRetryWithRedirect,
+          isRedirect,
+        });
+
+        if (signInError) {
+          console.error("🔐 LoginForm: Sign-in error:", signInError);
+          // Don't show error in modal since it's closed
+        } else if (isRedirect) {
+          console.log("🔐 LoginForm: Redirect in progress");
+        } else if (user) {
+          console.log("🔐 LoginForm: Sign-in successful, user:", user.email);
+        }
+      } catch (error) {
+        console.error("🔐 LoginForm: Unexpected error:", error);
+      }
+
+      setLoading(false);
+    }, 100);
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 p-8 w-full max-w-md">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
+      <div className="bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 p-8 w-full max-w-md relative z-[10000]">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold text-white">Sign In</h2>
           <button

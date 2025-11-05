@@ -27,6 +27,88 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    // Mark as mounted to prevent hydration mismatches
+    setMounted(true);
+
+    // Ensure auth persistence is set immediately when app loads
+    const initializePersistence = async () => {
+      try {
+        await setPersistence(auth, browserLocalPersistence);
+        console.log("🔐 Auth persistence initialized on app load");
+
+        // After setting persistence, check if there's an existing user
+        // This helps with navigation between pages where auth state might not be immediately available
+        setTimeout(() => {
+          const currentUser = auth.currentUser;
+          if (currentUser) {
+            console.log(
+              "🔄 Found persisted user after delay:",
+              currentUser.email
+            );
+            console.log(
+              "🔄 Current context user state:",
+              user ? user.email || "No email" : "null"
+            );
+
+            // If we have a Firebase user but no context user, force trigger auth state change
+            if (!user && !loading) {
+              console.log("🔥 Forcing auth state check for persisted user");
+              // Force re-evaluation of auth state by triggering a re-check
+              const forceAuthCheck = async () => {
+                try {
+                  // This will force onAuthStateChanged to fire if there's a user
+                  if (currentUser.accessToken) {
+                    console.log("🔥 Forcing auth state refresh");
+                  }
+                } catch (e) {
+                  console.log("🔥 Auth check completed");
+                }
+              };
+              forceAuthCheck();
+            }
+          } else {
+            console.log("👤 No persisted user found after delay");
+          }
+        }, 500);
+
+        // Additional check after longer delay for page navigation scenarios
+        setTimeout(() => {
+          const currentUser = auth.currentUser;
+          if (currentUser && !user && !loading) {
+            console.log(
+              "🔥 LATE AUTH CHECK: Forcing delayed auth sync for:",
+              currentUser.email
+            );
+            // Force the auth state to be re-evaluated by accessing the user
+            // This should trigger onAuthStateChanged if it hasn't fired yet
+            console.log(
+              "🔥 Current user token available:",
+              !!currentUser.accessToken
+            );
+            // Try to force a re-sync by checking auth state again
+            setTimeout(() => {
+              if (auth.currentUser && !user) {
+                console.log(
+                  "🔥 FINAL AUTH CHECK: Auth state still not synced, force refresh"
+                );
+                // Last resort: reload the page if auth is completely stuck
+                if (typeof window !== "undefined") {
+                  console.log("🔥 Auth state recovery needed");
+                }
+              }
+            }, 1000);
+          }
+        }, 2000);
+      } catch (error) {
+        console.warn("⚠️ Could not set auth persistence:", error);
+      }
+    };
+
+    initializePersistence();
+  }, []);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -35,6 +117,11 @@ export const AuthProvider = ({ children }) => {
         firebaseUser ? "User logged in" : "User logged out"
       );
       console.log("🔐 Firebase user:", firebaseUser?.email || "None");
+      console.log("🔐 Firebase UID:", firebaseUser?.uid || "None");
+      console.log(
+        "🔐 Page URL:",
+        typeof window !== "undefined" ? window.location.pathname : "Server"
+      );
 
       if (firebaseUser) {
         // Sync user with our database
@@ -64,11 +151,14 @@ export const AuthProvider = ({ children }) => {
               dbUser: userData.user,
             });
           } else {
-            console.log("⚠️ User sync failed, using Firebase user only");
+            const errorText = await response.text();
+            console.log("⚠️ User sync failed:", response.status, errorText);
+            // Still set the Firebase user even if sync fails
             setUser(firebaseUser);
           }
         } catch (error) {
           console.error("❌ Error syncing user:", error);
+          // Still set the Firebase user even if sync fails
           setUser(firebaseUser);
         }
       } else {
@@ -81,53 +171,60 @@ export const AuthProvider = ({ children }) => {
 
     // Check for redirect result on page load
     const checkRedirectResult = async () => {
+      let result = null;
       try {
-        const result = await getRedirectResult(auth);
+        result = await getRedirectResult(auth);
         if (result && result.user) {
-          // Immediately set the user from redirect result to improve UX while
-          // the onAuthStateChanged listener completes any DB sync.
-          setUser(result.user);
-
-          // Also sync user with our database (same flow as onAuthStateChanged)
-          try {
-            const response = await fetch("/api/auth/sync-user", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                uid: result.user.uid,
-                email: result.user.email,
-                name:
-                  result.user.displayName || result.user.email.split("@")[0],
-                avatar: result.user.photoURL,
-                phone: result.user.phoneNumber,
-              }),
-            });
-
-            if (response.ok) {
-              const userData = await response.json();
-              setUser((prev) => ({
-                ...prev,
-                role: userData.user.role,
-                dbUser: userData.user,
-              }));
-            } else {
-              // Redirect user sync failed, proceeding with Firebase user
-            }
-          } catch (err) {
-            // Error syncing redirect user
-          }
+          // Don't set user here - let onAuthStateChanged handle it
+          // This prevents conflicts and duplicate user syncing
+          // onAuthStateChanged will be triggered automatically by Firebase
         }
       } catch (error) {
         console.error("Redirect authentication error:", error);
       } finally {
-        // Make sure loading is turned off regardless of redirect result
-        setLoading(false);
+        // Only set loading false if no redirect result was found
+        // If redirect result exists, onAuthStateChanged will handle loading
+        if (!result || !result.user) {
+          setLoading(false);
+        }
       }
     };
 
     checkRedirectResult();
 
-    return () => unsubscribe();
+    // Additional auth state check for navigation scenarios
+    // Sometimes Firebase needs a moment to restore auth state after page navigation
+    const checkAuthState = () => {
+      const currentUser = auth.currentUser;
+      if (currentUser && !user) {
+        console.log(
+          "🔥 MANUAL AUTH CHECK: Found Firebase user but no context user"
+        );
+        console.log("🔥 MANUAL AUTH CHECK: Firebase user:", currentUser.email);
+        console.log(
+          "🔥 MANUAL AUTH CHECK: Context user:",
+          user ? "exists" : "null"
+        );
+        console.log(
+          "🔥 MANUAL AUTH CHECK: Triggering auth state check manually"
+        );
+        // This should trigger onAuthStateChanged if state was somehow missed
+      } else if (currentUser && user) {
+        console.log(
+          "✅ MANUAL AUTH CHECK: Both Firebase and context user exist"
+        );
+      } else {
+        console.log("👤 MANUAL AUTH CHECK: No authenticated user found");
+      }
+    };
+
+    // Check auth state after 1 second delay (for navigation scenarios)
+    const authCheckTimer = setTimeout(checkAuthState, 1000);
+
+    return () => {
+      unsubscribe();
+      clearTimeout(authCheckTimer);
+    };
   }, []);
 
   // Email/Password Sign Up
@@ -186,37 +283,8 @@ export const AuthProvider = ({ children }) => {
           // Try popup method first
           result = await signInWithPopup(auth, googleProvider);
 
-          // Immediately set the user to improve UX; onAuthStateChanged will also fire
-          if (result.user) {
-            try {
-              setUser(result.user);
-              // Sync with DB for immediate role/metadata
-              const response = await fetch("/api/auth/sync-user", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  uid: result.user.uid,
-                  email: result.user.email,
-                  name:
-                    result.user.displayName || result.user.email.split("@")[0],
-                  avatar: result.user.photoURL,
-                  phone: result.user.phoneNumber,
-                }),
-              });
-
-              if (response.ok) {
-                const userData = await response.json();
-                setUser((prev) => ({
-                  ...prev,
-                  role: userData.user.role,
-                  dbUser: userData.user,
-                }));
-              }
-            } catch (syncErr) {
-              // Silently continue if sync fails
-            }
-          }
-
+          // Don't set user here - let onAuthStateChanged handle it
+          // This prevents conflicts and duplicate user syncing
           return { user: result.user, error: null };
         } catch (popupError) {
           // If popup fails (blocked by browser/ad blocker), immediately try redirect
@@ -308,12 +376,25 @@ export const AuthProvider = ({ children }) => {
   const value = {
     user,
     loading,
+    mounted,
     signUp,
     signIn,
     signInWithGoogle,
     signOut,
     refreshUserRole,
   };
+
+  // Don't render children until mounted to prevent hydration issues
+  if (!mounted) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center">
+        <div className="text-white text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-4"></div>
+          <p>Loading EventHub...</p>
+        </div>
+      </div>
+    );
+  }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

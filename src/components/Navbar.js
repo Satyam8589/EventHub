@@ -7,7 +7,23 @@ import UserMenu from "./auth/UserMenu";
 
 export default function Navbar({ setShowLogin, setShowSignup }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { user, loading: authLoading, signOut } = useAuth();
+  const { user, loading: authLoading, signOut, mounted } = useAuth();
+
+  // Show minimal navbar until mounted to prevent hydration issues
+  if (!mounted) {
+    return (
+      <nav className="relative z-10 bg-black/20 backdrop-blur-md border-b border-white/10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16 md:h-20">
+            <Link href="/" className="cursor-pointer">
+              <EventHubLogo size={32} showText={true} />
+            </Link>
+            <div className="animate-pulse w-24 h-8 bg-white/20 rounded"></div>
+          </div>
+        </div>
+      </nav>
+    );
+  }
 
   // Close mobile menu when clicking outside
   useEffect(() => {
