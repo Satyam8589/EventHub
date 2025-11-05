@@ -20,6 +20,12 @@ export default function BookingModal({ event, isOpen, onClose }) {
   const [orderData, setOrderData] = useState(null);
   const [errorMessage, setErrorMessage] = useState("");
 
+  // Check if event is sold out
+  const registered = event?.registered || event?._count?.bookings || 0;
+  const capacity = event?.capacity || 0;
+  const spotsLeft = Math.max(capacity - registered, 0);
+  const isSoldOut = capacity > 0 && spotsLeft === 0;
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
@@ -34,6 +40,35 @@ export default function BookingModal({ event, isOpen, onClose }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Check if event is sold out
+    if (isSoldOut) {
+      setErrorMessage("This event is sold out. No more tickets are available.");
+      return;
+    }
+
+    // Check if requested tickets would exceed capacity
+    if (capacity > 0 && registered + formData.numberOfTickets > capacity) {
+      const availableTickets = Math.max(capacity - registered, 0);
+      if (availableTickets === 0) {
+        setErrorMessage(
+          "This event is sold out. No more tickets are available."
+        );
+      } else {
+        setErrorMessage(
+          `Only ${availableTickets} ticket${
+            availableTickets === 1 ? "" : "s"
+          } available. Please reduce your ticket quantity.`
+        );
+      }
+      return;
+    }
+
+    if (!formData.fullName || !formData.email || !formData.phoneNumber) {
+      setErrorMessage("Please fill in all required fields.");
+      return;
+    }
+
     setLoading(true);
     setErrorMessage("");
 
@@ -266,6 +301,38 @@ export default function BookingModal({ event, isOpen, onClose }) {
                     {event?.title}
                   </span>
                 </p>
+                {isSoldOut && (
+                  <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <div className="flex items-center justify-center space-x-2">
+                      <svg
+                        className="w-5 h-5 text-red-600"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 18.5c-.77.833.192 2.5 1.732 2.5z"
+                        />
+                      </svg>
+                      <span className="text-red-800 font-semibold">
+                        Event Sold Out
+                      </span>
+                    </div>
+                    <p className="text-red-700 text-sm mt-1">
+                      All tickets for this event have been booked. Capacity may
+                      be upgraded later.
+                    </p>
+                  </div>
+                )}
+                {!isSoldOut && capacity > 0 && (
+                  <div className="mt-2 text-sm text-gray-600">
+                    <span className="font-medium">{spotsLeft}</span> spot
+                    {spotsLeft === 1 ? "" : "s"} remaining out of {capacity}
+                  </div>
+                )}
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-3">
@@ -366,10 +433,16 @@ export default function BookingModal({ event, isOpen, onClose }) {
                 {/* Submit Button */}
                 <button
                   type="submit"
-                  disabled={loading}
-                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-lg font-semibold hover:from-blue-700 hover:to-purple-700 transition-all duration-300 transform hover:scale-105 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none text-sm"
+                  disabled={loading || isSoldOut}
+                  className={`w-full py-3 rounded-lg font-semibold transition-all duration-300 transform shadow-lg text-sm ${
+                    isSoldOut
+                      ? "bg-gray-400 text-gray-200 cursor-not-allowed"
+                      : "bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                  }`}
                 >
-                  {loading ? (
+                  {isSoldOut ? (
+                    "Event Sold Out"
+                  ) : loading ? (
                     <div className="flex items-center justify-center gap-2">
                       <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                       Processing...

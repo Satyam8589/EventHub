@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 
 export default function LoginForm({ onClose, onSwitchToSignup }) {
@@ -8,7 +8,16 @@ export default function LoginForm({ onClose, onSwitchToSignup }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const { signIn, signInWithGoogle } = useAuth();
+  const { signIn, signInWithGoogle, user } = useAuth();
+
+  // Auto-close modal when user becomes authenticated
+  useEffect(() => {
+    if (user) {
+      if (onClose) {
+        onClose();
+      }
+    }
+  }, [user, onClose]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -26,16 +35,39 @@ export default function LoginForm({ onClose, onSwitchToSignup }) {
     setLoading(false);
   };
 
-  const handleGoogleSignIn = async () => {
+  const handleGoogleSignIn = async (useRedirect = false) => {
     setLoading(true);
     setError("");
 
-    const { user, error: signInError } = await signInWithGoogle();
+    try {
+      const {
+        user,
+        error: signInError,
+        shouldRetryWithRedirect,
+        isRedirect,
+      } = await signInWithGoogle(useRedirect);
 
-    if (signInError) {
-      setError(signInError);
-    } else {
-      onClose();
+      if (signInError) {
+        if (shouldRetryWithRedirect && !useRedirect) {
+          // Try with redirect method automatically
+          setError("Popup blocked. Redirecting to Google...");
+          // Small delay to show the message
+          setTimeout(() => {
+            handleGoogleSignIn(true);
+          }, 500);
+          return;
+        }
+        setError(signInError);
+      } else if (isRedirect) {
+        // Redirect is happening, show loading message
+        setError("Redirecting to Google... Please wait.");
+        // Don't close the modal, let the redirect handle it
+        return;
+      } else if (user) {
+        onClose();
+      }
+    } catch (error) {
+      setError("An unexpected error occurred. Please try again.");
     }
 
     setLoading(false);

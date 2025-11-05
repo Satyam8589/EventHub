@@ -21,6 +21,14 @@ export default function Home() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
 
+  // Close modals when user becomes authenticated
+  useEffect(() => {
+    if (user && !authLoading) {
+      setShowLogin(false);
+      setShowSignup(false);
+    }
+  }, [user, authLoading]);
+
   useEffect(() => {
     const handleMouseMove = (e) => {
       setMousePosition({ x: e.clientX, y: e.clientY });
@@ -51,7 +59,12 @@ export default function Home() {
     const fetchEvents = async () => {
       try {
         console.log("Fetching events from /api/events...");
-        const response = await fetch("/api/events");
+        const response = await fetch(`/api/events?_=${Date.now()}`, {
+          cache: "no-store",
+          headers: {
+            "Cache-Control": "no-cache",
+          },
+        });
         console.log("Response status:", response.status);
 
         if (!response.ok) {
@@ -75,18 +88,73 @@ export default function Home() {
 
         setEvents(allEvents);
 
-        // Filter featured events (only actual featured events, no fallbacks)
+        // Helper function to check if an event is still active (not expired)
+        const isEventActive = (event) => {
+          const now = new Date();
+
+          console.log(`🔍 Checking event "${event.title}":`, {
+            date: event.date,
+            endDate: event.endDate,
+            status: event.status,
+            featured: event.featured,
+          });
+
+          // Check if event is cancelled
+          if (event.status === "CANCELLED") {
+            console.log(`❌ Event "${event.title}" is CANCELLED`);
+            return false;
+          }
+
+          // If event has endDate, use it to determine if event is still active
+          const endDateValue = event.endDate || event.enddate;
+          if (endDateValue) {
+            const endDate = new Date(endDateValue);
+            // Be more strict - only show if end date is clearly in the future
+            const isActive = endDate > now;
+            console.log(
+              `🗓️ Multi-day event "${
+                event.title
+              }": endDate=${endDate.toISOString()}, now=${now.toISOString()}, active=${isActive}`
+            );
+            return isActive;
+          }
+
+          // If no endDate, consider it a single-day event
+          const eventDate = new Date(event.date);
+          // Be more strict - only show if event date is today or future
+          const eventDateOnly = new Date(
+            eventDate.getFullYear(),
+            eventDate.getMonth(),
+            eventDate.getDate()
+          );
+          const nowDateOnly = new Date(
+            now.getFullYear(),
+            now.getMonth(),
+            now.getDate()
+          );
+
+          const isActive = eventDateOnly >= nowDateOnly;
+          console.log(
+            `📅 Single-day event "${
+              event.title
+            }": eventDate=${eventDateOnly.toISOString()}, nowDate=${nowDateOnly.toISOString()}, active=${isActive}`
+          );
+
+          return isActive;
+        };
+
+        // Filter featured events (only active featured events)
         const featured = allEvents
-          .filter((event) => event.featured === true)
+          .filter((event) => event.featured === true && isEventActive(event))
           .slice(0, 3);
         console.log("Featured events:", featured.length);
 
         setFeaturedEvents(featured);
         console.log("Total featured events to display:", featured.length);
 
-        // For upcoming events, show latest non-featured events
+        // For upcoming events, show latest non-featured active events
         const nonFeatured = allEvents.filter(
-          (event) => event.featured !== true
+          (event) => event.featured !== true && isEventActive(event)
         );
         setUpcomingEvents(nonFeatured.slice(0, 3));
         console.log(
@@ -310,6 +378,7 @@ export default function Home() {
                       ...event,
                       registered: event._count?.bookings || 0,
                       featured: true,
+                      isExpired: false, // Home page only shows active events
                     }}
                   />
                 </div>
@@ -362,6 +431,7 @@ export default function Home() {
                       ...event,
                       registered: event._count?.bookings || 0,
                       featured: false,
+                      isExpired: false, // Home page only shows active events
                     }}
                   />
                 </div>

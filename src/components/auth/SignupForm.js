@@ -42,14 +42,34 @@ export default function SignupForm({ onClose, onSwitchToLogin }) {
     setLoading(false);
   };
 
-  const handleGoogleSignIn = async () => {
+  const handleGoogleSignIn = async (useRedirect = false) => {
     setLoading(true);
     setError("");
 
-    const { user, error: signInError } = await signInWithGoogle();
+    const {
+      user,
+      error: signInError,
+      shouldRetryWithRedirect,
+      isRedirect,
+    } = await signInWithGoogle(useRedirect);
 
     if (signInError) {
+      if (shouldRetryWithRedirect && !useRedirect) {
+        // Try with redirect method automatically
+        console.log("Retrying with redirect method...");
+        setError("Trying alternative sign-in method...");
+        // Small delay to show the message
+        setTimeout(() => {
+          handleGoogleSignIn(true);
+        }, 1000);
+        return;
+      }
       setError(signInError);
+    } else if (isRedirect) {
+      // Redirect is happening, show loading message
+      setError("Redirecting to Google... Please wait.");
+      // Don't close the modal, let the redirect handle it
+      return;
     } else {
       onClose();
     }

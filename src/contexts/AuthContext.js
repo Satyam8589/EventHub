@@ -6,7 +6,11 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   updateProfile,
+  setPersistence,
+  browserLocalPersistence,
 } from "firebase/auth";
 import { auth, googleProvider } from "@/lib/firebase";
 
@@ -26,9 +30,16 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      console.log(
+        "🔐 Auth state changed:",
+        firebaseUser ? "User logged in" : "User logged out"
+      );
+      console.log("🔐 Firebase user:", firebaseUser?.email || "None");
+
       if (firebaseUser) {
         // Sync user with our database
         try {
+          console.log("🔄 Syncing user with database...");
           const response = await fetch("/api/auth/sync-user", {
             method: "POST",
             headers: {
@@ -46,23 +57,75 @@ export const AuthProvider = ({ children }) => {
 
           if (response.ok) {
             const userData = await response.json();
+            console.log("✅ User sync successful:", userData.user.email);
             setUser({
               ...firebaseUser,
               role: userData.user.role,
               dbUser: userData.user,
             });
           } else {
+            console.log("⚠️ User sync failed, using Firebase user only");
             setUser(firebaseUser);
           }
         } catch (error) {
-          console.error("Error syncing user:", error);
+          console.error("❌ Error syncing user:", error);
           setUser(firebaseUser);
         }
       } else {
+        console.log("👤 Setting user to null");
         setUser(null);
       }
       setLoading(false);
+      console.log("🔐 Auth loading set to false");
     });
+
+    // Check for redirect result on page load
+    const checkRedirectResult = async () => {
+      try {
+        const result = await getRedirectResult(auth);
+        if (result && result.user) {
+          // Immediately set the user from redirect result to improve UX while
+          // the onAuthStateChanged listener completes any DB sync.
+          setUser(result.user);
+
+          // Also sync user with our database (same flow as onAuthStateChanged)
+          try {
+            const response = await fetch("/api/auth/sync-user", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                uid: result.user.uid,
+                email: result.user.email,
+                name:
+                  result.user.displayName || result.user.email.split("@")[0],
+                avatar: result.user.photoURL,
+                phone: result.user.phoneNumber,
+              }),
+            });
+
+            if (response.ok) {
+              const userData = await response.json();
+              setUser((prev) => ({
+                ...prev,
+                role: userData.user.role,
+                dbUser: userData.user,
+              }));
+            } else {
+              // Redirect user sync failed, proceeding with Firebase user
+            }
+          } catch (err) {
+            // Error syncing redirect user
+          }
+        }
+      } catch (error) {
+        console.error("Redirect authentication error:", error);
+      } finally {
+        // Make sure loading is turned off regardless of redirect result
+        setLoading(false);
+      }
+    };
+
+    checkRedirectResult();
 
     return () => unsubscribe();
   }, []);
@@ -101,12 +164,100 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Google Sign In
-  const signInWithGoogle = async () => {
+  // Google Sign In with popup fallback to redirect
+  const signInWithGoogle = async (useRedirect = false) => {
     try {
-      const result = await signInWithPopup(auth, googleProvider);
-      return { user: result.user, error: null };
+      // Ensure we use local persistence so auth state survives reloads
+      try {
+        await setPersistence(auth, browserLocalPersistence);
+      } catch (pErr) {
+        // Silently continue if persistence fails
+      }
+
+      let result;
+
+      if (useRedirect) {
+        // Use redirect method (better for mobile and CORS issues)
+        await signInWithRedirect(auth, googleProvider);
+        // The result will be handled by getRedirectResult in useEffect
+        return { user: null, error: null, isRedirect: true };
+      } else {
+        try {
+          // Try popup method first
+          result = await signInWithPopup(auth, googleProvider);
+
+          // Immediately set the user to improve UX; onAuthStateChanged will also fire
+          if (result.user) {
+            try {
+              setUser(result.user);
+              // Sync with DB for immediate role/metadata
+              const response = await fetch("/api/auth/sync-user", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  uid: result.user.uid,
+                  email: result.user.email,
+                  name:
+                    result.user.displayName || result.user.email.split("@")[0],
+                  avatar: result.user.photoURL,
+                  phone: result.user.phoneNumber,
+                }),
+              });
+
+              if (response.ok) {
+                const userData = await response.json();
+                setUser((prev) => ({
+                  ...prev,
+                  role: userData.user.role,
+                  dbUser: userData.user,
+                }));
+              }
+            } catch (syncErr) {
+              // Silently continue if sync fails
+            }
+          }
+
+          return { user: result.user, error: null };
+        } catch (popupError) {
+          // If popup fails (blocked by browser/ad blocker), immediately try redirect
+          if (
+            popupError.code === "auth/popup-blocked" ||
+            popupError.message.includes("blocked") ||
+            popupError.message.includes("ERR_BLOCKED_BY_CLIENT")
+          ) {
+            // Automatically retry with redirect
+            await signInWithRedirect(auth, googleProvider);
+            return { user: null, error: null, isRedirect: true };
+          }
+          throw popupError; // Re-throw other errors for normal handling
+        }
+      }
     } catch (error) {
+      // Handle specific popup errors
+      if (error.code === "auth/popup-closed-by-user") {
+        return {
+          user: null,
+          error: "Sign-in was cancelled. Please try again.",
+          shouldRetryWithRedirect: true,
+        };
+      } else if (error.code === "auth/popup-blocked") {
+        return {
+          user: null,
+          error: "Popup was blocked by browser. Trying alternative method...",
+          shouldRetryWithRedirect: true,
+        };
+      } else if (
+        error.message.includes("Cross-Origin-Opener-Policy") ||
+        error.code === "auth/cancelled-popup-request"
+      ) {
+        return {
+          user: null,
+          error:
+            "Browser security settings are blocking sign-in. Trying alternative method...",
+          shouldRetryWithRedirect: true,
+        };
+      }
+
       return { user: null, error: error.message };
     }
   };

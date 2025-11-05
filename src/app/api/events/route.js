@@ -34,19 +34,25 @@ export async function GET() {
       }))
     );
 
-    // Filter out expired events - show upcoming and currently running events
+    // Filter out expired events - show only upcoming and currently running events
     const now = new Date();
+
     const activeEvents = events.filter((event) => {
+      // Skip events with CANCELLED status
+      if (event.status === "CANCELLED") {
+        return false;
+      }
+
       // If event has endDate (either endDate or enddate), use it to determine if event is still active
       const endDateValue = event.endDate || event.enddate;
       if (endDateValue) {
         const endDate = new Date(endDateValue);
-        // Show if event hasn't ended yet (could be upcoming or currently running)
-        return endDate >= now;
+        // Be more strict - only show if end date is clearly in the future
+        return endDate > now;
       }
 
       // If no endDate, consider the event as a single-day event
-      // Show if the event date is today or in the future
+      // For single-day events, check if the event date is today or in the future (date-only comparison)
       const eventDate = new Date(event.date);
       const eventDateOnly = new Date(
         eventDate.getFullYear(),

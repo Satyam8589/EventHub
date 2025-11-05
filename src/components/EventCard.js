@@ -5,6 +5,9 @@ import { useState } from "react";
 export default function EventCard({ event }) {
   const [imageError, setImageError] = useState(false);
   const [imageLoading, setImageLoading] = useState(true);
+
+  // Check if event is expired
+  const isExpired = event.isExpired || false;
   // Format time range display
   const formatTimeRange = (event) => {
     // Use the separate time field instead of extracting from date
@@ -58,6 +61,9 @@ export default function EventCard({ event }) {
   const capacityPercentage =
     capacity > 0 ? Math.min((registered / capacity) * 100, 100).toFixed(0) : 0;
   const spotsLeft = Math.max(capacity - registered, 0);
+
+  // Check if event is sold out
+  const isSoldOut = capacity > 0 && spotsLeft === 0;
 
   // Debug logging for image URL
   if (process.env.NODE_ENV === "development") {
@@ -146,7 +152,7 @@ export default function EventCard({ event }) {
         event.featured
           ? "ring-2 ring-amber-400/60 shadow-amber-500/30 shadow-2xl"
           : ""
-      }`}
+      } ${isExpired ? "opacity-75 grayscale-[0.3]" : ""}`}
     >
       {/* Featured Badge */}
       {event.featured && (
@@ -206,6 +212,16 @@ export default function EventCard({ event }) {
             {event.title}
           </h3>
         </div>
+
+        {/* Expired Event Overlay */}
+        {isExpired && (
+          <div className="absolute top-2 left-2 bg-red-600/90 text-white px-3 py-1.5 rounded-lg text-sm font-bold backdrop-blur-sm border border-red-500/50 shadow-lg">
+            <span className="flex items-center gap-1.5">
+              <span>🚫</span>
+              <span className="tracking-wide">EXPIRED</span>
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Event Details */}
@@ -383,12 +399,29 @@ export default function EventCard({ event }) {
               ₹{event.price?.toLocaleString("en-IN")}
             </div>
           </div>
-          <Link
-            href={`/events/${event.id}`}
-            className="bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-6 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl inline-block text-center"
-          >
-            View Details
-          </Link>
+
+          {isSoldOut ? (
+            <div className="px-6 py-2.5 rounded-xl text-sm font-semibold text-center">
+              <div className="bg-red-100 text-red-600 px-4 py-2 rounded-lg">
+                <div className="font-bold">Sold Out</div>
+                <div className="text-xs mt-1">May be upgraded later</div>
+              </div>
+            </div>
+          ) : isExpired ? (
+            <Link
+              href={`/events/${event.id}`}
+              className="bg-gray-400 hover:bg-gray-500 text-white px-6 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 inline-block text-center"
+            >
+              View Details
+            </Link>
+          ) : (
+            <Link
+              href={`/events/${event.id}`}
+              className="bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-6 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl inline-block text-center"
+            >
+              Book Now
+            </Link>
+          )}
         </div>
       </div>
     </div>

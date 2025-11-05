@@ -22,6 +22,14 @@ export default function EventsPage() {
 
   const { user, loading: authLoading } = useAuth();
 
+  // Close modals when user becomes authenticated
+  useEffect(() => {
+    if (user && !authLoading) {
+      setShowLogin(false);
+      setShowSignup(false);
+    }
+  }, [user, authLoading]);
+
   useEffect(() => {
     const handleMouseMove = (e) => {
       setMousePosition({ x: e.clientX, y: e.clientY });
@@ -93,6 +101,40 @@ export default function EventsPage() {
     fetchEvents();
   }, []);
 
+  // Helper function to check if an event is still active (not expired)
+  const isEventActive = (event) => {
+    const now = new Date();
+
+    // Check if event is cancelled
+    if (event.status === "CANCELLED") {
+      return false;
+    }
+
+    // If event has endDate, use it to determine if event is still active
+    const endDateValue = event.endDate || event.enddate;
+    if (endDateValue) {
+      const endDate = new Date(endDateValue);
+      // Be more strict - only show if end date is clearly in the future
+      return endDate > now;
+    }
+
+    // If no endDate, consider it a single-day event
+    const eventDate = new Date(event.date);
+    // Be more strict - only show if event date is today or future
+    const eventDateOnly = new Date(
+      eventDate.getFullYear(),
+      eventDate.getMonth(),
+      eventDate.getDate()
+    );
+    const nowDateOnly = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate()
+    );
+
+    return eventDateOnly >= nowDateOnly;
+  };
+
   const categories = [
     "All Categories",
     "Music",
@@ -129,38 +171,17 @@ export default function EventsPage() {
           selectedCategory === "All Categories" ||
           event.category === selectedCategory;
 
-        // Check if event is not expired - proper event lifecycle filtering
-        const currentDate = new Date();
-        const isNotExpired = (() => {
-          // If event has an end date, check if it's not past the end date (event is still running or upcoming)
-          const endDateValue = event.endDate || event.enddate;
-          if (endDateValue) {
-            return new Date(endDateValue) >= currentDate;
-          } else {
-            // If no end date, consider it a single-day event - show if it's today or in the future
-            const eventDate = new Date(event.date);
-            const eventDateOnly = new Date(
-              eventDate.getFullYear(),
-              eventDate.getMonth(),
-              eventDate.getDate()
-            );
-            const currentDateOnly = new Date(
-              currentDate.getFullYear(),
-              currentDate.getMonth(),
-              currentDate.getDate()
-            );
-            return eventDateOnly >= currentDateOnly;
-          }
-        })();
+        // Check if event is still active (not expired) using consistent logic
+        const isActive = isEventActive(event);
 
-        const result = matchesSearch && matchesCategory && isNotExpired;
+        const result = matchesSearch && matchesCategory && isActive;
 
         if (process.env.NODE_ENV === "development") {
           console.log("Event filter:", {
             title: event.title,
             matchesSearch,
             matchesCategory,
-            isNotExpired,
+            isActive,
             eventDate: event.date,
             endDate: event.endDate,
             result,
@@ -375,6 +396,7 @@ export default function EventsPage() {
                   event={{
                     ...event,
                     registered: event._count?.bookings || 0,
+                    isExpired: false, // Events page only shows active events
                   }}
                 />
               </div>

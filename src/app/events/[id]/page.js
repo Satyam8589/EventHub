@@ -20,6 +20,40 @@ export default function Page({ params }) {
   const [attendees, setAttendees] = useState([]);
   const [totalAttendees, setTotalAttendees] = useState(0);
 
+  // Helper function to check if event is expired
+  const isEventExpired = (event) => {
+    if (!event) return false;
+
+    const now = new Date();
+
+    // Check if event is cancelled
+    if (event.status === "CANCELLED") {
+      return true;
+    }
+
+    // If event has endDate, use it to determine if event is expired
+    const endDateValue = event.endDate || event.enddate;
+    if (endDateValue) {
+      const endDate = new Date(endDateValue);
+      return endDate <= now;
+    }
+
+    // If no endDate, consider it a single-day event
+    const eventDate = new Date(event.date);
+    const eventDateOnly = new Date(
+      eventDate.getFullYear(),
+      eventDate.getMonth(),
+      eventDate.getDate()
+    );
+    const nowDateOnly = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate()
+    );
+
+    return eventDateOnly < nowDateOnly;
+  };
+
   useEffect(() => {
     if (!p?.id) return;
 

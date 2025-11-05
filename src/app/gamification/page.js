@@ -24,6 +24,14 @@ export default function GamificationPage() {
   const [showSignup, setShowSignup] = useState(false);
   const [particles, setParticles] = useState([]);
 
+  // Close modals when user becomes authenticated
+  useEffect(() => {
+    if (user && !authLoading) {
+      setShowLogin(false);
+      setShowSignup(false);
+    }
+  }, [user, authLoading]);
+
   // Mouse tracking for animated background
   useEffect(() => {
     const handleMouseMove = (e) => {
@@ -66,8 +74,8 @@ export default function GamificationPage() {
     try {
       setLoading(true);
 
-      // Fetch all events
-      const eventsRes = await fetch("/api/events");
+      // Fetch all events (including expired for leaderboard)
+      const eventsRes = await fetch("/api/leaderboard");
       const eventsData = await eventsRes.json();
       console.log("Events data:", eventsData);
 
@@ -116,6 +124,7 @@ export default function GamificationPage() {
             },
             userReview: userReviewsMap[event.id] || null,
             canReview: isEventInProgress(event),
+            isExpired: isEventExpired(event),
           };
         }
       );
@@ -168,6 +177,38 @@ export default function GamificationPage() {
 
     // Event is reviewable until the end date
     return now <= endDate;
+  };
+
+  // Helper function to check if an event is expired
+  const isEventExpired = (event) => {
+    const now = new Date();
+
+    // Check if event is cancelled
+    if (event.status === "CANCELLED") {
+      return false; // Cancelled events are not "expired", they're cancelled
+    }
+
+    // If event has endDate, use it to determine if event is expired
+    const endDateValue = event.endDate || event.enddate;
+    if (endDateValue) {
+      const endDate = new Date(endDateValue);
+      return endDate <= now;
+    }
+
+    // If no endDate, consider it a single-day event
+    const eventDate = new Date(event.date);
+    const eventDateOnly = new Date(
+      eventDate.getFullYear(),
+      eventDate.getMonth(),
+      eventDate.getDate()
+    );
+    const nowDateOnly = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate()
+    );
+
+    return eventDateOnly < nowDateOnly;
   };
 
   const openReviewModal = (event) => {
@@ -340,10 +381,11 @@ export default function GamificationPage() {
         {/* Hero Section */}
         <div className="text-center mb-12">
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white mb-4">
-            🏆 Event Leaderboard
+            🏆 Event Leaderboard & Reviews
           </h1>
           <p className="text-lg sm:text-xl text-gray-300 max-w-3xl mx-auto mb-6">
-            Discover the best events based on community reviews and ratings
+            Discover the best events based on community reviews and ratings.
+            View all events including completed ones.
           </p>
           <div className="flex flex-wrap justify-center gap-3 text-sm">
             <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full text-white border border-white/20">
@@ -433,7 +475,11 @@ export default function GamificationPage() {
             {events.map((event, index) => (
               <div
                 key={event.id}
-                className="backdrop-blur-xl bg-white/10 rounded-xl border border-white/20 shadow-xl hover:shadow-blue-500/30 transition-all duration-300 overflow-hidden group hover:scale-[1.01] transform"
+                className={`backdrop-blur-xl bg-white/10 rounded-xl border border-white/20 shadow-xl hover:shadow-blue-500/30 transition-all duration-300 overflow-hidden group hover:scale-[1.01] transform ${
+                  event.isExpired
+                    ? "opacity-75 bg-gray-600/10 border-gray-500/30"
+                    : ""
+                }`}
               >
                 <div className="p-4 sm:p-5">
                   <div className="flex flex-col sm:flex-row gap-4">
@@ -474,11 +520,18 @@ export default function GamificationPage() {
                             {event.description}
                           </p>
                         </div>
-                        {event.featured && (
-                          <span className="shrink-0 px-2 py-0.5 bg-linear-to-r from-amber-400 to-yellow-500 text-white text-xs font-bold rounded-full animate-pulse shadow-md">
-                            ⭐
-                          </span>
-                        )}
+                        <div className="shrink-0 flex flex-col gap-1">
+                          {event.featured && (
+                            <span className="px-2 py-0.5 bg-linear-to-r from-amber-400 to-yellow-500 text-white text-xs font-bold rounded-full animate-pulse shadow-md">
+                              ⭐
+                            </span>
+                          )}
+                          {event.isExpired && (
+                            <span className="px-2 py-0.5 bg-red-500/80 text-white text-xs font-bold rounded-full shadow-md">
+                              ⏰ EXPIRED
+                            </span>
+                          )}
+                        </div>
                       </div>
 
                       {/* Rating Display */}
@@ -555,12 +608,18 @@ export default function GamificationPage() {
 
                       {/* Action Buttons */}
                       <div className="flex flex-wrap gap-2">
-                        <Link
-                          href={`/events/${event.id}`}
-                          className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-sm font-medium transition-all border border-white/30 hover:border-white/50"
-                        >
-                          Details
-                        </Link>
+                        {event.isExpired ? (
+                          <div className="px-3 py-1.5 bg-red-500/20 text-red-300 rounded-lg text-sm font-medium border border-red-500/30">
+                            Event Expired
+                          </div>
+                        ) : (
+                          <Link
+                            href={`/events/${event.id}`}
+                            className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-sm font-medium transition-all border border-white/30 hover:border-white/50"
+                          >
+                            Details
+                          </Link>
+                        )}
                         {!user ? (
                           <button
                             onClick={() => openReviewModal(event)}
