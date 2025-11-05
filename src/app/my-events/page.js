@@ -15,8 +15,6 @@ export default function MyEventsPage() {
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [showTicketModal, setShowTicketModal] = useState(false);
   const [redirectCountdown, setRedirectCountdown] = useState(5);
-  const [sendingEmail, setSendingEmail] = useState(null); // Track which booking is sending email
-  const [emailSent, setEmailSent] = useState(new Set()); // Track which bookings had email sent
 
   const { user, loading: authLoading, signOut } = useAuth();
   const router = useRouter();
@@ -44,19 +42,6 @@ export default function MyEventsPage() {
     };
 
     generateParticles();
-  }, []);
-
-  // Load emailSent state from localStorage on component mount
-  useEffect(() => {
-    try {
-      const savedEmailSent = localStorage.getItem("emailSent");
-      if (savedEmailSent) {
-        const parsedEmailSent = JSON.parse(savedEmailSent);
-        setEmailSent(new Set(parsedEmailSent));
-      }
-    } catch (error) {
-      console.error("Error loading emailSent state from localStorage:", error);
-    }
   }, []);
 
   // Redirect countdown when user is not authenticated
@@ -328,82 +313,6 @@ export default function MyEventsPage() {
   const upcomingBookings = filterBookings(bookings, "upcoming");
   const ongoingBookings = filterBookings(bookings, "ongoing");
   const pastBookings = filterBookings(bookings, "past");
-
-  // Function to send ticket email on demand
-  const sendTicketEmail = async (booking) => {
-    // Prevent double-clicking if already sent or currently sending
-    if (sendingEmail === booking.id || emailSent.has(booking.id)) {
-      return;
-    }
-
-    try {
-      setSendingEmail(booking.id);
-
-      console.log("📧 Sending email for booking:", booking.id);
-
-      const response = await fetch("/api/send-ticket-email", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          bookingId: booking.id,
-        }),
-      });
-
-      console.log("📧 Email API response status:", response.status);
-      console.log("📧 Email API response headers:", [
-        ...response.headers.entries(),
-      ]);
-
-      if (!response.ok) {
-        // Log the raw response for debugging
-        const responseText = await response.text();
-        console.error("❌ Email API failed:");
-        console.error("Status:", response.status);
-        console.error("Status Text:", response.statusText);
-        console.error("Response Text:", responseText);
-
-        setSendingEmail(null);
-        alert("❌ Failed to send ticket email. Please try again.");
-        return;
-      }
-
-      const result = await response.json();
-
-      if (response.ok && result.success) {
-        // Mark this booking as having email sent
-        setEmailSent((prev) => {
-          const newSet = new Set([...prev, booking.id]);
-          // Persist to localStorage
-          localStorage.setItem(
-            "emailSentBookings",
-            JSON.stringify([...newSet])
-          );
-          return newSet;
-        });
-
-        // Show success message without alert
-        console.log(
-          "✅ Ticket sent to Gmail successfully for booking:",
-          booking.id
-        );
-
-        // Optional: You can add a toast notification here instead of alert
-        // For now, the green button state provides sufficient feedback
-      } else {
-        console.error("❌ Failed to send ticket email:", result.error);
-        alert(
-          "❌ Failed to send ticket email: " + (result.error || "Unknown error")
-        );
-      }
-    } catch (error) {
-      console.error("Error sending ticket email:", error);
-      alert("❌ Failed to send ticket email. Please try again.");
-    } finally {
-      setSendingEmail(null);
-    }
-  };
 
   // Helper function to check if an event is expired (with precise date and time)
   const isEventExpired = (event) => {
@@ -1026,65 +935,6 @@ export default function MyEventsPage() {
                               Details
                             </Link>
                           </div>
-
-                          {/* Send Ticket to Email Button */}
-                          <button
-                            onClick={() => sendTicketEmail(booking)}
-                            disabled={
-                              sendingEmail === booking.id ||
-                              emailSent.has(booking.id)
-                            }
-                            className={`w-full px-3 py-2 rounded-lg text-xs font-medium border transition-all ${
-                              emailSent.has(booking.id)
-                                ? "bg-green-600/30 text-green-200 border-green-500/50 cursor-not-allowed"
-                                : sendingEmail === booking.id
-                                ? "bg-gray-600/20 text-gray-300 border-gray-500/30 cursor-not-allowed"
-                                : "bg-purple-600/20 text-purple-300 border-purple-500/30 hover:bg-purple-600/30 cursor-pointer"
-                            }`}
-                          >
-                            {sendingEmail === booking.id ? (
-                              <div className="flex items-center justify-center gap-2">
-                                <div className="animate-spin rounded-full h-3 w-3 border border-gray-300 border-t-transparent"></div>
-                                <span>Sending...</span>
-                              </div>
-                            ) : emailSent.has(booking.id) ? (
-                              <div className="flex items-center justify-center gap-2">
-                                <svg
-                                  className="w-4 h-4 text-green-300"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M5 13l4 4L19 7"
-                                  />
-                                </svg>
-                                <span className="font-semibold">
-                                  Ticket Sent to Gmail
-                                </span>
-                              </div>
-                            ) : (
-                              <div className="flex items-center justify-center gap-2">
-                                <svg
-                                  className="w-4 h-4 text-purple-300"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                                  />
-                                </svg>
-                                <span>Send Ticket to Gmail</span>
-                              </div>
-                            )}
-                          </button>
                         </div>
                       )}
                     </div>
