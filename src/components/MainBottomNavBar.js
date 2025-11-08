@@ -353,7 +353,7 @@ export default function MainBottomNavBar() {
                         router.push("/?login=true");
                         // Small delay to ensure navigation happens, then reload
                         setTimeout(() => {
-                          if (typeof window !== 'undefined') {
+                          if (typeof window !== "undefined") {
                             window.location.reload();
                           }
                         }, 200);
@@ -382,7 +382,7 @@ export default function MainBottomNavBar() {
                         router.push("/?signup=true");
                         // Small delay to ensure navigation happens, then reload
                         setTimeout(() => {
-                          if (typeof window !== 'undefined') {
+                          if (typeof window !== "undefined") {
                             window.location.reload();
                           }
                         }, 200);

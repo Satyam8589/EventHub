@@ -2,6 +2,9 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { Toaster } from "react-hot-toast";
 import BottomNavWrapper from "@/components/BottomNavWrapper";
+import AnalyticsTracker from "@/components/AnalyticsTracker";
+import { SpeedInsights } from "@vercel/speed-insights/next";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -53,6 +56,9 @@ export default function RootLayout({ children }) {
               },
             }}
           />
+          <AnalyticsTracker />
+          <SpeedInsights />
+          <Analytics />
           <BottomNavWrapper />
         </AuthProvider>
       </body>
