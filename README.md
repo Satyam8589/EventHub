@@ -4,7 +4,6 @@
 
 A **modern event booking and ticketing web platform** built using **Next.js** and **Supabase**, designed to make event management, booking, and digital ticket generation effortless and secure.
 
----
 
 ## 🚀 Overview
 
