@@ -8,6 +8,7 @@ import SignupForm from "../components/auth/SignupForm";
 import Navbar from "../components/Navbar";
 import EventHubLogo from "../components/EventHubLogo";
 import AuthStateSynchronizer from "../components/AuthStateSynchronizer";
+import Link from "next/link";
 
 export default function Home() {
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
@@ -550,32 +551,54 @@ export default function Home() {
             <div>
               <h4 className="text-white font-semibold mb-4">Legal</h4>
               <ul className="space-y-2 text-sm">
+                {/* Terms & Conditions */}
                 <li>
-                  <a
-                    href="/contact#terms"
+                  <Link
+                    href="/terms&cond"
                     className="hover:text-white transition-colors"
                   >
                     Terms & Conditions
-                  </a>
+                  </Link>
                 </li>
+
+                {/* Shipping Policy */}
                 <li>
-                  <div className="text-gray-300">
-                    <span className="font-medium text-white">Privacy:</span>
-                    <p className="text-xs mt-1">
-                      We protect your personal data and only use it for booking
-                      and communication purposes.
-                    </p>
-                  </div>
+                  <Link
+                    href="/shipping&policy"
+                    className="hover:text-white transition-colors"
+                  >
+                    Shipping & Delivery Policy
+                  </Link>
                 </li>
+
+                {/* Refund Policy */}
                 <li>
-                  <div className="text-gray-300">
-                    <span className="font-medium text-white">
-                      Cancellation & Refunds:
-                    </span>
-                    <p className="text-xs mt-1 text-red-300">
-                      ❌ No cancellations allowed. All sales are final.
-                    </p>
-                  </div>
+                  <Link
+                    href="/refund&rule"
+                    className="hover:text-white transition-colors"
+                  >
+                    Cancellation & Refund Policy
+                  </Link>
+                </li>
+
+                {/* Privacy Policy */}
+                <li>
+                  <Link
+                    href="/privacy&policy"
+                    className="hover:text-white transition-colors"
+                  >
+                    Privacy Policy
+                  </Link>
+                </li>
+
+                {/* Contact Page */}
+                <li>
+                  <Link
+                    href="/contact"
+                    className="hover:text-white transition-colors"
+                  >
+                    Contact Us
+                  </Link>
                 </li>
               </ul>
             </div>
