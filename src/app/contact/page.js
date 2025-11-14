@@ -881,10 +881,10 @@ export default function ContactPage() {
                 <p>
                   For any questions regarding these terms, please contact us at{" "}
                   <a
-                    href="mailto:legal@eventhub.com"
+                    href="mailto:join.eventhub@gmail.com"
                     className="text-blue-400 hover:text-blue-300"
                   >
-                    legal@eventhub.com
+                    join.eventhub@gmail.com
                   </a>
                 </p>
               </div>
