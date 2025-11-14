@@ -57,9 +57,18 @@ export default function Navbar({ setShowLogin, setShowSignup }) {
             <Link href="/events" className="hover:text-white transition-colors">
               Events
             </Link>
-            <Link href="/about" className="hover:text-white transition-colors">
-              About
-            </Link>
+            
+            {/* Show About when not logged in, Contact Us when logged in */}
+            {!authLoading && user ? (
+              <Link href="/contact" className="hover:text-white transition-colors">
+                Contact Us
+              </Link>
+            ) : (
+              <Link href="/about" className="hover:text-white transition-colors">
+                About
+              </Link>
+            )}
+            
             <Link
               href="/gamification"
               className="hover:text-white transition-colors flex items-center gap-1.5"
