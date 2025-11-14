@@ -545,7 +545,7 @@ export default function Home() {
               <h4 className="text-white font-semibold mb-4">Contact Us</h4>
               <p className="text-sm mb-2">📧 join.eventhub@gmail.com</p>
               <p className="text-sm mb-2">📞 +91 9263472616</p>
-              <p className="text-sm">📍 123 Event St, NY 10001</p>
+              <p className="text-sm">📍 Anandapur, kolkata, West Bengal</p>
             </div>
 
             <div>
