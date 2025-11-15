@@ -103,63 +103,7 @@ export default function RefundCancellationPage() {
                 </svg>
               </button>
             )}
-
-            <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="lg:hidden text-white p-2"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={mobileMenuOpen ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"} />
-              </svg>
-            </button>
           </div>
-
-          {mobileMenuOpen && (
-            <div className="lg:hidden">
-              <div className="px-2 pt-2 pb-3 space-y-1 bg-black/40 backdrop-blur-md rounded-lg mt-2">
-                <Link href="/" className="block px-3 py-2 text-white/80 hover:text-white transition-colors">
-                  Home
-                </Link>
-                <Link href="/events" className="block px-3 py-2 text-white/80 hover:text-white transition-colors">
-                  Events
-                </Link>
-                <Link href="/my-events" className="block px-3 py-2 text-white/80 hover:text-white transition-colors">
-                  My Events
-                </Link>
-                <Link href="/about" className="block px-3 py-2 text-white/80 hover:text-white transition-colors">
-                  About
-                </Link>
-                <Link href="/contact" className="block px-3 py-2 text-white/80 hover:text-white transition-colors">
-                  Contact
-                </Link>
-                {user && (user.role === "SUPER_ADMIN" || user.role === "EVENT_ADMIN") && (
-                  <Link href="/admin" className="block px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors mt-2">
-                    🛡️ Admin Panel
-                  </Link>
-                )}
-                {user && (
-                  <div className="border-t border-white/20 mt-2 pt-2">
-                    <button
-                      onClick={async () => {
-                        try {
-                          const result = await signOut();
-                          if (!result.error) {
-                            setMobileMenuOpen(false);
-                            window.location.reload();
-                          }
-                        } catch (error) {
-                          console.error("Error signing out:", error);
-                        }
-                      }}
-                      className="block w-full text-left px-3 py-2 text-red-400 hover:text-red-300 transition-colors"
-                    >
-                      Sign Out
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
         </div>
       </nav>
 
@@ -174,10 +118,10 @@ export default function RefundCancellationPage() {
             }}
           >
             <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-white mb-4 sm:mb-6 leading-tight">
-              Refund & Cancellation Policy
+              Cancellation & Refund Policy
             </h1>
             <p className="text-base sm:text-lg text-white/80 max-w-3xl mx-auto leading-relaxed">
-              Last Updated: November 14, 2025
+              Last Updated: November 15, 2025
             </p>
           </div>
         </div>
@@ -197,9 +141,9 @@ export default function RefundCancellationPage() {
                   </svg>
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold text-red-300 mb-2">Important: No Cancellation Policy</h3>
+                  <h3 className="text-xl font-bold text-red-300 mb-2">No Cancellation Policy</h3>
                   <p className="text-red-200 leading-relaxed">
-                    All ticket purchases on EventHub are <strong>non-cancellable and non-refundable</strong> once the booking is confirmed and payment is processed. Please review your booking details carefully before completing your purchase.
+                    EventHub operates a strict <strong>NO CANCELLATION</strong> policy for all event registrations. Once you complete your registration and payment is confirmed, the transaction is final and <strong>non-refundable under normal circumstances</strong>. Please review all event details carefully before completing your registration.
                   </p>
                 </div>
               </div>
@@ -207,64 +151,77 @@ export default function RefundCancellationPage() {
 
             {/* Section 1 */}
             <div className="space-y-4">
-              <h2 className="text-2xl sm:text-3xl font-bold text-white">1. No Cancellation Policy</h2>
+              <h2 className="text-2xl sm:text-3xl font-bold text-white">1. Overview</h2>
               <div className="text-white/80 leading-relaxed space-y-3">
                 <p>
-                  EventHub operates a strict <strong className="text-white">no cancellation</strong> policy for all ticket bookings. Once you complete your booking and receive payment confirmation, your purchase is final and cannot be cancelled, modified, or refunded under normal circumstances.
+                  This Cancellation and Refund Policy governs all transactions made through EventHub, an event management and registration platform. By registering for any event and completing payment, you acknowledge that you have read, understood, and agree to be bound by this policy.
                 </p>
-                <p>This policy applies to:</p>
-                <ul className="list-disc list-inside space-y-2 ml-4">
-                  <li>All event types (concerts, sports, conferences, workshops, etc.)</li>
-                  <li>All ticket categories (general admission, VIP, early bird, etc.)</li>
-                  <li>Both free and paid events</li>
-                  <li>Single and multiple ticket purchases</li>
-                </ul>
+                <p>
+                  <strong className="text-white">Service Description:</strong> EventHub provides an online platform for event organizers to host and manage events including conferences, workshops, seminars, cultural programs, educational events, and other legitimate gatherings. Users can discover events, complete registration, and receive digital access passes.
+                </p>
               </div>
             </div>
 
             {/* Section 2 */}
             <div className="space-y-4">
-              <h2 className="text-2xl sm:text-3xl font-bold text-white">2. Why We Have This Policy</h2>
-              <div className="text-white/80 leading-relaxed space-y-2">
-                <p>Our no-cancellation policy exists because:</p>
-                <ul className="list-disc list-inside space-y-2 ml-4">
-                  <li>Tickets are allocated from a limited inventory</li>
-                  <li>Event organizers rely on confirmed attendance for planning</li>
-                  <li>Last-minute cancellations prevent others from purchasing tickets</li>
-                  <li>Payment processing fees are non-recoverable</li>
-                  <li>Digital tickets are delivered immediately upon purchase</li>
-                </ul>
+              <h2 className="text-2xl sm:text-3xl font-bold text-white">2. No Cancellation Policy</h2>
+              <div className="text-white/80 leading-relaxed space-y-3">
+                <p>
+                  All event registrations made through EventHub are <strong className="text-white">non-cancellable and non-refundable</strong> once payment has been successfully processed and booking confirmation has been issued.
+                </p>
+                
+                <div className="bg-white/5 rounded-lg p-4 space-y-2">
+                  <h3 className="text-lg font-semibold text-white">This Policy Applies To:</h3>
+                  <ul className="list-disc list-inside space-y-2 ml-4">
+                    <li>All event types and categories</li>
+                    <li>All registration/ticket categories (General, VIP, Student, etc.)</li>
+                    <li>Both free and paid events</li>
+                    <li>Single and multiple registration purchases</li>
+                    <li>Early bird, regular, and last-minute registrations</li>
+                  </ul>
+                </div>
+
+                <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 mt-4">
+                  <p className="text-yellow-200">
+                    <strong>Important:</strong> Users cannot cancel their registration or request refunds due to personal reasons including change of plans, scheduling conflicts, inability to attend, or any other personal circumstances.
+                  </p>
+                </div>
               </div>
             </div>
 
             {/* Section 3 */}
             <div className="space-y-4">
-              <h2 className="text-2xl sm:text-3xl font-bold text-white">3. Booking Issues - 48 Hour Resolution</h2>
+              <h2 className="text-2xl sm:text-3xl font-bold text-white">3. Technical/Payment Issues - 48 Hour Resolution</h2>
               <div className="text-white/80 leading-relaxed space-y-3">
                 <p>
-                  If you experience technical or payment issues during the booking process, we will investigate and resolve your concern within <strong className="text-white">48 business hours</strong>.
+                  If you experience genuine technical or payment-related problems during the registration process, we will investigate and resolve your concern within <strong className="text-white">48 business hours</strong> of receiving your complaint.
                 </p>
                 
-                <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 space-y-2">
-                  <h3 className="text-lg font-semibold text-blue-300">Eligible Booking Issues Include:</h3>
-                  <ul className="list-disc list-inside space-y-1 ml-4 text-blue-200">
-                    <li>Payment was debited but no booking confirmation received</li>
-                    <li>Duplicate charges for the same booking</li>
-                    <li>Technical error during checkout that prevented booking completion</li>
-                    <li>Incorrect ticket details due to system error</li>
-                    <li>Payment gateway failure or timeout issues</li>
+                <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 space-y-3">
+                  <h3 className="text-lg font-semibold text-blue-300">Eligible Issues Include:</h3>
+                  <ul className="list-disc list-inside space-y-2 ml-4 text-blue-200">
+                    <li>Payment debited from account but no registration confirmation received</li>
+                    <li>Duplicate charges for the same registration</li>
+                    <li>Technical error during checkout preventing registration completion</li>
+                    <li>System assigned incorrect registration category or pricing</li>
+                    <li>Payment gateway failure or timeout resulting in payment deduction without registration</li>
+                    <li>Registration confirmation sent to wrong email address due to system error</li>
                   </ul>
                 </div>
 
+                <div className="bg-white/5 rounded-lg p-4 mt-4 space-y-2">
+                  <h3 className="text-lg font-semibold text-white">How to Report Technical Issues:</h3>
+                  <ol className="list-decimal list-inside space-y-2 ml-4">
+                    <li>Email us at <span className="text-blue-400">join.eventhub@gmail.com</span> within <strong>24 hours</strong> of the issue occurrence</li>
+                    <li>Include your transaction ID, payment screenshot, and registered email address</li>
+                    <li>Provide detailed description of the technical problem encountered</li>
+                    <li>Attach any error messages or screenshots if available</li>
+                  </ol>
+                </div>
+
                 <p className="mt-4">
-                  <strong className="text-white">How to Report Booking Issues:</strong>
+                  Our support team will investigate your complaint and respond within 48 business hours with resolution. If the issue is verified as a legitimate technical or payment error on our end, appropriate action will be taken including refund processing if applicable.
                 </p>
-                <ol className="list-decimal list-inside space-y-2 ml-4">
-                  <li>Email us at join.eventhub@gmail.com within 24 hours of the issue</li>
-                  <li>Include your transaction ID, booking reference, and payment screenshot</li>
-                  <li>Describe the issue in detail</li>
-                  <li>Our support team will investigate and respond within 48 hours</li>
-                </ol>
               </div>
             </div>
 
@@ -273,17 +230,28 @@ export default function RefundCancellationPage() {
               <h2 className="text-2xl sm:text-3xl font-bold text-white">4. Event Cancellation by Organizer</h2>
               <div className="text-white/80 leading-relaxed space-y-3">
                 <p>
-                  If an event is cancelled by the event organizer, you will receive a <strong className="text-white">full refund</strong> including any applicable fees.
+                  If an event is cancelled by the event organizer, registered participants will receive a <strong className="text-white">full refund</strong> of the registration amount including all applicable fees and taxes.
                 </p>
                 
-                <div className="space-y-2">
-                  <h3 className="text-lg font-semibold text-white">Refund Process for Cancelled Events:</h3>
+                <div className="space-y-3">
+                  <h3 className="text-lg font-semibold text-white">Refund Process for Organizer-Cancelled Events:</h3>
                   <ul className="list-disc list-inside space-y-2 ml-4">
-                    <li>Automatic email notification of event cancellation</li>
-                    <li>Refund processed to original payment method</li>
-                    <li>Refund timeline: 7-10 business days</li>
-                    <li>No action required from your side</li>
+                    <li>Automatic email notification sent to all registered participants</li>
+                    <li>Refund initiated within 3-5 business days of cancellation</li>
+                    <li>Amount credited to original payment method</li>
+                    <li>Complete refund including registration fees and payment gateway charges</li>
+                    <li>No action required from participant's side</li>
                   </ul>
+                </div>
+
+                <div className="bg-white/5 rounded-lg p-4 mt-4">
+                  <h3 className="text-lg font-semibold text-white mb-2">Refund Timeline:</h3>
+                  <div className="space-y-2">
+                    <p><strong className="text-blue-400">Credit/Debit Cards:</strong> 5-7 business days</p>
+                    <p><strong className="text-blue-400">Net Banking:</strong> 5-7 business days</p>
+                    <p><strong className="text-blue-400">UPI:</strong> 3-5 business days</p>
+                    <p><strong className="text-blue-400">Wallets:</strong> 24-48 hours</p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -293,18 +261,19 @@ export default function RefundCancellationPage() {
               <h2 className="text-2xl sm:text-3xl font-bold text-white">5. Event Postponement or Rescheduling</h2>
               <div className="text-white/80 leading-relaxed space-y-3">
                 <p>
-                  If an event is postponed or rescheduled to a new date:
+                  If an event is postponed or rescheduled to a new date by the organizer:
                 </p>
                 <ul className="list-disc list-inside space-y-2 ml-4">
-                  <li>Your tickets remain valid for the new date</li>
-                  <li><strong className="text-white">No refunds will be issued</strong> for rescheduled events</li>
-                  <li>You will receive email notification of the new date and time</li>
-                  <li>If you cannot attend the rescheduled event, tickets are non-refundable</li>
+                  <li>Your registration remains <strong className="text-white">valid for the rescheduled date</strong></li>
+                  <li><strong className="text-red-400">No refunds will be issued</strong> for rescheduled events</li>
+                  <li>Email notification will be sent with new event details</li>
+                  <li>If you cannot attend the rescheduled event, registration is non-transferable and non-refundable</li>
+                  <li>New date will be announced at least 7 days before the original event date (subject to circumstances)</li>
                 </ul>
 
                 <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 mt-4">
                   <p className="text-yellow-200">
-                    <strong>Note:</strong> Some event organizers may offer refunds for rescheduled events at their discretion. This will be communicated separately if applicable.
+                    <strong>Note:</strong> Some event organizers may offer refunds for rescheduled events at their sole discretion. This will be communicated separately if applicable. EventHub cannot guarantee such refunds and this depends entirely on the organizer's policy.
                   </p>
                 </div>
               </div>
@@ -312,144 +281,145 @@ export default function RefundCancellationPage() {
 
             {/* Section 6 */}
             <div className="space-y-4">
-              <h2 className="text-2xl sm:text-3xl font-bold text-white">6. What We Cannot Refund</h2>
+              <h2 className="text-2xl sm:text-3xl font-bold text-white">6. What Cannot Be Refunded</h2>
               <div className="text-white/80 leading-relaxed space-y-2">
-                <p>Refunds are not available for:</p>
+                <p>Refunds are <strong className="text-white">NOT available</strong> under the following circumstances:</p>
                 <ul className="list-disc list-inside space-y-2 ml-4">
-                  <li>Change of mind or personal scheduling conflicts</li>
-                  <li>Inability to attend the event for any reason</li>
-                  <li>Lost or misplaced tickets (digital tickets can be re-downloaded)</li>
-                  <li>Incorrect ticket selection or quantity (review before purchasing)</li>
-                  <li>Dissatisfaction with the event experience</li>
-                  <li>Weather-related issues (unless event is officially cancelled)</li>
-                  <li>Travel or accommodation costs</li>
-                  <li>Personal emergencies or medical situations</li>
+                  <li>Change of mind or personal decision not to attend</li>
+                  <li>Personal scheduling conflicts or prior commitments</li>
+                  <li>Inability to attend due to work, travel, or family reasons</li>
+                  <li>Incorrect registration details entered by user</li>
+                  <li>Selection of wrong event, date, or registration category</li>
+                  <li>Lost or misplaced digital access passes (can be re-downloaded)</li>
+                  <li>Dissatisfaction with event content, speakers, or organization</li>
+                  <li>Weather conditions (unless event is officially cancelled)</li>
+                  <li>Transportation or accommodation issues</li>
+                  <li>Personal medical emergencies or health issues</li>
+                  <li>Visa rejection or travel restrictions (for international participants)</li>
+                  <li>Force majeure events affecting personal attendance</li>
                 </ul>
+
+                <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 mt-4">
+                  <p className="text-red-200">
+                    <strong>Important:</strong> EventHub does not provide refunds for personal circumstances. We recommend purchasing appropriate travel/event insurance if you're concerned about your ability to attend.
+                  </p>
+                </div>
               </div>
             </div>
 
             {/* Section 7 */}
             <div className="space-y-4">
-              <h2 className="text-2xl sm:text-3xl font-bold text-white">7. Ticket Transfer</h2>
-              <div className="text-white/80 leading-relaxed space-y-2">
+              <h2 className="text-2xl sm:text-3xl font-bold text-white">7. Registration Transfer Policy</h2>
+              <div className="text-white/80 leading-relaxed space-y-3">
                 <p>
-                  While we do not offer cancellations, some tickets may be transferable to another person:
+                  While we do not offer cancellations or refunds, some events may allow registration transfers to another person:
                 </p>
                 <ul className="list-disc list-inside space-y-2 ml-4">
-                  <li>Check if your ticket allows transfers (indicated during purchase)</li>
-                  <li>Transfer requests must be made at least 48 hours before the event</li>
-                  <li>Contact support with transferee details</li>
-                  <li>Transfer fees may apply (if applicable)</li>
-                  <li>Original purchaser remains responsible for ticket usage</li>
+                  <li>Check if your event allows transfers (indicated on event page and confirmation email)</li>
+                  <li>Transfer requests must be submitted at least <strong className="text-white">48 hours before</strong> the event</li>
+                  <li>Contact our support team with transferee's complete details (name, email, phone)</li>
+                  <li>Transfer processing fee of ₹100-500 may apply (varies by event)</li>
+                  <li>Original purchaser remains responsible for payment and registration validity</li>
+                  <li>Limited to <strong className="text-white">one transfer per registration</strong></li>
                 </ul>
-                <p className="mt-3">
-                  <strong className="text-white">Note:</strong> Not all events allow ticket transfers. This is determined by the event organizer.
-                </p>
+
+                <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 mt-4">
+                  <p className="text-blue-200">
+                    <strong>Note:</strong> Registration transfers are subject to event organizer approval and not all events permit transfers. This is determined by the individual event organizer and communicated during registration.
+                  </p>
+                </div>
               </div>
             </div>
 
             {/* Section 8 */}
             <div className="space-y-4">
-              <h2 className="text-2xl sm:text-3xl font-bold text-white">8. Refund Processing Timeline</h2>
+              <h2 className="text-2xl sm:text-3xl font-bold text-white">8. Refund Processing & Timeline</h2>
               <div className="text-white/80 leading-relaxed space-y-3">
-                <p>When refunds are approved (for eligible cases only):</p>
+                <p>
+                  When refunds are approved for eligible cases only (technical issues or event cancellation by organizer):
+                </p>
                 
-                <div className="bg-white/5 rounded-lg p-4 space-y-3">
+                <div className="bg-white/5 rounded-lg p-6 space-y-4">
                   <div>
-                    <h3 className="font-semibold text-white mb-1">Credit/Debit Cards:</h3>
-                    <p>5-7 business days after refund initiation</p>
+                    <h3 className="font-semibold text-white mb-2">Refund Initiation:</h3>
+                    <p>Within 3-5 business days after approval</p>
                   </div>
-                  <div>
-                    <h3 className="font-semibold text-white mb-1">Net Banking:</h3>
-                    <p>5-7 business days after refund initiation</p>
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-white mb-1">UPI:</h3>
-                    <p>3-5 business days after refund initiation</p>
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-white mb-1">Wallets:</h3>
-                    <p>24-48 hours after refund initiation</p>
+
+                  <div className="border-t border-white/20 pt-4">
+                    <h3 className="font-semibold text-white mb-3">Credit to Payment Method:</h3>
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <span className="text-blue-400">Credit/Debit Cards:</span>
+                        <span>5-7 business days</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-blue-400">Net Banking:</span>
+                        <span>5-7 business days</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-blue-400">UPI:</span>
+                        <span>3-5 business days</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-blue-400">Wallets:</span>
+                        <span>24-48 hours</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
-                <p className="mt-4 text-sm">
-                  Refund timelines may vary depending on your bank or payment provider. If you don't receive your refund within the specified timeframe, please contact your bank first, then reach out to our support team.
+                <p className="mt-4">
+                  Refund timelines may vary depending on your bank or payment provider. If you don't receive your refund within the specified timeframe, please contact your bank first, then reach out to our support team with your refund reference number.
                 </p>
+
+                <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 mt-4">
+                  <p className="text-yellow-200">
+                    <strong>Processing Fees:</strong> For refunds processed due to technical errors, the full amount including payment gateway charges will be refunded. However, bank processing fees (if any) charged by your bank are non-refundable.
+                  </p>
+                </div>
               </div>
             </div>
 
             {/* Section 9 */}
             <div className="space-y-4">
-              <h2 className="text-2xl sm:text-3xl font-bold text-white">9. Fraudulent Bookings</h2>
-              <div className="text-white/80 leading-relaxed space-y-2">
+              <h2 className="text-2xl sm:text-3xl font-bold text-white">9. Chargeback Policy</h2>
+              <div className="text-white/80 leading-relaxed space-y-3">
                 <p>
-                  We reserve the right to cancel bookings and issue refunds if we detect:
+                  Filing unauthorized chargebacks with your bank/card issuer is a violation of our Terms and Conditions and may result in:
                 </p>
                 <ul className="list-disc list-inside space-y-2 ml-4">
-                  <li>Fraudulent payment information</li>
-                  <li>Violation of terms and conditions</li>
-                  <li>Unauthorized use of payment methods</li>
-                  <li>Bot or automated booking attempts</li>
-                  <li>Bulk buying for resale (scalping)</li>
+                  <li>Permanent ban from EventHub platform</li>
+                  <li>Legal action to recover chargeback amounts and associated costs</li>
+                  <li>Reporting to relevant authorities for fraudulent activity</li>
+                  <li>Blacklisting from future event registrations across partner platforms</li>
                 </ul>
-                <p className="mt-3">
-                  In such cases, we may also take legal action and ban accounts permanently.
-                </p>
+
+                <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 mt-4">
+                  <p className="text-red-200">
+                    <strong>Important:</strong> Before initiating a chargeback, please contact our support team at join.eventhub@gmail.com. We are committed to resolving legitimate issues within 48 hours. Chargebacks should only be used for genuinely fraudulent transactions.
+                  </p>
+                </div>
               </div>
             </div>
 
             {/* Section 10 */}
             <div className="space-y-4">
-              <h2 className="text-2xl sm:text-3xl font-bold text-white">10. Contact Us for Issues</h2>
-              <div className="text-white/80 leading-relaxed space-y-2">
-                <p>If you experience any booking issues or have questions about this policy, contact us immediately:</p>
-                <div className="bg-white/5 rounded-lg p-4 sm:p-6 mt-4 space-y-3">
-                  <div className="flex items-start gap-3">
-                    <svg className="w-5 h-5 text-blue-400 mt-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                    </svg>
-                    <div>
-                      <p className="font-semibold text-white">Email</p>
-                      <p>join.eventhub@gmail.com</p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-start gap-3">
-                    <svg className="w-5 h-5 text-green-400 mt-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                    </svg>
-                    <div>
-                      <p className="font-semibold text-white">Phone</p>
-                      <p>+91 9263472616</p>
-                    </div>
-                  </div>
+              <h2 className="text-2xl sm:text-3xl font-bold text-white">10. Force Majeure Events</h2>
+              <div className="text-white/80 leading-relaxed space-y-3">
+                <p>
+                  In case of force majeure events (including but not limited to natural disasters, pandemics, government restrictions, acts of God, war, terrorism, or other unforeseeable circumstances), the following policy applies:
+                </p>
+                <ul className="list-disc list-inside space-y-2 ml-4">
+                  <li>Event organizers will determine whether to cancel, postpone, or conduct the event virtually</li>
+                  <li>If event is cancelled: Full refund will be processed within 10-15 business days</li>
+                  <li>If event is postponed: Registrations remain valid for the new date; no refunds issued</li>
+                  <li>If event moves to virtual/online format: Registrations remain valid; no refunds for format change</li>
+                  <li>EventHub and event organizers are not liable for any additional costs incurred by participants</li>
+                </ul>
 
-                  <div className="flex items-start gap-3">
-                    <svg className="w-5 h-5 text-purple-400 mt-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <div>
-                      <p className="font-semibold text-white">Support Hours</p>
-                      <p>Monday - Friday: 9:00 AM - 6:00 PM IST</p>
-                      <p>Saturday: 10:00 AM - 4:00 PM IST</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-3">
-                    <svg className="w-5 h-5 text-orange-400 mt-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <div>
-                      <p className="font-semibold text-white">Response Time</p>
-                      <p>We respond to all inquiries within 48 business hours</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 mt-6">
+                <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 mt-4">
                   <p className="text-blue-200">
-                    <strong>Pro Tip:</strong> Always include your booking ID, transaction reference, and registered email address when contacting support for faster resolution.
+                    <strong>Recommendation:</strong> We strongly recommend purchasing event insurance or travel insurance if you're concerned about force majeure situations affecting your attendance.
                   </p>
                 </div>
               </div>
@@ -457,23 +427,119 @@ export default function RefundCancellationPage() {
 
             {/* Section 11 */}
             <div className="space-y-4">
-              <h2 className="text-2xl sm:text-3xl font-bold text-white">11. Policy Updates</h2>
+              <h2 className="text-2xl sm:text-3xl font-bold text-white">11. Contact Us for Refund Queries</h2>
+              <div className="text-white/80 leading-relaxed space-y-2">
+                <p>For legitimate refund claims or technical issues, please contact us immediately:</p>
+                
+                <div className="bg-white/5 rounded-lg p-6 mt-4 space-y-4">
+                  <div className="flex items-start gap-3">
+                    <svg className="w-5 h-5 text-blue-400 mt-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                    <div className="flex-1">
+                      <p className="font-semibold text-white">Email Support</p>
+                      <p className="text-blue-400">join.eventhub@gmail.com</p>
+                      <p className="text-sm text-white/60 mt-1">Response within 48 business hours</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-start gap-3">
+                    <svg className="w-5 h-5 text-green-400 mt-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                    </svg>
+                    <div className="flex-1">
+                      <p className="font-semibold text-white">Phone Support</p>
+                      <p>+91 9263472616</p>
+                      <p className="text-sm text-white/60 mt-1">Mon-Fri: 9:00 AM - 6:00 PM IST</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3">
+                    <svg className="w-5 h-5 text-purple-400 mt-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    </svg>
+                    <div className="flex-1">
+                      <p className="font-semibold text-white">Registered Office</p>
+                      <p>123 Event Street, New York, NY 10001</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 mt-6">
+                  <p className="text-blue-200">
+                    <strong>When Contacting Support:</strong> Always include your Registration ID, Transaction Reference Number, registered email address, and detailed description of the issue for faster resolution.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Section 12 */}
+            <div className="space-y-4">
+              <h2 className="text-2xl sm:text-3xl font-bold text-white">12. Dispute Resolution</h2>
+              <div className="text-white/80 leading-relaxed space-y-3">
+                <p>
+                  All disputes arising from this policy shall be governed by the laws of India. Any legal proceedings shall be subject to the exclusive jurisdiction of courts in Bangalore, Karnataka, India.
+                </p>
+                <p>
+                  Before initiating any legal proceedings, parties agree to attempt resolution through:
+                </p>
+                <ol className="list-decimal list-inside space-y-2 ml-4">
+                  <li>Direct communication with EventHub support team</li>
+                  <li>Mediation through mutually agreed mediator (if required)</li>
+                  <li>Arbitration in accordance with Indian Arbitration and Conciliation Act, 1996</li>
+                </ol>
+              </div>
+            </div>
+
+            {/* Section 13 */}
+            <div className="space-y-4">
+              <h2 className="text-2xl sm:text-3xl font-bold text-white">13. Policy Updates</h2>
               <p className="text-white/80 leading-relaxed">
-                We reserve the right to modify this Refund and Cancellation Policy at any time. Changes will be effective immediately upon posting on our website. We encourage you to review this policy before making any booking. Your continued use of our platform after changes indicates acceptance of the updated policy.
+                EventHub reserves the right to modify this Cancellation and Refund Policy at any time. Changes will be effective immediately upon posting on our website with an updated "Last Updated" date. Your continued use of our platform after changes indicates acceptance of the updated policy. We encourage you to review this policy periodically.
               </p>
             </div>
 
-            {/* Final Note */}
+            {/* Final Important Note */}
             <div className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/30 rounded-xl p-6">
-              <h3 className="text-xl font-bold text-white mb-3">Before You Book - Please Note:</h3>
-              <ul className="text-white/90 space-y-2 leading-relaxed">
-                <li>✓ Review all event details carefully</li>
-                <li>✓ Verify the date, time, and venue</li>
-                <li>✓ Check ticket type and quantity</li>
-                <li>✓ Confirm you can attend before purchasing</li>
-                <li>✓ Save your booking confirmation email</li>
-                <li>✓ Download your digital tickets immediately</li>
-              </ul>
+              <h3 className="text-xl font-bold text-white mb-4">Before You Register - Important Checklist:</h3>
+              <div className="grid sm:grid-cols-2 gap-3 text-white/90">
+                <div className="flex items-start gap-2">
+                  <svg className="w-5 h-5 text-green-400 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  <span>Verify event date, time, and venue</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <svg className="w-5 h-5 text-green-400 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  <span>Confirm registration category and pricing</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <svg className="w-5 h-5 text-green-400 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  <span>Check your availability to attend</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <svg className="w-5 h-5 text-green-400 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  <span>Review organizer's terms and conditions</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <svg className="w-5 h-5 text-green-400 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  <span>Save confirmation email immediately</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <svg className="w-5 h-5 text-green-400 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  <span>Download digital access pass</span>
+                </div>
+              </div>
             </div>
 
             {/* Back Button */}
@@ -498,6 +564,7 @@ export default function RefundCancellationPage() {
               <Link href="/terms" className="hover:text-white transition-colors">Terms & Conditions</Link>
               <Link href="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
               <Link href="/refund" className="hover:text-white transition-colors">Refund Policy</Link>
+              <Link href="/shipping" className="hover:text-white transition-colors">Shipping Policy</Link>
               <Link href="/contact" className="hover:text-white transition-colors">Contact Us</Link>
             </div>
           </div>
