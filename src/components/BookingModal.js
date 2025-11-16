@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import RazorpayPayment from "./RazorpayPayment";
@@ -8,17 +8,59 @@ export default function BookingModal({ event, isOpen, onClose }) {
   const { user } = useAuth();
   const router = useRouter();
   const [formData, setFormData] = useState({
-    fullName: user?.displayName || user?.email?.split("@")[0] || "",
-    email: user?.email || "",
+    fullName: "",
+    email: "",
     phoneNumber: "",
     numberOfTickets: 1,
     specialRequests: "",
   });
   const [loading, setLoading] = useState(false);
+  const [loadingUserData, setLoadingUserData] = useState(false);
   const [success, setSuccess] = useState(false);
-  const [paymentStep, setPaymentStep] = useState("form"); // "form", "payment", "success", "failed"
+  const [paymentStep, setPaymentStep] = useState("form");
   const [orderData, setOrderData] = useState(null);
   const [errorMessage, setErrorMessage] = useState("");
+
+  // Fetch user details from backend when modal opens
+  useEffect(() => {
+    const fetchUserDetails = async () => {
+      if (!isOpen || !user?.uid) return;
+
+      setLoadingUserData(true);
+      try {
+        const response = await fetch(`/api/user/${user.uid}`);
+        
+        if (response.ok) {
+          const userData = await response.json();
+          setFormData((prev) => ({
+            ...prev,
+            fullName: userData.fullName || userData.displayName || "",
+            email: userData.email || "",
+            phoneNumber: userData.phoneNumber || prev.phoneNumber,
+          }));
+        } else {
+          // Fallback to auth context data if API fails
+          setFormData((prev) => ({
+            ...prev,
+            fullName: user?.displayName || user?.email?.split("@")[0] || "",
+            email: user?.email || "",
+          }));
+        }
+      } catch (error) {
+        console.error("Failed to fetch user details:", error);
+        // Fallback to auth context data
+        setFormData((prev) => ({
+          ...prev,
+          fullName: user?.displayName || user?.email?.split("@")[0] || "",
+          email: user?.email || "",
+        }));
+      } finally {
+        setLoadingUserData(false);
+      }
+    };
+
+    fetchUserDetails();
+  }, [isOpen, user]);
 
   // Check if event is sold out
   const registered = event?.registered || event?._count?.bookings || 0;
@@ -41,24 +83,18 @@ export default function BookingModal({ event, isOpen, onClose }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Check if event is sold out
     if (isSoldOut) {
       setErrorMessage("This event is sold out. No more tickets are available.");
       return;
     }
 
-    // Check if requested tickets would exceed capacity
     if (capacity > 0 && registered + formData.numberOfTickets > capacity) {
       const availableTickets = Math.max(capacity - registered, 0);
       if (availableTickets === 0) {
-        setErrorMessage(
-          "This event is sold out. No more tickets are available."
-        );
+        setErrorMessage("This event is sold out. No more tickets are available.");
       } else {
         setErrorMessage(
-          `Only ${availableTickets} ticket${
-            availableTickets === 1 ? "" : "s"
-          } available. Please reduce your ticket quantity.`
+          `Only ${availableTickets} ticket${availableTickets === 1 ? "" : "s"} available. Please reduce your ticket quantity.`
         );
       }
       return;
@@ -73,7 +109,6 @@ export default function BookingModal({ event, isOpen, onClose }) {
     setErrorMessage("");
 
     try {
-      // Create Razorpay order
       const response = await fetch("/api/payment/create-order", {
         method: "POST",
         headers: {
@@ -103,9 +138,7 @@ export default function BookingModal({ event, isOpen, onClose }) {
       }
     } catch (error) {
       console.error("Order creation error:", error);
-      setErrorMessage(
-        error.message || "Failed to proceed to payment. Please try again."
-      );
+      setErrorMessage(error.message || "Failed to proceed to payment. Please try again.");
       setPaymentStep("failed");
     } finally {
       setLoading(false);
@@ -115,13 +148,9 @@ export default function BookingModal({ event, isOpen, onClose }) {
   const handlePaymentSuccess = (paymentData) => {
     console.log("=== PAYMENT SUCCESS IN BOOKING MODAL ===");
     console.log("Payment successful:", paymentData);
-    console.log("Setting payment step to 'success'...");
     setPaymentStep("success");
 
-    // Redirect to My Events page after 3 seconds
-    console.log("Will redirect to /my-events in 3 seconds...");
     setTimeout(() => {
-      console.log("Redirecting now...");
       resetModal();
       onClose();
       router.push("/my-events");
@@ -132,7 +161,6 @@ export default function BookingModal({ event, isOpen, onClose }) {
     console.error("=== PAYMENT FAILURE IN BOOKING MODAL ===");
     console.error("Payment failed (raw):", error);
 
-    // Extract a friendly message from possible error shapes
     let message = "Payment failed. Please try again.";
 
     try {
@@ -141,20 +169,15 @@ export default function BookingModal({ event, isOpen, onClose }) {
       } else if (typeof error === "string") {
         message = error;
       } else if (typeof error === "object") {
-        // Common shapes from server or Razorpay
         if (error.error) message = error.error;
         else if (error.message) message = error.message;
         else if (error.details) message = error.details;
-        else {
-          // Fallback to JSON string
-          message = JSON.stringify(error);
-        }
+        else message = JSON.stringify(error);
       }
     } catch (e) {
       console.error("Error parsing failure object:", e);
     }
 
-    console.error("Final error message shown to user:", message);
     setErrorMessage(message);
     setPaymentStep("failed");
   };
@@ -170,8 +193,8 @@ export default function BookingModal({ event, isOpen, onClose }) {
     setSuccess(false);
     setErrorMessage("");
     setFormData({
-      fullName: user?.displayName || user?.email?.split("@")[0] || "",
-      email: user?.email || "",
+      fullName: "",
+      email: "",
       phoneNumber: "",
       numberOfTickets: 1,
       specialRequests: "",
@@ -189,85 +212,39 @@ export default function BookingModal({ event, isOpen, onClose }) {
         className="bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl w-full max-w-lg mx-auto border border-white/20 relative overflow-hidden max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Background Gradient */}
         <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 opacity-80"></div>
 
-        {/* Close Button */}
         <button
           onClick={onClose}
           className="absolute top-4 right-4 text-gray-600 hover:text-gray-800 transition-colors z-20 bg-white/50 hover:bg-white/80 rounded-full p-1"
         >
-          <svg
-            className="w-5 h-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M6 18L18 6M6 6l12 12"
-            />
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
 
-        {/* Content */}
         <div className="relative z-10 p-6">
           {paymentStep === "success" ? (
             <div className="text-center py-8">
               <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg
-                  className="w-8 h-8 text-green-600"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M5 13l4 4L19 7"
-                  />
+                <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <h3 className="text-2xl font-bold text-green-600 mb-2">
-                🎉 Booking Complete!
-              </h3>
-              <p className="text-gray-700 mb-2">
-                Your payment has been verified and your tickets are confirmed.
-              </p>
-              <p className="text-sm text-gray-600 mb-1">
-                📧 Ticket details have been sent to your email.
-              </p>
-              <p className="text-sm text-blue-600 font-medium mt-4">
-                Redirecting to My Events page...
-              </p>
+              <h3 className="text-2xl font-bold text-green-600 mb-2">🎉 Booking Complete!</h3>
+              <p className="text-gray-700 mb-2">Your payment has been verified and your tickets are confirmed.</p>
+              <p className="text-sm text-gray-600 mb-1">📧 Ticket details have been sent to your email.</p>
+              <p className="text-sm text-blue-600 font-medium mt-4">Redirecting to My Events page...</p>
             </div>
           ) : paymentStep === "failed" ? (
             <div className="text-center py-8">
               <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg
-                  className="w-8 h-8 text-red-600"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
+                <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </div>
-              <h3 className="text-2xl font-bold text-red-600 mb-2">
-                ❌ Booking Not Completed
-              </h3>
-              <p className="text-gray-700 mb-4">
-                {errorMessage ||
-                  "Your payment could not be processed. Please try again."}
-              </p>
+              <h3 className="text-2xl font-bold text-red-600 mb-2">❌ Booking Not Completed</h3>
+              <p className="text-gray-700 mb-4">{errorMessage || "Your payment could not be processed. Please try again."}</p>
               <div className="flex gap-3 justify-center">
                 <button
                   onClick={() => {
@@ -292,45 +269,25 @@ export default function BookingModal({ event, isOpen, onClose }) {
           ) : (
             <>
               <div className="text-center mb-4">
-                <h2 className="text-xl font-bold text-gray-800 mb-2">
-                  Book Your Spot
-                </h2>
+                <h2 className="text-xl font-bold text-gray-800 mb-2">Book Your Spot</h2>
                 <p className="text-gray-600">
                   Complete the form below to reserve your tickets for{" "}
-                  <span className="font-medium text-gray-800">
-                    {event?.title}
-                  </span>
+                  <span className="font-medium text-gray-800">{event?.title}</span>
                 </p>
                 {isSoldOut && (
                   <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
                     <div className="flex items-center justify-center space-x-2">
-                      <svg
-                        className="w-5 h-5 text-red-600"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 18.5c-.77.833.192 2.5 1.732 2.5z"
-                        />
+                      <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 18.5c-.77.833.192 2.5 1.732 2.5z" />
                       </svg>
-                      <span className="text-red-800 font-semibold">
-                        Event Sold Out
-                      </span>
+                      <span className="text-red-800 font-semibold">Event Sold Out</span>
                     </div>
-                    <p className="text-red-700 text-sm mt-1">
-                      All tickets for this event have been booked. Capacity may
-                      be upgraded later.
-                    </p>
+                    <p className="text-red-700 text-sm mt-1">All tickets for this event have been booked. Capacity may be upgraded later.</p>
                   </div>
                 )}
                 {!isSoldOut && capacity > 0 && (
                   <div className="mt-2 text-sm text-gray-600">
-                    <span className="font-medium">{spotsLeft}</span> spot
-                    {spotsLeft === 1 ? "" : "s"} remaining out of {capacity}
+                    <span className="font-medium">{spotsLeft}</span> spot{spotsLeft === 1 ? "" : "s"} remaining out of {capacity}
                   </div>
                 )}
               </div>
@@ -338,41 +295,53 @@ export default function BookingModal({ event, isOpen, onClose }) {
               <form onSubmit={handleSubmit} className="space-y-3">
                 {/* Full Name */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Full Name
-                  </label>
-                  <input
-                    type="text"
-                    name="fullName"
-                    value={formData.fullName}
-                    onChange={handleInputChange}
-                    required
-                    className="w-full px-3 py-2.5 rounded-lg bg-gray-100/80 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-gray-800 placeholder-gray-500 text-sm"
-                    placeholder="Enter your full name"
-                  />
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      name="fullName"
+                      value={formData.fullName}
+                      onChange={handleInputChange}
+                      readOnly
+                      aria-readonly="true"
+                      required
+                      className="w-full px-3 py-2.5 rounded-lg bg-gray-100/80 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-gray-800 placeholder-gray-500 text-sm cursor-not-allowed"
+                      placeholder="Loading..."
+                    />
+                    {loadingUserData && (
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                        <div className="w-4 h-4 border-2 border-gray-400 border-t-blue-600 rounded-full animate-spin"></div>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* Email */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Email
-                  </label>
-                  <input
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                    required
-                    className="w-full px-3 py-2.5 rounded-lg bg-gray-100/80 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-gray-800 placeholder-gray-500 text-sm"
-                    placeholder="Enter your email"
-                  />
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                  <div className="relative">
+                    <input
+                      type="email"
+                      name="email"
+                      value={formData.email}
+                      onChange={handleInputChange}
+                      readOnly
+                      aria-readonly="true"
+                      required
+                      className="w-full px-3 py-2.5 rounded-lg bg-gray-100/80 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-gray-800 placeholder-gray-500 text-sm cursor-not-allowed"
+                      placeholder="Loading..."
+                    />
+                    {loadingUserData && (
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                        <div className="w-4 h-4 border-2 border-gray-400 border-t-blue-600 rounded-full animate-spin"></div>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* Phone Number */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Phone Number
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
                   <input
                     type="tel"
                     name="phoneNumber"
@@ -386,9 +355,7 @@ export default function BookingModal({ event, isOpen, onClose }) {
 
                 {/* Number of Tickets */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Number of Tickets
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Number of Tickets</label>
                   <select
                     name="numberOfTickets"
                     value={formData.numberOfTickets}
@@ -396,9 +363,7 @@ export default function BookingModal({ event, isOpen, onClose }) {
                     className="w-full px-3 py-2.5 rounded-lg bg-gray-100/80 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-gray-800 text-sm"
                   >
                     {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
-                      <option key={num} value={num}>
-                        {num}
-                      </option>
+                      <option key={num} value={num}>{num}</option>
                     ))}
                   </select>
                 </div>
@@ -406,20 +371,14 @@ export default function BookingModal({ event, isOpen, onClose }) {
                 {/* Total Amount */}
                 <div className="bg-gray-100/60 rounded-lg p-3 border border-gray-200">
                   <div className="flex justify-between items-center">
-                    <span className="font-medium text-gray-700 text-sm">
-                      Total Amount:
-                    </span>
-                    <span className="text-xl font-bold text-gray-800">
-                      ₹{calculateTotal().toLocaleString("en-IN")}
-                    </span>
+                    <span className="font-medium text-gray-700 text-sm">Total Amount:</span>
+                    <span className="text-xl font-bold text-gray-800">₹{calculateTotal().toLocaleString("en-IN")}</span>
                   </div>
                 </div>
 
                 {/* Special Requests */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Special Requests (Optional)
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Special Requests (Optional)</label>
                   <textarea
                     name="specialRequests"
                     value={formData.specialRequests}
@@ -433,7 +392,7 @@ export default function BookingModal({ event, isOpen, onClose }) {
                 {/* Submit Button */}
                 <button
                   type="submit"
-                  disabled={loading || isSoldOut}
+                  disabled={loading || isSoldOut || loadingUserData}
                   className={`w-full py-3 rounded-lg font-semibold transition-all duration-300 transform shadow-lg text-sm ${
                     isSoldOut
                       ? "bg-gray-400 text-gray-200 cursor-not-allowed"
@@ -442,6 +401,11 @@ export default function BookingModal({ event, isOpen, onClose }) {
                 >
                   {isSoldOut ? (
                     "Event Sold Out"
+                  ) : loadingUserData ? (
+                    <div className="flex items-center justify-center gap-2">
+                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                      Loading Details...
+                    </div>
                   ) : loading ? (
                     <div className="flex items-center justify-center gap-2">
                       <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
@@ -457,7 +421,6 @@ export default function BookingModal({ event, isOpen, onClose }) {
         </div>
       </div>
 
-      {/* Razorpay Payment Component */}
       {paymentStep === "payment" && orderData && (
         <RazorpayPayment
           orderData={orderData}

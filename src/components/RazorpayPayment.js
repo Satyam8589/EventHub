@@ -127,6 +127,11 @@ const RazorpayPayment = ({
           email: userDetails.email,
           contact: userDetails.phoneNumber,
         },
+        // Prevent user from editing prefilled name and email in Razorpay modal
+        readonly: {
+          name: true,
+          email: true,
+        },
         notes: {
           event_id: orderData.event.id,
           event_title: orderData.event.title,
