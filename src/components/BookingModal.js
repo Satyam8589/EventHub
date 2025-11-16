@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import RazorpayPayment from "./RazorpayPayment";
 
-export default function BookingModal({ event, isOpen, onClose }) {
+export default function BookingModal({ event, isOpen, onClose, onBookingSuccess }) {
   const { user } = useAuth();
   const router = useRouter();
   const [formData, setFormData] = useState({
@@ -149,6 +149,12 @@ export default function BookingModal({ event, isOpen, onClose }) {
     console.log("=== PAYMENT SUCCESS IN BOOKING MODAL ===");
     console.log("Payment successful:", paymentData);
     setPaymentStep("success");
+
+    // 🔥 CALL THE CALLBACK TO REFRESH PARENT DATA INSTANTLY
+    if (onBookingSuccess) {
+      console.log("✅ Triggering onBookingSuccess callback to refresh availability");
+      onBookingSuccess();
+    }
 
     setTimeout(() => {
       resetModal();

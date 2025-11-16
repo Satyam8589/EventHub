@@ -312,52 +312,6 @@ export default function Page({ params }) {
               </div>
               <span className="text-xl font-bold text-white">EventHub</span>
             </Link>
-            <div className="flex items-center gap-1">
-              <Link
-                href="/"
-                className="px-4 py-2 text-sm font-medium text-gray-300 hover:text-white hover:bg-white/5 rounded-lg transition-all"
-              >
-                Home
-              </Link>
-              <Link
-                href="/events"
-                className="px-4 py-2 text-sm font-medium text-white bg-white/10 rounded-lg transition-all"
-              >
-                Events
-              </Link>
-
-              {/* Desktop Sign Out Icon - Always visible when logged in */}
-              {user && (
-                <button
-                  onClick={async () => {
-                    try {
-                      const result = await signOut();
-                      if (!result.error) {
-                        window.location.reload();
-                      }
-                    } catch (error) {
-                      console.error("Error signing out:", error);
-                    }
-                  }}
-                  className="text-white/80 hover:text-white transition-colors p-2 hover:bg-white/10 rounded-lg ml-2"
-                  title="Sign Out"
-                >
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-                    />
-                  </svg>
-                </button>
-              )}
-            </div>
           </div>
         </div>
       </nav>
