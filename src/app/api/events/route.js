@@ -73,14 +73,18 @@ export async function GET() {
     );
 
     // Get booking counts for each event
+    // ⚠️ IMPORTANT: Only count CONFIRMED bookings (not PENDING)
+    // PENDING bookings don't count because user might cancel payment
+    // Capacity is only reduced when payment succeeds (CONFIRMED)
     const eventsWithCounts = await Promise.all(
       activeEvents.map(async (event) => {
         try {
-          // Get all bookings for this event to sum up total tickets
+          // Get only CONFIRMED bookings for this event to sum up total tickets
           const { data: bookings, error: bookingsError } = await supabase
             .from("bookings")
             .select("tickets")
-            .eq("eventId", event.id);
+            .eq("eventId", event.id)
+            .eq("status", "CONFIRMED"); // ✅ Only count CONFIRMED bookings
 
           if (bookingsError) {
             // Return event with 0 bookings if query fails
@@ -92,7 +96,7 @@ export async function GET() {
             };
           }
 
-          // Sum up all tickets from all bookings for this event
+          // Sum up all tickets from CONFIRMED bookings for this event
           const totalTickets =
             bookings?.reduce(
               (sum, booking) => sum + (booking.tickets || 0),
@@ -178,6 +182,8 @@ export async function POST(request) {
       venue,
       date,
       endDate,
+      time, // ✅ Receive time as separate field
+      endTime, // ✅ Receive endTime as separate field
       maxAttendees,
       ticketPrice,
       organizerId,
@@ -249,12 +255,17 @@ export async function POST(request) {
       }
     }
 
-    // Extract time from the date
-    const eventDate = new Date(date);
-    const timeString = eventDate.toTimeString().slice(0, 5); // Format: "HH:MM"
+    // ✅ Fix: Use time and endTime directly from form (preserve exact values)
+    // Convert date to ISO string (date only, no time component)
+    const eventDate = new Date(date + "T00:00:00"); // Add midnight to avoid timezone issues
+    const eventDateISO = eventDate.toISOString().split("T")[0] + "T00:00:00.000Z";
 
     // Handle endDate if provided
-    const eventEndDate = endDate ? new Date(endDate) : null;
+    let eventEndDateISO = null;
+    if (endDate) {
+      const eventEndDate = new Date(endDate + "T00:00:00");
+      eventEndDateISO = eventEndDate.toISOString().split("T")[0] + "T00:00:00.000Z";
+    }
 
     // Prepare event data
     const eventData = {
@@ -264,8 +275,8 @@ export async function POST(request) {
       category,
       location,
       venue,
-      date: eventDate.toISOString(),
-      time: timeString,
+      date: eventDateISO, // Date with time set to midnight UTC
+      time: time || "00:00", // ✅ Use time directly from form (HH:MM format)
       price: parseFloat(ticketPrice) || 0,
       capacity: parseInt(maxAttendees) || 100,
       imageUrl,
@@ -279,9 +290,12 @@ export async function POST(request) {
       updatedAt: new Date().toISOString(),
     };
 
-    // Add endDate if provided - use lowercase to match PostgreSQL column name
-    if (eventEndDate) {
-      eventData.enddate = eventEndDate.toISOString(); // Use lowercase 'enddate'
+    // Add endDate and endTime if provided - use lowercase to match PostgreSQL column name
+    if (eventEndDateISO) {
+      eventData.enddate = eventEndDateISO; // Use lowercase 'enddate'
+    }
+    if (endTime) {
+      eventData.endtime = endTime; // ✅ Use endTime directly from form (HH:MM format)
     }
 
     let { data: event, error: createError } = await supabase

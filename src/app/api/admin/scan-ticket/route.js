@@ -348,21 +348,6 @@ export async function POST(request) {
     const scannedAt = new Date().toISOString();
     scannedTicketsData[ticketNumberForToday] = scannedAt;
 
-    const { error: scanError } = await supabase
-      .from("bookings")
-      .update({
-        scannedqrs: scannedTicketsData,
-        updatedAt: scannedAt,
-      })
-      .eq("id", booking.id);
-
-    if (scanError) {
-      return NextResponse.json(
-        { error: "Failed to process ticket scan" },
-        { status: 500 }
-      );
-    }
-
     // Determine the success message and next ticket info
     const isLastTicket = ticketNumberForToday === totalTickets;
     const nextTicketDay = isLastTicket ? null : ticketNumberForToday + 1;
@@ -383,17 +368,18 @@ export async function POST(request) {
       // };
     }
 
-    // Update booking with scan data and completion status if needed
-    const { error: updateError } = await supabase
+    // 🔒 Update ONLY scannedqrs column - DO NOT modify paymentId
+    // paymentId should remain unchanged after scanning (only scannedqrs stores scan data)
+    const { error: scanError } = await supabase
       .from("bookings")
       .update({
-        paymentId: `SCANNED_TICKETS_${JSON.stringify(scannedTicketsData)}`,
+        scannedqrs: scannedTicketsData,
         updatedAt: scannedAt,
         ...completionUpdate,
       })
       .eq("id", booking.id);
 
-    if (updateError) {
+    if (scanError) {
       return NextResponse.json(
         { error: "Failed to process ticket scan" },
         { status: 500 }
@@ -534,37 +520,20 @@ export async function GET(request) {
       let bookingScannedTickets = 0;
       let scannedTicketsData = {};
 
-      // Parse scanned tickets data
-      if (
-        booking.paymentId &&
-        booking.paymentId.startsWith("SCANNED_TICKETS_")
-      ) {
+      if (booking.scannedqrs) {
         try {
-          const ticketsDataString = booking.paymentId.replace(
-            "SCANNED_TICKETS_",
-            ""
-          );
-          scannedTicketsData = JSON.parse(ticketsDataString);
+          scannedTicketsData =
+            typeof booking.scannedqrs === "string"
+              ? JSON.parse(booking.scannedqrs)
+              : booking.scannedqrs;
           bookingScannedTickets = Object.keys(scannedTicketsData).length;
           scannedTicketsCount += bookingScannedTickets;
-
           if (bookingScannedTickets > 0) {
             progressiveScannedBookings++;
           }
-        } catch (e) {
-          // If parsing fails, it's not progressive scanning data
-        }
-      } else if (
-        booking.paymentId &&
-        booking.paymentId.startsWith("SCANNED_")
-      ) {
-        // Legacy single scan format
-        bookingScannedTickets = 1;
-        scannedTicketsCount += 1;
-        progressiveScannedBookings++;
+        } catch (e) {}
       }
 
-      // Track completion status
       const isBookingCompleted =
         booking.status === "COMPLETED" ||
         bookingScannedTickets === booking.tickets;
@@ -572,7 +541,6 @@ export async function GET(request) {
         completedBookings++;
       }
 
-      // Add to user booking stats for admin display
       userBookingStats.push({
         id: booking.id,
         userName: booking.user.name,
@@ -589,8 +557,7 @@ export async function GET(request) {
           .map((day) => parseInt(day))
           .sort(),
         progressPercentage: (
-          (bookingScannedTickets / booking.tickets) *
-          100
+          (bookingScannedTickets / booking.tickets) * 100
         ).toFixed(0),
       });
 

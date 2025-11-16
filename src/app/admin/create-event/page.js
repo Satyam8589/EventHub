@@ -90,27 +90,20 @@ export default function CreateEvent() {
         }
       }
 
-      // Combine date and time
-      const eventDateTime = new Date(
-        `${formData.date}T${formData.time}`
-      ).toISOString();
-
-      // Combine end date and end time
-      const eventEndDateTime = formData.endDate
-        ? new Date(
-            `${formData.endDate}T${formData.endTime || formData.time}`
-          ).toISOString()
-        : new Date(
-            `${formData.date}T${formData.endTime || formData.time}`
-          ).toISOString();
+      // ✅ Fix: Send date and time separately to preserve exact time values
+      // Don't combine them into Date object to avoid timezone conversion issues
+      // Date should be just the date part (YYYY-MM-DD)
+      // Time should be sent separately as HH:MM format
 
       // Prepare data for API
       const eventData = {
         title: formData.title,
         description: formData.description,
         category: formData.category,
-        date: eventDateTime,
-        endDate: eventEndDateTime,
+        date: formData.date, // Send date as-is (YYYY-MM-DD)
+        endDate: formData.endDate || null, // Send endDate as-is (YYYY-MM-DD)
+        time: formData.time, // ✅ Send time as-is (HH:MM) - preserve exact value
+        endTime: formData.endTime || null, // ✅ Send endTime as-is (HH:MM) - preserve exact value
         location: formData.location,
         venue: formData.venue,
         maxAttendees: parseInt(formData.maxAttendees),

@@ -24,7 +24,22 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: "Booking not found" }, { status: 404 });
     }
 
-    // Return booking status
+    const scannedRaw = booking.scannedqrs;
+    let scannedTicketsData = {};
+    try {
+      scannedTicketsData =
+        typeof scannedRaw === "string"
+          ? JSON.parse(scannedRaw)
+          : scannedRaw || {};
+    } catch (_) {
+      scannedTicketsData = {};
+    }
+    const scannedDays = Object.keys(scannedTicketsData)
+      .map((d) => parseInt(d))
+      .sort((a, b) => a - b);
+    const scannedCount = scannedDays.length;
+    const isScanned = scannedCount > 0;
+
     return NextResponse.json({
       success: true,
       booking: {
@@ -38,6 +53,12 @@ export async function GET(request, { params }) {
         updatedAt: booking.updatedAt,
         paymentVerifiedAt: booking.paymentVerifiedAt,
         failureReason: booking.failureReason,
+        scannedqrs: scannedTicketsData,
+        scanStatus: {
+          isScanned,
+          scannedCount,
+          scannedDays,
+        },
       },
     });
   } catch (error) {

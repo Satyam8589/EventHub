@@ -54,8 +54,20 @@ export async function POST(request) {
       });
     }
 
-    // Check if this booking has already been scanned
-    if (booking.paymentId && booking.paymentId.startsWith("SCANNED_")) {
+    // Check if this booking has already been scanned using scannedqrs column
+    let scannedqrs = null;
+    if (booking.scannedqrs) {
+      try {
+        scannedqrs = typeof booking.scannedqrs === "string" 
+          ? JSON.parse(booking.scannedqrs) 
+          : booking.scannedqrs;
+      } catch (e) {
+        scannedqrs = null;
+      }
+    }
+    
+    // Legacy check: if paymentId has SCANNED_ prefix (for migration)
+    if (!scannedqrs && booking.paymentId && booking.paymentId.startsWith("SCANNED_")) {
       const scannedTime = new Date(booking.paymentId.replace("SCANNED_", ""));
       return NextResponse.json({
         success: false,
@@ -63,13 +75,25 @@ export async function POST(request) {
         booking: booking,
       });
     }
+    
+    // Check if already scanned using scannedqrs
+    if (scannedqrs && Object.keys(scannedqrs).length > 0) {
+      const firstScanTime = new Date(Object.values(scannedqrs)[0]);
+      return NextResponse.json({
+        success: false,
+        message: `This ticket was already used on ${firstScanTime.toLocaleString()}. Thank you for visiting!`,
+        booking: booking,
+      });
+    }
 
-    // Mark ticket as scanned
+    // Mark ticket as scanned - update ONLY scannedqrs, NOT paymentId
     const scannedAt = new Date().toISOString();
+    const scannedData = { "1": scannedAt }; // Simple format for single-day events
+    
     const { error: scanError } = await supabase
       .from("bookings")
       .update({
-        paymentId: `SCANNED_${scannedAt}`,
+        scannedqrs: scannedData,
         updatedAt: scannedAt,
       })
       .eq("id", booking.id);

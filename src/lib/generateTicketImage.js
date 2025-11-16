@@ -256,70 +256,45 @@ export async function generateTicketImage(booking, event, user) {
     ctx.fillStyle = topGradient;
     ctx.fillRect(0, 0, 900, 8);
 
-    // Modern card effect overlay on image area
-    ctx.fillStyle = "rgba(255, 255, 255, 0.05)";
-    ctx.fillRect(40, 40, 820, 170);
+    // ✅ All details will be shown below the event image
+    // Start details section after image
+    yPosition = yPosition + 30;
 
-    // Subtle border for card
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.2)";
-    ctx.lineWidth = 1;
-    ctx.strokeRect(40, 40, 820, 170);
-
-    // EventHub Logo with modern styling
+    // Header Section with EventHub branding and E-Ticket badge
+    ctx.fillStyle = "rgba(15, 23, 42, 0.95)"; // Dark background for header
+    ctx.fillRect(0, yPosition, 900, 100);
+    
+    // EventHub Logo
     ctx.fillStyle = "#ffffff";
-    ctx.font = "bold 48px Arial";
-    ctx.fillText("EventHub", 60, 100);
-
-    // Stylish badge for E-Ticket
+    ctx.font = "bold 36px Arial";
+    ctx.fillText("EventHub", 60, yPosition + 40);
+    
+    // E-Ticket badge
     ctx.fillStyle = "rgba(59, 130, 246, 0.3)";
-    ctx.fillRect(60, 125, 120, 35);
+    ctx.fillRect(200, yPosition + 15, 130, 40);
     ctx.fillStyle = "#60a5fa";
-    ctx.font = "bold 16px Arial";
-    ctx.fillText("E-TICKET", 75, 148);
-
-    // Add decorative corner accent
-    ctx.fillStyle = "#3b82f6";
-    ctx.beginPath();
-    ctx.moveTo(820, 40);
-    ctx.lineTo(860, 40);
-    ctx.lineTo(860, 80);
-    ctx.closePath();
-    ctx.fill();
-
-    // Ticket ID in modern style
-    yPosition = yPosition + 20;
-    ctx.fillStyle = "rgba(59, 130, 246, 0.15)";
-    ctx.fillRect(60, yPosition, 780, 50);
-
-    ctx.fillStyle = "#60a5fa";
-    ctx.font = "bold 14px Arial";
-    ctx.fillText("TICKET ID", 80, yPosition + 20);
-
+    ctx.font = "bold 18px Arial";
+    ctx.fillText("E-TICKET", 220, yPosition + 42);
+    
+    // Ticket ID on the right
+    ctx.fillStyle = "#94a3b8";
+    ctx.font = "12px Arial";
+    ctx.textAlign = "right";
+    ctx.fillText("Ticket ID:", 840, yPosition + 30);
     ctx.fillStyle = "#ffffff";
-    ctx.font = "16px monospace";
-    ctx.fillText(booking.id.slice(-12).toUpperCase(), 80, yPosition + 40);
-
-    // Stylish separator
-    yPosition += 80;
-    const separatorGradient = ctx.createLinearGradient(
-      60,
-      yPosition,
-      840,
-      yPosition
-    );
-    separatorGradient.addColorStop(0, "rgba(59, 130, 246, 0)");
-    separatorGradient.addColorStop(0.5, "rgba(59, 130, 246, 0.5)");
-    separatorGradient.addColorStop(1, "rgba(59, 130, 246, 0)");
-    ctx.fillStyle = separatorGradient;
-    ctx.fillRect(60, yPosition, 780, 2);
+    ctx.font = "14px monospace";
+    ctx.fillText(booking.id.slice(-12).toUpperCase(), 840, yPosition + 50);
+    ctx.textAlign = "left";
+    
+    yPosition += 120;
 
     // Event Title Section with modern styling
-    yPosition += 50;
     ctx.fillStyle = "#ffffff";
-    ctx.font = "bold 38px Arial";
+    ctx.font = "bold 42px Arial";
     const eventTitle = event.title;
     // Wrap text if too long
     const maxWidth = 780;
+    let titleHeight = 50;
     if (ctx.measureText(eventTitle).width > maxWidth) {
       const words = eventTitle.split(" ");
       let line = "";
@@ -328,7 +303,8 @@ export async function generateTicketImage(booking, event, user) {
         if (ctx.measureText(testLine).width > maxWidth) {
           ctx.fillText(line, 60, yPosition);
           line = word + " ";
-          yPosition += 45;
+          yPosition += 50;
+          titleHeight += 50;
         } else {
           line = testLine;
         }
@@ -338,8 +314,23 @@ export async function generateTicketImage(booking, event, user) {
       ctx.fillText(eventTitle, 60, yPosition);
     }
 
+    // Stylish separator after title
+    yPosition += titleHeight + 20;
+    const separatorGradient = ctx.createLinearGradient(
+      60,
+      yPosition,
+      840,
+      yPosition
+    );
+    separatorGradient.addColorStop(0, "rgba(59, 130, 246, 0)");
+    separatorGradient.addColorStop(0.5, "rgba(59, 130, 246, 0.6)");
+    separatorGradient.addColorStop(1, "rgba(59, 130, 246, 0)");
+    ctx.fillStyle = separatorGradient;
+    ctx.fillRect(60, yPosition, 780, 3);
+    
+    yPosition += 30;
+
     // Modern info cards section
-    yPosition += 70;
 
     // Date & Time Card
     ctx.fillStyle = "rgba(99, 102, 241, 0.1)"; // indigo tint

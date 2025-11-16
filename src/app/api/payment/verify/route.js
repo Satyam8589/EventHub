@@ -123,50 +123,53 @@ export async function POST(request) {
         { status: 400 }
       );
     }
-    // Get event and user details
-    const { data: event, error: eventError } = await supabase
-      .from("events")
-      .select("*")
-      .eq("id", booking.eventId)
-      .single();
 
-    const { data: user, error: userError } = await supabase
-      .from("users")
-      .select("*")
-      .eq("id", booking.userId)
-      .single();
+    // 🔒 ATOMIC BOOKING CONFIRMATION WITH AVAILABILITY CHECK
+    // Use database function to atomically check availability and confirm booking
+    // This prevents race conditions when multiple users try to book the last ticket
+    const { data: confirmationResult, error: rpcError } = await supabase.rpc(
+      "confirm_booking_with_availability_check",
+      {
+        p_booking_id: bookingId,
+        p_payment_id: razorpay_payment_id,
+      }
+    );
 
-    if (eventError || !event) {
-      return NextResponse.json(
-        { success: false, error: "Event not found" },
-        { status: 404 }
+    if (rpcError) {
+      console.error("RPC Error:", rpcError);
+      // Fallback to old method if RPC fails (for backward compatibility)
+      // But this should not happen if migration is applied
+      throw new Error(
+        `Database function error: ${rpcError.message}. Please ensure the database migration has been applied.`
       );
     }
 
-    if (userError || !user) {
+    // Parse the JSONB result from the function
+    const result = confirmationResult;
+
+    if (!result.success) {
+      // Booking could not be confirmed (likely overselling prevented)
       return NextResponse.json(
-        { success: false, error: "User not found" },
-        { status: 404 }
+        {
+          success: false,
+          error: result.error || "Booking confirmation failed",
+          details: result,
+        },
+        { status: 400 }
       );
     }
 
-    // Update booking to CONFIRMED
-    const { data: confirmedBooking, error: updateError } = await supabase
-      .from("bookings")
-      .update({
-        status: "CONFIRMED",
-        paymentId: razorpay_payment_id, // Now store actual payment ID
-        // razorpayOrderId: razorpay_order_id, // TODO: Add this after database migration
-        updatedAt: new Date().toISOString(),
-      })
-      .eq("id", bookingId)
-      .select()
-      .single();
 
-    if (updateError) {
-      throw updateError;
-    }
-    // Prepare success response FIRST before trying email
+
+    // Extract booking and event from result
+    const confirmedBooking = result.booking;
+    const eventInfo = result.event;
+
+    // ✅ paymentId is now stored in database with the actual Razorpay transaction ID
+    // Use the stored paymentId from the confirmed booking (not the variable)
+    const storedPaymentId = confirmedBooking.paymentId || razorpay_payment_id;
+
+    // Prepare success response
     const successResponse = {
       success: true,
       message:
@@ -176,16 +179,25 @@ export async function POST(request) {
         status: confirmedBooking.status,
         tickets: confirmedBooking.tickets,
         totalAmount: confirmedBooking.totalAmount,
-        paymentId: razorpay_payment_id,
+        paymentId: storedPaymentId, // ✅ Transaction ID stored in database
         event: {
-          id: event.id,
-          title: event.title,
-          date: event.date,
-          time: event.time,
-          location: event.location,
+          id: eventInfo.id,
+          title: eventInfo.title,
+          // Get additional event details if needed
         },
       },
     };
+
+    // Use event details returned from the confirmation function (avoids type mismatch issues)
+    if (eventInfo) {
+      successResponse.booking.event = {
+        id: eventInfo.id,
+        title: eventInfo.title,
+        date: eventInfo.date,
+        time: eventInfo.time,
+        location: eventInfo.location,
+      };
+    }
 
     // Return success response
     return NextResponse.json(successResponse);

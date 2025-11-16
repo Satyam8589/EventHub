@@ -667,7 +667,7 @@ export default function Page({ params }) {
                       Availability
                     </span>
                     <span className="font-bold text-white bg-white/10 px-3 py-1 rounded-full">
-                      {availableSpots} / {event.capacity || 1000}
+                      {(event._count?.bookings || 0)} / {event.capacity || 1000}
                     </span>
                   </div>
                   <div className="relative w-full h-3 bg-white/10 rounded-full overflow-hidden shadow-inner">
@@ -869,15 +869,25 @@ export default function Page({ params }) {
                   <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-blue-600/20 flex items-center justify-center text-2xl">
                     👥
                   </div>
-                  <div>
-                    <div className="font-semibold text-white mb-1">
-                      Capacity
+                  <div className="flex-1">
+                    <div className="font-semibold text-white mb-1">Availability</div>
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm text-gray-300">
+                        {(event.capacity || 1000) - availableSpots}/{event.capacity || 1000} registered
+                      </div>
+                      <div className={`text-sm font-medium ${availableSpots > 0 ? "text-green-400" : "text-red-400"}`}>
+                        {availableSpots > 0 ? `${availableSpots} spots remaining` : "Sold Out"}
+                      </div>
                     </div>
-                    <div className="text-sm text-gray-300">
-                      {(event.capacity || 1000) - availableSpots} registered
-                    </div>
-                    <div className="text-sm text-gray-400">
-                      {availableSpots} spots remaining
+                    <div className="mt-2 text-sm text-gray-500">
+                      <div>
+                        {event.date
+                          ? new Date(event.date).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+                          : "Date TBD"}
+                        {event.time ? ` • ${event.time}` : ""}
+                        {event.endTime || event.endtime ? ` - ${event.endTime || event.endtime}` : ""}
+                      </div>
+                      <div>{event.location}</div>
                     </div>
                   </div>
                 </div>

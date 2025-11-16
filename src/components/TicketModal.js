@@ -8,25 +8,28 @@ export default function TicketModal({ booking, isOpen, onClose }) {
 
   // Parse scanned tickets data from progressive scanning format
   const getScannedTicketsData = () => {
-    if (!booking.paymentId) return {};
+    const raw = booking.scannedqrs;
+    if (raw) {
+      try {
+        return typeof raw === "string" ? JSON.parse(raw) : raw;
+      } catch (_) {
+        return {};
+      }
+    }
 
-    // Check for new progressive scanning format
-    if (booking.paymentId.startsWith("SCANNED_TICKETS_")) {
+    if (booking.paymentId && booking.paymentId.startsWith("SCANNED_TICKETS_")) {
       try {
         const ticketsDataString = booking.paymentId.replace(
           "SCANNED_TICKETS_",
           ""
         );
         return JSON.parse(ticketsDataString);
-      } catch (e) {
-        console.warn("Could not parse scanned tickets data:", e);
+      } catch (_) {
         return {};
       }
     }
 
-    // Check for legacy single scan format
-    if (booking.paymentId.startsWith("SCANNED_")) {
-      // Legacy format means all tickets were scanned
+    if (booking.paymentId && booking.paymentId.startsWith("SCANNED_")) {
       const scannedData = {};
       for (let i = 1; i <= (booking.tickets || 1); i++) {
         scannedData[i] = booking.paymentId.replace("SCANNED_", "");

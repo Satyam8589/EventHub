@@ -26,21 +26,27 @@ export async function GET(request, { params }) {
       throw error;
     }
 
-    // Count confirmed and pending bookings for this event
-    const { count: bookingsCount, error: countError } = await supabase
+    // Get only CONFIRMED bookings for this event to sum up total tickets
+    // PENDING bookings don't count because user might cancel payment
+    // Capacity is only reduced when payment succeeds (CONFIRMED)
+    const { data: bookings, error: bookingsError } = await supabase
       .from("bookings")
-      .select("*", { count: "exact", head: true })
+      .select("tickets")
       .eq("eventId", id)
-      .in("status", ["CONFIRMED", "PENDING"]);
+      .eq("status", "CONFIRMED"); // ✅ Only count CONFIRMED bookings
 
-    if (countError) {
-      console.error("Error counting bookings:", countError);
+    if (bookingsError) {
+      console.error("Error counting bookings:", bookingsError);
     }
 
+    // Sum up all tickets from CONFIRMED bookings for this event
+    const totalTickets =
+      bookings?.reduce((sum, booking) => sum + (booking.tickets || 0), 0) || 0;
+
     console.log("Event found:", event.title);
-    console.log("Bookings count:", bookingsCount);
+    console.log("Total tickets booked (CONFIRMED):", totalTickets);
     console.log("Capacity:", event.capacity);
-    console.log("Available spots:", event.capacity - (bookingsCount || 0));
+    console.log("Available spots:", event.capacity - totalTickets);
 
     // Debug endtime fields
     console.log("=== DEBUG EVENT TIME FIELDS ===");
@@ -51,11 +57,11 @@ export async function GET(request, { params }) {
     console.log("event.endDate:", event.endDate);
     console.log("================================");
 
-    // Add bookings count to event object
+    // Add bookings count (total tickets) to event object
     const eventWithCount = {
       ...event,
       _count: {
-        bookings: bookingsCount || 0,
+        bookings: totalTickets, // Total tickets from CONFIRMED bookings
       },
     };
 

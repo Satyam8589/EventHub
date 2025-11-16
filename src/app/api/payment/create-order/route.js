@@ -23,7 +23,7 @@ export async function POST(request) {
       );
     }
 
-    // Check if event exists and has capacity
+    // Check if event exists
     const { data: event, error: eventError } = await supabase
       .from("events")
       .select("*")
@@ -34,27 +34,54 @@ export async function POST(request) {
       return NextResponse.json({ error: "Event not found" }, { status: 404 });
     }
 
-    // Calculate current bookings to check capacity
-    const { data: existingBookings, error: bookingsError } = await supabase
-      .from("bookings")
-      .select("tickets")
-      .eq("eventId", eventId)
-      .in("status", ["CONFIRMED", "PENDING"]);
-
-    if (bookingsError) {
-      throw bookingsError;
-    }
-
-    const totalBookedTickets = existingBookings.reduce(
-      (sum, booking) => sum + booking.tickets,
-      0
+    // 🔒 ATOMIC AVAILABILITY CHECK
+    // Use database function to atomically check availability with row-level locking
+    // This prevents race conditions when multiple users check availability simultaneously
+    const { data: availabilityResult, error: availabilityError } = await supabase.rpc(
+      "check_ticket_availability",
+      {
+        p_event_id: eventId,
+        p_requested_tickets: parseInt(tickets),
+      }
     );
 
-    if (totalBookedTickets + tickets > event.capacity) {
-      return NextResponse.json(
-        { error: "Not enough tickets available" },
-        { status: 400 }
+    if (availabilityError) {
+      console.error("Availability check error:", availabilityError);
+      // Fallback to old method if RPC fails (for backward compatibility)
+      // ⚠️ IMPORTANT: Only count CONFIRMED bookings (not PENDING)
+      const { data: existingBookings, error: bookingsError } = await supabase
+        .from("bookings")
+        .select("tickets")
+        .eq("eventId", eventId)
+        .eq("status", "CONFIRMED"); // ✅ Only count CONFIRMED bookings
+
+      if (bookingsError) {
+        throw bookingsError;
+      }
+
+      const totalBookedTickets = existingBookings.reduce(
+        (sum, booking) => sum + booking.tickets,
+        0
       );
+
+      if (totalBookedTickets + tickets > event.capacity) {
+        return NextResponse.json(
+          { error: "Not enough tickets available" },
+          { status: 400 }
+        );
+      }
+    } else {
+      // Use the atomic check result
+      if (!availabilityResult.success) {
+        return NextResponse.json(
+          {
+            error: availabilityResult.error || "Not enough tickets available",
+            availableTickets: availabilityResult.available_tickets,
+            requestedTickets: availabilityResult.requested_tickets,
+          },
+          { status: 400 }
+        );
+      }
     }
 
     // Create Razorpay order
@@ -77,7 +104,10 @@ export async function POST(request) {
         eventTitle: event.title,
       },
     });
-    // Create pending booking in database
+    // 🔒 Create PENDING booking in database
+    // ⚠️ IMPORTANT: PENDING bookings do NOT count in capacity
+    // Capacity is only reduced when payment succeeds (status = CONFIRMED)
+    // This prevents capacity reduction if user cancels payment
     // Temporarily store razorpay order ID in paymentId field with PENDING_ prefix
     // until database migration adds razorpayOrderId column
     const pendingBooking = {
@@ -102,6 +132,10 @@ export async function POST(request) {
     if (bookingError) {
       throw bookingError;
     }
+    
+    // ✅ PENDING booking created - capacity NOT reduced yet
+    // Capacity will only be reduced when payment succeeds (CONFIRMED status)
+    // If user cancels payment, PENDING booking remains but doesn't affect capacity
     // Update user profile with any new details provided during booking
     if (
       userDetails &&

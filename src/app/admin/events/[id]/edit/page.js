@@ -237,21 +237,14 @@ export default function EditEventPage() {
       // Upload new media files first
       await uploadMediaFiles();
 
-      // Prepare event data
-      const eventDateTime = new Date(
-        `${formData.date}T${formData.time}`
-      ).toISOString();
-
-      const eventEndDateTime = formData.endDate
-        ? new Date(
-            `${formData.endDate}T${formData.endTime || formData.time}`
-          ).toISOString()
-        : null;
-
+      // ✅ Fix: Send date and time separately to preserve exact time values
+      // Don't combine them into Date object to avoid timezone conversion issues
       const eventData = {
         ...formData,
-        date: eventDateTime,
-        endDate: eventEndDateTime,
+        date: formData.date, // Send date as-is (YYYY-MM-DD)
+        endDate: formData.endDate || null, // Send endDate as-is (YYYY-MM-DD)
+        time: formData.time, // ✅ Send time as-is (HH:MM) - preserve exact value
+        endTime: formData.endTime || null, // ✅ Send endTime as-is (HH:MM) - preserve exact value
         capacity: parseInt(formData.capacity),
         price: parseFloat(formData.price),
         gallery: gallery,

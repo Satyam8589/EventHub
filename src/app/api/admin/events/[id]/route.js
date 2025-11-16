@@ -76,12 +76,17 @@ export async function PUT(request, { params }) {
       gallery,
     } = body;
 
-    // Use the provided time or extract from date if time field not provided
-    const timeString = time || new Date(date).toTimeString().slice(0, 5);
-    const endTimeString = endTime || null;
+    // ✅ Fix: Use time and endTime directly from form (preserve exact values)
+    // Convert date to ISO string (date only, no time component)
+    const eventDate = new Date(date + "T00:00:00"); // Add midnight to avoid timezone issues
+    const eventDateISO = eventDate.toISOString().split("T")[0] + "T00:00:00.000Z";
 
     // Handle endDate if provided
-    const eventEndDate = endDate ? new Date(endDate) : null;
+    let eventEndDateISO = null;
+    if (endDate) {
+      const eventEndDate = new Date(endDate + "T00:00:00");
+      eventEndDateISO = eventEndDate.toISOString().split("T")[0] + "T00:00:00.000Z";
+    }
 
     // Try to update with endDate first, fall back without it if column doesn't exist
     let updateData = {
@@ -90,9 +95,8 @@ export async function PUT(request, { params }) {
       category,
       location,
       venue,
-      date: new Date(date).toISOString(),
-      time: timeString,
-      endtime: endTimeString, // Use lowercase to match PostgreSQL column name
+      date: eventDateISO, // Date with time set to midnight UTC
+      time: time || "00:00", // ✅ Use time directly from form (HH:MM format)
       capacity: parseInt(capacity),
       price: parseFloat(price),
       featured: featured || false,
@@ -102,9 +106,12 @@ export async function PUT(request, { params }) {
       gallery: gallery || "",
     };
 
-    // Add endDate if provided - use lowercase to match PostgreSQL column name
-    if (eventEndDate) {
-      updateData.enddate = eventEndDate.toISOString(); // Use lowercase 'enddate'
+    // Add endDate and endTime if provided - use lowercase to match PostgreSQL column name
+    if (eventEndDateISO) {
+      updateData.enddate = eventEndDateISO; // Use lowercase 'enddate'
+    }
+    if (endTime) {
+      updateData.endtime = endTime; // ✅ Use endTime directly from form (HH:MM format)
     }
 
     let { data: updatedEvent, error: updateError } = await supabase

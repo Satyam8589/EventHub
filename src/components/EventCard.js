@@ -55,12 +55,14 @@ export default function EventCard({ event }) {
     return formattedStartTime;
   };
 
-  const registered = event.registered || 0;
+  const bookedTickets = event._count?.bookings ?? event.registered ?? 0;
   const capacity = event.capacity || 0;
 
   const capacityPercentage =
-    capacity > 0 ? Math.min((registered / capacity) * 100, 100).toFixed(0) : 0;
-  const spotsLeft = Math.max(capacity - registered, 0);
+    capacity > 0
+      ? Math.min((bookedTickets / capacity) * 100, 100).toFixed(0)
+      : 0;
+  const spotsLeft = Math.max(capacity - bookedTickets, 0);
 
   // Check if event is sold out
   const isSoldOut = capacity > 0 && spotsLeft === 0;
@@ -354,9 +356,9 @@ export default function EventCard({ event }) {
           <div className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 rounded-full">
             <span className="text-blue-600">👥</span>
             <span className="text-blue-700 font-semibold">
-              {event.registered || 0}
+              {bookedTickets}/{capacity}
             </span>
-            <span className="text-blue-600 text-xs">going</span>
+            <span className="text-blue-600 text-xs">registered</span>
           </div>
           <div className="flex-1 text-right">
             <span
@@ -385,7 +387,7 @@ export default function EventCard({ event }) {
           </div>
           <div className="flex justify-between items-center text-xs text-gray-500 mt-1.5">
             <span>
-              {registered}/{capacity}
+              {bookedTickets}/{capacity}
             </span>
             <span>{capacityPercentage}% filled</span>
           </div>
