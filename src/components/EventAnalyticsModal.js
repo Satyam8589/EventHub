@@ -59,12 +59,17 @@ export default function EventAnalyticsModal({ eventId, isOpen, onClose }) {
   const formatDate = (dateString) => {
     if (!dateString) return "Not set";
     try {
-      return new Date(dateString).toLocaleDateString("en-IN", {
+      const d = new Date(dateString);
+      if (isNaN(d.getTime())) return "Invalid date";
+      return d.toLocaleString("en-IN", {
         year: "numeric",
         month: "short",
         day: "numeric",
         hour: "2-digit",
         minute: "2-digit",
+        second: "2-digit",
+        hour12: true,
+        timeZone: "Asia/Kolkata",
       });
     } catch (error) {
       return "Invalid date";

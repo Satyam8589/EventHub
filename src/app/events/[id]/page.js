@@ -4,6 +4,7 @@ import { use, useState, useEffect } from "react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import BookingModal from "@/components/BookingModal";
+import { supabase } from "@/lib/supabase";
 
 export default function Page({ params }) {
   const p = use(params);
@@ -19,6 +20,8 @@ export default function Page({ params }) {
   const [selectedGalleryItem, setSelectedGalleryItem] = useState(null);
   const [attendees, setAttendees] = useState([]);
   const [totalAttendees, setTotalAttendees] = useState(0);
+  const [userTotalTickets, setUserTotalTickets] = useState(0);
+  const [loadingBookings, setLoadingBookings] = useState(true);
 
   // Helper function to check if event is expired
   const isEventExpired = (event) => {
@@ -53,6 +56,35 @@ export default function Page({ params }) {
 
     return eventDateOnly < nowDateOnly;
   };
+
+  useEffect(() => {
+    if (user && event) {
+      const fetchUserBookings = async () => {
+        setLoadingBookings(true);
+        const { data, error } = await supabase
+          .from("bookings")
+          .select("tickets")
+          .eq("eventId", event.id)
+          .eq("userId", user.uid)
+          .eq("status", "CONFIRMED");
+
+        if (error) {
+          console.error("Error fetching user bookings:", error);
+        } else {
+          const totalTickets = data.reduce(
+            (sum, booking) => sum + booking.tickets,
+            0
+          );
+          setUserTotalTickets(totalTickets);
+        }
+        setLoadingBookings(false);
+      };
+
+      fetchUserBookings();
+    } else {
+      setLoadingBookings(false);
+    }
+  }, [user, event]);
 
   useEffect(() => {
     if (!p?.id) return;
@@ -196,6 +228,11 @@ export default function Page({ params }) {
   const availableSpots = event.capacity - (event._count?.bookings || 0);
   const bookedPercentage =
     ((event.capacity - availableSpots) / event.capacity) * 100;
+
+  const hasBookingLimit =
+    event.max_tickets_per_user && event.max_tickets_per_user > 0;
+  const userReachedLimit =
+    hasBookingLimit && userTotalTickets >= event.max_tickets_per_user;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 relative overflow-hidden">
@@ -698,16 +735,27 @@ export default function Page({ params }) {
 
                 {/* CTA Button */}
                 {user ? (
-                  <button
-                    onClick={() => setShowBookingModal(true)}
-                    className="w-full bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 text-white py-4 px-6 rounded-2xl font-bold text-lg hover:from-blue-700 hover:via-purple-700 hover:to-pink-700 transition-all duration-300 shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 hover:shadow-2xl hover:scale-[1.02] transform relative overflow-hidden group"
-                  >
-                    <span className="relative z-10 flex items-center justify-center gap-2">
-                      <span>🚀</span>
-                      Book Now
-                    </span>
-                    <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
-                  </button>
+                  userReachedLimit ? (
+                    <>
+                      <div className="w-full bg-green-600 text-white py-4 px-6 rounded-2xl font-bold text-lg text-center">
+                        Booked
+                      </div>
+                      {hasBookingLimit && event.max_tickets_per_user === 1 && (
+                        <div className="mt-2 text-xs text-gray-300 text-center">1 user can book only 1 ticket</div>
+                      )}
+                    </>
+                  ) : (
+                    <button
+                      onClick={() => setShowBookingModal(true)}
+                      className="w-full bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 text-white py-4 px-6 rounded-2xl font-bold text-lg hover:from-blue-700 hover:via-purple-700 hover:to-pink-700 transition-all duration-300 shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 hover:shadow-2xl hover:scale-[1.02] transform relative overflow-hidden group"
+                    >
+                      <span className="relative z-10 flex items-center justify-center gap-2">
+                        <span>🚀</span>
+                        Book Now
+                      </span>
+                      <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
+                    </button>
+                  )
                 ) : (
                   <Link
                     href="/"

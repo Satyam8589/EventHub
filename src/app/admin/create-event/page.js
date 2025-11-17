@@ -24,6 +24,7 @@ export default function CreateEvent() {
     venue: "",
     maxAttendees: "",
     ticketPrice: "",
+    max_tickets_per_user: "",
     organizerName: "",
     organizerEmail: "",
     organizerPhone: "",
@@ -108,6 +109,9 @@ export default function CreateEvent() {
         venue: formData.venue,
         maxAttendees: parseInt(formData.maxAttendees),
         ticketPrice: parseFloat(formData.ticketPrice),
+        max_tickets_per_user: formData.max_tickets_per_user
+          ? parseInt(formData.max_tickets_per_user)
+          : null,
         organizerId: user.uid,
         organizerName: formData.organizerName,
         organizerEmail: formData.organizerEmail,
@@ -376,6 +380,20 @@ export default function CreateEvent() {
                   min="1"
                   className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-xl text-white placeholder-white/60 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                   placeholder="e.g., 100"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="block text-white font-medium">
+                  Max Tickets Per User (Optional)
+                </label>
+                <input
+                  type="number"
+                  name="max_tickets_per_user"
+                  value={formData.max_tickets_per_user}
+                  onChange={handleInputChange}
+                  min="1"
+                  className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-xl text-white placeholder-white/60 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  placeholder="e.g., 5"
                 />
               </div>
             </div>

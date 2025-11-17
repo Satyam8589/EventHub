@@ -19,6 +19,7 @@ export default function Home() {
   const [showLogin, setShowLogin] = useState(false);
   const [showSignup, setShowSignup] = useState(false);
   const [particles, setParticles] = useState([]);
+  const [refreshToken, setRefreshToken] = useState(0);
 
   const { user, loading: authLoading, mounted } = useAuth();
   const router = useRouter();
@@ -154,11 +155,18 @@ export default function Home() {
 
         setFeaturedEvents(featured);
 
-        // For upcoming events, show latest non-featured active events
-        const nonFeatured = allEvents.filter(
-          (event) => event.featured !== true && isEventActive(event)
-        );
-        setUpcomingEvents(nonFeatured.slice(0, 3));
+        // For upcoming events, show next 3 strictly-upcoming (start date in future), non-featured
+        const isUpcoming = (event) => {
+          if (event.status === "CANCELLED") return false;
+          const now = new Date();
+          const start = new Date(event.date);
+          return start > now;
+        };
+        const upcomingOnly = allEvents
+          .filter((event) => event.featured !== true && isUpcoming(event))
+          .sort((a, b) => new Date(a.date) - new Date(b.date))
+          .slice(0, 3);
+        setUpcomingEvents(upcomingOnly);
       } catch (error) {
         // Only log critical errors in production, not sensitive data
       } finally {
@@ -166,8 +174,9 @@ export default function Home() {
       }
     };
 
+    setLoading(true);
     fetchEvents();
-  }, []);
+  }, [refreshToken]);
 
   // Format date for display
   const formatEventDate = (dateString, timeString) => {
@@ -404,6 +413,16 @@ export default function Home() {
             <p className="text-gray-300 max-w-2xl mx-auto text-sm sm:text-base px-4">
               Discover more amazing events happening soon
             </p>
+            <div className="mt-3">
+              <button
+                onClick={() => setRefreshToken(Date.now())}
+                className="inline-flex items-center gap-2 px-3 py-2 bg-white/10 text-white rounded-lg border border-white/20 hover:bg-white/20 transition-colors text-sm"
+                disabled={loading}
+              >
+                <span className="text-lg">⟳</span>
+                Refresh
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 sm:gap-8 lg:gap-10">

@@ -13,6 +13,10 @@ const razorpay = new Razorpay({
 // POST /api/payment/create-order - Create Razorpay order
 export async function POST(request) {
   try {
+    const now = new Date();
+    const datePart = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
+    const timePart = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }).format(now);
+    const nowIstIso = `${datePart}T${timePart}+05:30`;
     const body = await request.json();
     const { userId, eventId, tickets, totalAmount, userDetails } = body;
     // Validate required fields
@@ -119,8 +123,8 @@ export async function POST(request) {
       status: "PENDING",
       paymentMethod: "razorpay",
       paymentId: `PENDING_${razorpayOrder.id}`, // Temporary: store order ID here
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      createdAt: nowIstIso,
+      updatedAt: nowIstIso,
     };
 
     const { data: booking, error: bookingError } = await supabase
@@ -145,7 +149,7 @@ export async function POST(request) {
       if (userDetails.name) updateData.name = userDetails.name;
       if (userDetails.phone) updateData.phone = userDetails.phone;
       if (userDetails.phoneNumber) updateData.phone = userDetails.phoneNumber; // Handle frontend phoneNumber field
-      updateData.updatedAt = new Date().toISOString();
+      updateData.updatedAt = nowIstIso;
       const { error: userUpdateError } = await supabase
         .from("users")
         .update(updateData)

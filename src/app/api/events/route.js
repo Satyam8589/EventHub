@@ -186,6 +186,7 @@ export async function POST(request) {
       endTime, // ✅ Receive endTime as separate field
       maxAttendees,
       ticketPrice,
+      max_tickets_per_user,
       organizerId,
       organizerName,
       organizerEmail,
@@ -255,19 +256,26 @@ export async function POST(request) {
       }
     }
 
-    // ✅ Fix: Use time and endTime directly from form (preserve exact values)
-    // Convert date to ISO string (date only, no time component)
-    const eventDate = new Date(date + "T00:00:00"); // Add midnight to avoid timezone issues
-    const eventDateISO = eventDate.toISOString().split("T")[0] + "T00:00:00.000Z";
+    // ✅ Fix: Combine date and time into a single ISO 8601 string
+    const eventStartDateTime = new Date(`${date}T${time}`);
+    const eventDateISO = eventStartDateTime.toISOString();
 
     // Handle endDate if provided
     let eventEndDateISO = null;
-    if (endDate) {
-      const eventEndDate = new Date(endDate + "T00:00:00");
-      eventEndDateISO = eventEndDate.toISOString().split("T")[0] + "T00:00:00.000Z";
+    if (endDate && endTime) {
+      const eventEndDateTime = new Date(`${endDate}T${endTime}`);
+      eventEndDateISO = eventEndDateTime.toISOString();
+    } else if (endDate) {
+      // If only endDate is provided, use the same time as the start time
+      const eventEndDateTime = new Date(`${endDate}T${time}`);
+      eventEndDateISO = eventEndDateTime.toISOString();
     }
 
     // Prepare event data
+    const now = new Date();
+    const datePart = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
+    const timePart = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }).format(now);
+    const nowIstIso = `${datePart}T${timePart}+05:30`;
     const eventData = {
       id: crypto.randomUUID(), // Generate unique ID
       title,
@@ -279,6 +287,7 @@ export async function POST(request) {
       time: time || "00:00", // ✅ Use time directly from form (HH:MM format)
       price: parseFloat(ticketPrice) || 0,
       capacity: parseInt(maxAttendees) || 100,
+      max_tickets_per_user: max_tickets_per_user,
       imageUrl,
       organizerId,
       organizerName,
@@ -286,8 +295,8 @@ export async function POST(request) {
       organizerPhone,
       featured: featured || false,
       status: "UPCOMING",
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      createdAt: nowIstIso,
+      updatedAt: nowIstIso,
     };
 
     // Add endDate and endTime if provided - use lowercase to match PostgreSQL column name

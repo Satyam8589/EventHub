@@ -19,6 +19,7 @@ export default function EventsPage() {
   const [showLogin, setShowLogin] = useState(false);
   const [showSignup, setShowSignup] = useState(false);
   const [particles, setParticles] = useState([]);
+  const [refreshToken, setRefreshToken] = useState(0);
 
   const { user, loading: authLoading } = useAuth();
 
@@ -99,7 +100,7 @@ export default function EventsPage() {
     };
 
     fetchEvents();
-  }, []);
+  }, [refreshToken]);
 
   // Helper function to check if an event is still active (not expired)
   const isEventActive = (event) => {
@@ -288,7 +289,7 @@ export default function EventsPage() {
 
           {/* Search and Filters */}
           <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 sm:p-6 border border-white/20">
-            <div className="flex flex-col gap-3 sm:gap-4">
+            <div className="flex flex-row flex-wrap gap-2 sm:gap-4">
               {/* Search Bar */}
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -299,7 +300,7 @@ export default function EventsPage() {
                   placeholder="Search events..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="block w-full pl-10 pr-4 py-3 border border-white/20 rounded-lg bg-white/10 backdrop-blur-md text-white placeholder-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm sm:text-base"
+                  className="block w-full pl-10 pr-4 py-2 sm:py-3 border border-white/20 rounded-lg bg-white/10 backdrop-blur-md text-white placeholder-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-xs sm:text-base"
                 />
               </div>
 
@@ -309,7 +310,7 @@ export default function EventsPage() {
                 <select
                   value={selectedCategory}
                   onChange={(e) => setSelectedCategory(e.target.value)}
-                  className="flex-1 px-4 py-3 border border-white/20 rounded-lg bg-white/10 backdrop-blur-md text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm sm:text-base"
+                  className="w-1/2 sm:flex-1 px-3 sm:px-4 py-2 sm:py-3 border border-white/20 rounded-lg bg-white/10 backdrop-blur-md text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-xs sm:text-base"
                 >
                   {categories.map((category) => (
                     <option
@@ -327,7 +328,7 @@ export default function EventsPage() {
                   type="date"
                   value={selectedDate}
                   onChange={(e) => setSelectedDate(e.target.value)}
-                  className="flex-1 px-4 py-3 border border-white/20 rounded-lg bg-white/10 backdrop-blur-md text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm sm:text-base"
+                  className="w-1/2 sm:flex-1 px-3 sm:px-4 py-2 sm:py-3 border border-white/20 rounded-lg bg-white/10 backdrop-blur-md text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-xs sm:text-base"
                 />
               </div>
 
@@ -353,9 +354,13 @@ export default function EventsPage() {
               {filteredEvents.length} Events Found
             </span>
           </p>
-          <button className="flex items-center gap-2 text-gray-300 hover:text-white transition-colors text-sm sm:text-base">
-            <span>⚙️</span>
-            <span>More Filters</span>
+          <button
+            onClick={() => setRefreshToken(Date.now())}
+            className="flex items-center gap-2 px-3 py-2 bg-white/10 text-white rounded-lg border border-white/20 hover:bg-white/20 transition-colors text-sm sm:text-base"
+            disabled={loading}
+          >
+            <span className="text-lg">⟳</span>
+            <span>Refresh</span>
           </button>
         </div>
 

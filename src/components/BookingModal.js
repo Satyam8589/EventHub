@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/lib/supabase";
 import RazorpayPayment from "./RazorpayPayment";
 
 export default function BookingModal({ event, isOpen, onClose, onBookingSuccess }) {
@@ -20,6 +21,8 @@ export default function BookingModal({ event, isOpen, onClose, onBookingSuccess 
   const [paymentStep, setPaymentStep] = useState("form");
   const [orderData, setOrderData] = useState(null);
   const [errorMessage, setErrorMessage] = useState("");
+  const [userTotalTickets, setUserTotalTickets] = useState(0);
+  const [loadingBookings, setLoadingBookings] = useState(false);
 
   // Fetch user details from backend when modal opens
   useEffect(() => {
@@ -29,30 +32,29 @@ export default function BookingModal({ event, isOpen, onClose, onBookingSuccess 
       setLoadingUserData(true);
       try {
         const response = await fetch(`/api/user/${user.uid}`);
-        
         if (response.ok) {
-          const userData = await response.json();
+          const json = await response.json();
+          const u = json.user || {};
           setFormData((prev) => ({
             ...prev,
-            fullName: userData.fullName || userData.displayName || "",
-            email: userData.email || "",
-            phoneNumber: userData.phoneNumber || prev.phoneNumber,
+            fullName: u.name || user?.displayName || user?.email?.split("@")[0] || "",
+            email: u.email || user?.email || "",
+            phoneNumber: u.phone || prev.phoneNumber || user?.dbUser?.phone || "",
           }));
         } else {
-          // Fallback to auth context data if API fails
           setFormData((prev) => ({
             ...prev,
-            fullName: user?.displayName || user?.email?.split("@")[0] || "",
-            email: user?.email || "",
+            fullName: user?.dbUser?.name || user?.displayName || user?.email?.split("@")[0] || "",
+            email: user?.dbUser?.email || user?.email || "",
+            phoneNumber: user?.dbUser?.phone || prev.phoneNumber || "",
           }));
         }
       } catch (error) {
-        console.error("Failed to fetch user details:", error);
-        // Fallback to auth context data
         setFormData((prev) => ({
           ...prev,
-          fullName: user?.displayName || user?.email?.split("@")[0] || "",
-          email: user?.email || "",
+          fullName: user?.dbUser?.name || user?.displayName || user?.email?.split("@")[0] || "",
+          email: user?.dbUser?.email || user?.email || "",
+          phoneNumber: user?.dbUser?.phone || prev.phoneNumber || "",
         }));
       } finally {
         setLoadingUserData(false);
@@ -62,11 +64,45 @@ export default function BookingModal({ event, isOpen, onClose, onBookingSuccess 
     fetchUserDetails();
   }, [isOpen, user]);
 
+  useEffect(() => {
+    const fetchUserBookings = async () => {
+      if (!isOpen || !user?.uid || !event?.id) return;
+      setLoadingBookings(true);
+      const { data, error } = await supabase
+        .from("bookings")
+        .select("tickets,status")
+        .eq("eventId", event.id)
+        .eq("userId", user.uid)
+        .eq("status", "CONFIRMED");
+      if (!error && Array.isArray(data)) {
+        const totalTickets = data.reduce((sum, b) => sum + (b.tickets || 0), 0);
+        setUserTotalTickets(totalTickets);
+        const maxPerUser = event?.max_tickets_per_user && event.max_tickets_per_user > 0 ? event.max_tickets_per_user : null;
+        const remaining = maxPerUser ? Math.max(maxPerUser - totalTickets, 0) : null;
+        if (remaining !== null && formData.numberOfTickets > Math.max(1, remaining)) {
+          setFormData((prev) => ({ ...prev, numberOfTickets: Math.max(1, remaining) }));
+        }
+      }
+      setLoadingBookings(false);
+    };
+    fetchUserBookings();
+  }, [isOpen, user?.uid, event?.id]);
+
   // Check if event is sold out
   const registered = event?.registered || event?._count?.bookings || 0;
   const capacity = event?.capacity || 0;
   const spotsLeft = Math.max(capacity - registered, 0);
   const isSoldOut = capacity > 0 && spotsLeft === 0;
+  const hasBookingLimit = event?.max_tickets_per_user && event.max_tickets_per_user > 0;
+  const userReachedLimit = hasBookingLimit && userTotalTickets >= event.max_tickets_per_user;
+  const remainingUserLimit = hasBookingLimit ? Math.max(event.max_tickets_per_user - userTotalTickets, 0) : null;
+  const ticketOptionMax = Math.max(
+    1,
+    Math.min(
+      remainingUserLimit ?? 10,
+      capacity > 0 ? spotsLeft : remainingUserLimit ?? 10
+    )
+  );
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -102,6 +138,11 @@ export default function BookingModal({ event, isOpen, onClose, onBookingSuccess 
 
     if (!formData.fullName || !formData.email || !formData.phoneNumber) {
       setErrorMessage("Please fill in all required fields.");
+      return;
+    }
+
+    if (hasBookingLimit && remainingUserLimit !== null && formData.numberOfTickets > remainingUserLimit) {
+      setErrorMessage(`You can book up to ${remainingUserLimit} ticket${remainingUserLimit === 1 ? "" : "s"} for this event.`);
       return;
     }
 
@@ -366,9 +407,10 @@ export default function BookingModal({ event, isOpen, onClose, onBookingSuccess 
                     name="numberOfTickets"
                     value={formData.numberOfTickets}
                     onChange={handleInputChange}
+                    disabled={userReachedLimit || isSoldOut || loadingBookings}
                     className="w-full px-3 py-2.5 rounded-lg bg-gray-100/80 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-gray-800 text-sm"
                   >
-                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
+                    {Array.from({ length: ticketOptionMax }, (_, i) => i + 1).map((num) => (
                       <option key={num} value={num}>{num}</option>
                     ))}
                   </select>
@@ -398,7 +440,7 @@ export default function BookingModal({ event, isOpen, onClose, onBookingSuccess 
                 {/* Submit Button */}
                 <button
                   type="submit"
-                  disabled={loading || isSoldOut || loadingUserData}
+                  disabled={loading || isSoldOut || loadingUserData || userReachedLimit || loadingBookings}
                   className={`w-full py-3 rounded-lg font-semibold transition-all duration-300 transform shadow-lg text-sm ${
                     isSoldOut
                       ? "bg-gray-400 text-gray-200 cursor-not-allowed"

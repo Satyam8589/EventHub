@@ -1,10 +1,47 @@
 "use client";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/lib/supabase";
 
 export default function EventCard({ event }) {
+  const { user } = useAuth();
   const [imageError, setImageError] = useState(false);
   const [imageLoading, setImageLoading] = useState(true);
+  const [userTotalTickets, setUserTotalTickets] = useState(0);
+  const [loadingBookings, setLoadingBookings] = useState(true);
+
+  useEffect(() => {
+    console.log("EventCard: User or event changed:", { user, event });
+    if (user && event) {
+      const fetchUserBookings = async () => {
+        console.log("EventCard: Fetching user bookings...");
+        setLoadingBookings(true);
+        const { data, error } = await supabase
+          .from("bookings")
+          .select("tickets")
+          .eq("eventId", event.id)
+          .eq("userId", user.uid)
+          .eq("status", "CONFIRMED");
+
+        if (error) {
+          console.error("EventCard: Error fetching user bookings:", error);
+        } else {
+          const totalTickets = data.reduce(
+            (sum, booking) => sum + booking.tickets,
+            0
+          );
+          console.log("EventCard: User total tickets:", totalTickets);
+          setUserTotalTickets(totalTickets);
+        }
+        setLoadingBookings(false);
+      };
+
+      fetchUserBookings();
+    } else {
+      setLoadingBookings(false);
+    }
+  }, [user, event]);
 
   // Check if event is expired
   const isExpired = event.isExpired || false;
@@ -66,6 +103,23 @@ export default function EventCard({ event }) {
 
   // Check if event is sold out
   const isSoldOut = capacity > 0 && spotsLeft === 0;
+  const startDate = event?.date ? new Date(event.date) : null;
+  const rawEnd = event?.endDate || event?.enddate || null;
+  const endDate = rawEnd ? new Date(rawEnd) : startDate ? new Date(startDate.getTime() + 24 * 60 * 60 * 1000) : null;
+  const now = new Date();
+  const isUpcoming = startDate && now < startDate;
+  const isOngoing = startDate && endDate && now >= startDate && now <= endDate;
+  const statusBadge = isOngoing
+    ? { text: "ONGOING", classes: "from-green-500 to-emerald-600 border-green-300/50" }
+    : isUpcoming
+    ? { text: "UPCOMING", classes: "from-blue-500 to-cyan-600 border-blue-300/50" }
+    : null;
+  const statusTopClass = event.featured ? "top-14" : "top-3";
+
+  const hasBookingLimit =
+    event.max_tickets_per_user && event.max_tickets_per_user > 0;
+  const userReachedLimit =
+    hasBookingLimit && userTotalTickets >= event.max_tickets_per_user;
 
   // Debug logging for image URL
   if (process.env.NODE_ENV === "development") {
@@ -157,6 +211,11 @@ export default function EventCard({ event }) {
       } ${isExpired ? "opacity-75 grayscale-[0.3]" : ""}`}
     >
       {/* Featured Badge */}
+      {statusBadge && (
+        <div className={`absolute ${statusTopClass} right-3 z-30 bg-linear-to-r ${statusBadge.classes} text-white px-3 py-1.5 rounded-full text-xs font-bold shadow-lg border`}>
+          <span className="tracking-wide">{statusBadge.text}</span>
+        </div>
+      )}
       {event.featured && (
         <div className="absolute top-3 right-3 z-20 bg-linear-to-r from-amber-400 via-yellow-500 to-amber-600 text-white px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 shadow-lg border border-yellow-300/50 animate-pulse">
           <span className="text-sm">⭐</span>

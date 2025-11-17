@@ -117,6 +117,10 @@ export async function GET(request) {
 // POST /api/bookings - Create a new booking
 export async function POST(request) {
   try {
+    const now = new Date();
+    const datePart = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
+    const timePart = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }).format(now);
+    const nowIstIso = `${datePart}T${timePart}+05:30`;
     const body = await request.json();
     const {
       userId,
@@ -144,6 +148,34 @@ export async function POST(request) {
 
     if (eventError || !event) {
       return NextResponse.json({ error: "Event not found" }, { status: 404 });
+    }
+
+    // Check max tickets per user
+    if (event.max_tickets_per_user && event.max_tickets_per_user > 0) {
+      const { data: userBookings, error: userBookingsError } = await supabase
+        .from("bookings")
+        .select("tickets")
+        .eq("eventId", eventId)
+        .eq("userId", userId)
+        .eq("status", "CONFIRMED");
+
+      if (userBookingsError) {
+        throw userBookingsError;
+      }
+
+      const userTotalTickets = userBookings.reduce(
+        (sum, booking) => sum + booking.tickets,
+        0
+      );
+
+      if (userTotalTickets + tickets > event.max_tickets_per_user) {
+        return NextResponse.json(
+          {
+            error: `You can only book a maximum of ${event.max_tickets_per_user} tickets for this event.`,
+          },
+          { status: 400 }
+        );
+      }
     }
 
     // Calculate current bookings
@@ -179,9 +211,9 @@ export async function POST(request) {
           tickets: parseInt(tickets),
           totalAmount: parseFloat(totalAmount),
           paymentMethod,
-          status: "CONFIRMED", // For now, we'll auto-confirm bookings
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
+          status: "CONFIRMED",
+          createdAt: nowIstIso,
+          updatedAt: nowIstIso,
         },
       ])
       .select("*")
@@ -200,7 +232,7 @@ export async function POST(request) {
       if (userDetails.name) updateData.name = userDetails.name;
       if (userDetails.phone) updateData.phone = userDetails.phone;
       if (userDetails.phoneNumber) updateData.phone = userDetails.phoneNumber; // Handle frontend phoneNumber field
-      updateData.updatedAt = new Date().toISOString();
+      updateData.updatedAt = nowIstIso;
       const { error: userUpdateError } = await supabase
         .from("users")
         .update(updateData)

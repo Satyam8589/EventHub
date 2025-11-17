@@ -56,12 +56,18 @@ export async function POST(request) {
       .digest("hex");
     if (generatedSignature !== razorpay_signature) {
       // Mark booking as failed
+      const nowIstIso = (() => {
+        const now = new Date();
+        const datePart = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
+        const timePart = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }).format(now);
+        return `${datePart}T${timePart}+05:30`;
+      })();
       await supabase
         .from("bookings")
         .update({
           status: "FAILED",
           failureReason: "Payment signature verification failed",
-          updatedAt: new Date().toISOString(),
+          updatedAt: nowIstIso,
         })
         .eq("id", bookingId);
 
@@ -205,12 +211,18 @@ export async function POST(request) {
     // Try to mark booking as failed if we have bookingId
     if (body?.bookingId) {
       try {
+        const nowIstIso = (() => {
+          const now = new Date();
+          const datePart = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
+          const timePart = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }).format(now);
+          return `${datePart}T${timePart}+05:30`;
+        })();
         await supabase
           .from("bookings")
           .update({
             status: "FAILED",
             failureReason: error.message || "Unknown error",
-            updatedAt: new Date().toISOString(),
+            updatedAt: nowIstIso,
           })
           .eq("id", body.bookingId);
       } catch (updateError) {
