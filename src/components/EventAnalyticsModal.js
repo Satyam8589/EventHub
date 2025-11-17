@@ -16,6 +16,7 @@ export default function EventAnalyticsModal({ eventId, isOpen, onClose }) {
   const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [bookingStatusFilter, setBookingStatusFilter] = useState("ALL");
 
   useEffect(() => {
     if (isOpen && eventId) {
@@ -288,73 +289,90 @@ export default function EventAnalyticsModal({ eventId, isOpen, onClose }) {
                 )}
               </div>
 
-              {/* Recent Bookings */}
+              {/* Bookings */}
               <div className="bg-white/5 rounded-xl p-4">
-                <h3 className="text-lg font-semibold text-white mb-4">
-                  Recent Bookings
-                </h3>
+                <h3 className="text-lg font-semibold text-white mb-4">Bookings</h3>
+                <div className="flex items-center gap-2 mb-4">
+                  <button
+                    onClick={() => setBookingStatusFilter("ALL")}
+                    className={`px-3 py-1 rounded-lg text-sm border ${bookingStatusFilter === "ALL" ? "bg-white/10 border-white/20 text-white" : "bg-white/5 border-white/10 text-white/70"}`}
+                  >
+                    All ({analytics.summary.totalBookings})
+                  </button>
+                  <button
+                    onClick={() => setBookingStatusFilter("CONFIRMED")}
+                    className={`px-3 py-1 rounded-lg text-sm border ${bookingStatusFilter === "CONFIRMED" ? "bg-white/10 border-white/20 text-white" : "bg-white/5 border-white/10 text-white/70"}`}
+                  >
+                    Confirmed ({analytics.summary.confirmedBookings})
+                  </button>
+                  <button
+                    onClick={() => setBookingStatusFilter("PENDING")}
+                    className={`px-3 py-1 rounded-lg text-sm border ${bookingStatusFilter === "PENDING" ? "bg-white/10 border-white/20 text-white" : "bg-white/5 border-white/10 text-white/70"}`}
+                  >
+                    Pending ({analytics.summary.pendingBookings})
+                  </button>
+                  <button
+                    onClick={() => setBookingStatusFilter("FAILED")}
+                    className={`px-3 py-1 rounded-lg text-sm border ${bookingStatusFilter === "FAILED" ? "bg-white/10 border-white/20 text-white" : "bg-white/5 border-white/10 text-white/70"}`}
+                  >
+                    Failed ({analytics.summary.failedBookings})
+                  </button>
+                </div>
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead>
                       <tr className="border-b border-white/10">
-                        <th className="text-left text-white/60 pb-2">
-                          Customer
-                        </th>
-                        <th className="text-left text-white/60 pb-2">
-                          Contact
-                        </th>
+                        <th className="text-left text-white/60 pb-2">Customer</th>
+                        <th className="text-left text-white/60 pb-2">Contact</th>
                         <th className="text-left text-white/60 pb-2">Amount</th>
-                        <th className="text-left text-white/60 pb-2">
-                          Tickets
-                        </th>
+                        <th className="text-left text-white/60 pb-2">Tickets</th>
                         <th className="text-left text-white/60 pb-2">Status</th>
                         <th className="text-left text-white/60 pb-2">Date</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {analytics.recentBookings.map((booking) => (
-                        <tr
-                          key={booking.id}
-                          className="border-b border-white/5"
-                        >
-                          <td className="py-3 text-white">
-                            {booking.userName}
-                          </td>
-                          <td className="py-3 text-white/60 text-sm">
-                            <div>{booking.userEmail}</div>
-                            {booking.userPhone && (
-                              <div className="text-white/40">
-                                {booking.userPhone}
-                              </div>
-                            )}
-                          </td>
-                          <td className="py-3 text-white font-medium">
-                            {formatCurrency(booking.amount)}
-                          </td>
-                          <td className="py-3 text-white">
-                            {booking.ticketCount}
-                          </td>
-                          <td className="py-3">
-                            <span
-                              className={`px-2 py-1 rounded-full text-xs ${getStatusColor(
-                                booking.status
-                              )}`}
-                            >
-                              {booking.status}
-                            </span>
-                          </td>
-                          <td className="py-3 text-white/60 text-sm">
-                            {formatDate(booking.createdAt)}
-                          </td>
-                        </tr>
-                      ))}
+                      {(() => {
+                        const src = analytics.allBookings && analytics.allBookings.length > 0 ? analytics.allBookings : analytics.recentBookings;
+                        const filtered = bookingStatusFilter === "ALL" ? src : src.filter((b) => b.status === bookingStatusFilter);
+                        return filtered.map((booking) => (
+                          <tr key={booking.id} className="border-b border-white/5">
+                            <td className="py-3 text-white">
+                              {booking.userName || booking.user?.name || "Unknown"}
+                            </td>
+                            <td className="py-3 text-white/60 text-sm">
+                              <div>{booking.userEmail || booking.user?.email || "Unknown"}</div>
+                              {((booking.userPhone || booking.user?.phone)) && (
+                                <div className="text-white/40">
+                                  {booking.userPhone || booking.user?.phone}
+                                </div>
+                              )}
+                            </td>
+                            <td className="py-3 text-white font-medium">
+                              {formatCurrency(booking.amount || booking.totalAmount)}
+                            </td>
+                            <td className="py-3 text-white">
+                              {booking.ticketCount || booking.tickets}
+                            </td>
+                            <td className="py-3">
+                              <span className={`px-2 py-1 rounded-full text-xs ${getStatusColor(booking.status)}`}>
+                                {booking.status}
+                              </span>
+                            </td>
+                            <td className="py-3 text-white/60 text-sm">
+                              {formatDate(booking.createdAt)}
+                            </td>
+                          </tr>
+                        ));
+                      })()}
                     </tbody>
                   </table>
-                  {analytics.recentBookings.length === 0 && (
-                    <div className="text-center py-8 text-white/60">
-                      No bookings found for this event
-                    </div>
-                  )}
+                  {(() => {
+                    const src = analytics.allBookings && analytics.allBookings.length > 0 ? analytics.allBookings : analytics.recentBookings;
+                    const filtered = bookingStatusFilter === "ALL" ? src : src.filter((b) => b.status === bookingStatusFilter);
+                    return filtered.length === 0 ? (
+                      <div className="text-center py-8 text-white/60">No bookings found for this event</div>
+                    ) : null;
+                  })()}
                 </div>
               </div>
             </div>

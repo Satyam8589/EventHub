@@ -382,11 +382,7 @@ export default function Page({ params }) {
               />
               <div className="absolute bottom-0 left-0 right-0 p-6 z-20">
                 <div className="flex flex-wrap gap-2">
-                  {[
-                    event.category || "Technology",
-                    "Conference",
-                    "Networking",
-                  ].map((tag, i) => (
+                  {([event.category].filter(Boolean)).map((tag, i) => (
                     <span
                       key={i}
                       className="px-3 py-1.5 rounded-lg bg-white/10 backdrop-blur-md text-white text-sm font-medium border border-white/20"
@@ -453,34 +449,25 @@ export default function Page({ params }) {
                       What You'll Experience
                     </h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {[
-                        {
-                          icon: "🎤",
-                          title: "Keynote Speeches",
-                          desc: "Industry leaders sharing insights",
-                        },
-                        {
-                          icon: "🛠️",
-                          title: "Workshops",
-                          desc: "Hands-on learning sessions",
-                        },
-                        {
-                          icon: "🤝",
-                          title: "Networking",
-                          desc: "Connect with professionals",
-                        },
-                        {
-                          icon: "🚀",
-                          title: "Product Launches",
-                          desc: "Latest tech innovations",
-                        },
-                      ].map((item, i) => (
+                      {(
+                        (() => {
+                          const highlights = event.experienceHighlights || event.experience_highlights || event.experiencehighlights;
+                          return Array.isArray(highlights) && highlights.length > 0
+                            ? highlights
+                            : [
+                                { icon: "🎤", title: "Keynote Speeches", desc: "Industry leaders sharing insights" },
+                                { icon: "🛠️", title: "Workshops", desc: "Hands-on learning sessions" },
+                                { icon: "🤝", title: "Networking", desc: "Connect with professionals" },
+                                { icon: "🚀", title: "Product Launches", desc: "Latest tech innovations" },
+                              ];
+                        })()
+                      ).map((item, i) => (
                         <div
                           key={i}
                           className="flex items-start gap-4 p-5 rounded-xl bg-white/5 border border-white/10 hover:border-blue-500/30 hover:bg-white/10 transition-all group"
                         >
                           <div className="text-3xl group-hover:scale-110 transition-transform">
-                            {item.icon}
+                            {item.icon || ""}
                           </div>
                           <div>
                             <div className="font-semibold text-white mb-1">

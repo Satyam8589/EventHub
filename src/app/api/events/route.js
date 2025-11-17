@@ -277,14 +277,14 @@ export async function POST(request) {
     const timePart = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }).format(now);
     const nowIstIso = `${datePart}T${timePart}+05:30`;
     const eventData = {
-      id: crypto.randomUUID(), // Generate unique ID
+      id: crypto.randomUUID(),
       title,
       description,
       category,
       location,
       venue,
-      date: eventDateISO, // Date with time set to midnight UTC
-      time: time || "00:00", // ✅ Use time directly from form (HH:MM format)
+      date: eventDateISO,
+      time: time || "00:00",
       price: parseFloat(ticketPrice) || 0,
       capacity: parseInt(maxAttendees) || 100,
       max_tickets_per_user: max_tickets_per_user,
@@ -297,6 +297,7 @@ export async function POST(request) {
       status: "UPCOMING",
       createdAt: nowIstIso,
       updatedAt: nowIstIso,
+      experienceHighlights: body.experienceHighlights || null,
     };
 
     // Add endDate and endTime if provided - use lowercase to match PostgreSQL column name
@@ -313,24 +314,53 @@ export async function POST(request) {
       .select("*")
       .single();
 
-    // If endDate column doesn't exist, retry without endDate
+    // Handle missing columns gracefully
     if (
       createError &&
-      createError.code === "PGRST204" &&
-      (createError.message.includes("endDate") ||
-        createError.message.includes("enddate"))
+      createError.code === "PGRST204"
     ) {
-      // Remove endDate from event data
-      const { enddate: _, endDate: __, ...eventDataWithoutEndDate } = eventData;
+      if (createError.message.includes("experienceHighlights")) {
+        const { experienceHighlights, ...rest } = eventData;
+        // Try snake_case
+        const eventDataSnake = { ...rest, experience_highlights: experienceHighlights };
+        let { data: retryEventSnake, error: retryErrSnake } = await supabase
+          .from("events")
+          .insert([eventDataSnake])
+          .select("*")
+          .single();
+        event = retryEventSnake;
+        createError = retryErrSnake;
+        // If still missing, try lowercase
+        if (createError && createError.code === "PGRST204" && createError.message.includes("experience_highlights")) {
+          const eventDataLower = { ...rest, experiencehighlights: experienceHighlights };
+          const { data: retryEventLower, error: retryErrLower } = await supabase
+            .from("events")
+            .insert([eventDataLower])
+            .select("*")
+            .single();
+          event = retryEventLower;
+          createError = retryErrLower;
+        }
+      }
 
-      const { data: retryEvent, error: retryCreateError } = await supabase
-        .from("events")
-        .insert([eventDataWithoutEndDate])
-        .select("*")
-        .single();
-
-      event = retryEvent;
-      createError = retryCreateError;
+      if (
+        createError &&
+        createError.code === "PGRST204" &&
+        (createError.message.includes("endDate") ||
+          createError.message.includes("enddate") ||
+          createError.message.includes("experienceHighlights") ||
+          createError.message.includes("experience_highlights") ||
+          createError.message.includes("experiencehighlights"))
+      ) {
+        const { enddate: _, endDate: __, experienceHighlights: ___, experience_highlights: ____, ...eventDataWithoutOptional } = eventData;
+        const { data: retryEvent, error: retryCreateError } = await supabase
+          .from("events")
+          .insert([eventDataWithoutOptional])
+          .select("*")
+          .single();
+        event = retryEvent;
+        createError = retryCreateError;
+      }
     }
 
     if (createError) {

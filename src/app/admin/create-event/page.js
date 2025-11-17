@@ -101,10 +101,10 @@ export default function CreateEvent() {
         title: formData.title,
         description: formData.description,
         category: formData.category,
-        date: formData.date, // Send date as-is (YYYY-MM-DD)
-        endDate: formData.endDate || null, // Send endDate as-is (YYYY-MM-DD)
-        time: formData.time, // ✅ Send time as-is (HH:MM) - preserve exact value
-        endTime: formData.endTime || null, // ✅ Send endTime as-is (HH:MM) - preserve exact value
+        date: formData.date,
+        endDate: formData.endDate || null,
+        time: formData.time,
+        endTime: formData.endTime || null,
         location: formData.location,
         venue: formData.venue,
         maxAttendees: parseInt(formData.maxAttendees),
@@ -118,6 +118,13 @@ export default function CreateEvent() {
         organizerPhone: formData.organizerPhone || null,
         featured: formData.featured,
         imageUrl: finalImageUrl,
+        experienceHighlights: (formData.experienceHighlightsRaw || "")
+          .split("\n")
+          .map((l) => {
+            const [title, desc] = l.split(" - ");
+            return { title: (title || "").trim(), desc: (desc || "").trim() };
+          })
+          .filter((h) => h.title),
       };
 
       const response = await fetch("/api/events", {
@@ -274,6 +281,18 @@ export default function CreateEvent() {
               />
             </div>
 
+            <div className="space-y-2">
+              <label className="block text-white font-medium">What You'll Experience</label>
+              <textarea
+                name="experienceHighlightsRaw"
+                value={formData.experienceHighlightsRaw || ""}
+                onChange={handleInputChange}
+                rows={3}
+                className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-xl text-white placeholder-white/60 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                placeholder="🎤 Keynote Speeches - Industry leaders sharing insights"
+              />
+            </div>
+
             {/* Category and Time Row */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="space-y-2">
@@ -285,7 +304,7 @@ export default function CreateEvent() {
                   value={formData.category}
                   onChange={handleInputChange}
                   required
-                  className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-xl text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  className="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl text-black focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                 >
                   <option value="CONFERENCE">Conference</option>
                   <option value="WORKSHOP">Workshop</option>
@@ -296,6 +315,20 @@ export default function CreateEvent() {
                   <option value="CULTURAL">Cultural</option>
                   <option value="EDUCATIONAL">Educational</option>
                   <option value="CHARITY">Charity</option>
+                  <option value="WEBINAR">Webinar</option>
+                  <option value="MEETUP">Meetup</option>
+                  <option value="HACKATHON">Hackathon</option>
+                  <option value="EXHIBITION">Exhibition</option>
+                  <option value="CONCERT">Concert</option>
+                  <option value="FESTIVAL">Festival</option>
+                  <option value="COMPETITION">Competition</option>
+                  <option value="SUMMIT">Summit</option>
+                  <option value="PANEL">Panel</option>
+                  <option value="TRAINING">Training</option>
+                  <option value="BOOTCAMP">Bootcamp</option>
+                  <option value="STARTUP_PITCH">Startup Pitch</option>
+                  <option value="FUNDRAISER">Fundraiser</option>
+                  <option value="GAMING">Gaming</option>
                   <option value="OTHER">Other</option>
                 </select>
               </div>

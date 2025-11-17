@@ -74,6 +74,7 @@ export async function PUT(request, { params }) {
       organizerEmail,
       organizerPhone,
       gallery,
+      experienceHighlights,
     } = body;
 
     // ✅ Fix: Use time and endTime directly from form (preserve exact values)
@@ -88,15 +89,15 @@ export async function PUT(request, { params }) {
       eventEndDateISO = eventEndDate.toISOString().split("T")[0] + "T00:00:00.000Z";
     }
 
-    // Try to update with endDate first, fall back without it if column doesn't exist
+    // Try to update with provided fields
     let updateData = {
       title,
       description,
       category,
       location,
       venue,
-      date: eventDateISO, // Date with time set to midnight UTC
-      time: time || "00:00", // ✅ Use time directly from form (HH:MM format)
+      date: eventDateISO,
+      time: time || "00:00",
       capacity: parseInt(capacity),
       price: parseFloat(price),
       featured: featured || false,
@@ -104,6 +105,7 @@ export async function PUT(request, { params }) {
       organizerEmail,
       organizerPhone,
       gallery: gallery || "",
+      experienceHighlights: experienceHighlights || null,
     };
 
     // Add endDate and endTime if provided - use lowercase to match PostgreSQL column name
@@ -121,37 +123,63 @@ export async function PUT(request, { params }) {
       .select()
       .single();
 
-    // If endDate or endTime columns don't exist, retry without them
-    if (
-      updateError &&
-      updateError.code === "PGRST204" &&
-      (updateError.message.includes("endDate") ||
-        updateError.message.includes("enddate") ||
-        updateError.message.includes("endTime") ||
-        updateError.message.includes("endtime"))
-    ) {
-      console.warn(
-        "endDate or endTime column doesn't exist in database, updating without them"
-      );
+    // Handle missing columns by retrying with snake_case, then without optional fields
+    if (updateError && updateError.code === "PGRST204") {
+      if (updateError.message.includes("experienceHighlights")) {
+        const { experienceHighlights, ...rest } = updateData;
+        // Try snake_case first
+        const updateDataSnake = { ...rest, experience_highlights: experienceHighlights };
+        let { data: retryUpdatedEventSnake, error: retryUpdateErrorSnake } = await supabase
+          .from("events")
+          .update(updateDataSnake)
+          .eq("id", id)
+          .select()
+          .single();
+        updatedEvent = retryUpdatedEventSnake;
+        updateError = retryUpdateErrorSnake;
+        // If still missing, try lowercase
+        if (updateError && updateError.code === "PGRST204" && updateError.message.includes("experience_highlights")) {
+          const updateDataLower = { ...rest, experiencehighlights: experienceHighlights };
+          const { data: retryUpdatedEventLower, error: retryUpdateErrorLower } = await supabase
+            .from("events")
+            .update(updateDataLower)
+            .eq("id", id)
+            .select()
+            .single();
+          updatedEvent = retryUpdatedEventLower;
+          updateError = retryUpdateErrorLower;
+        }
+      }
 
-      // Remove endDate and endTime from update data
-      const {
-        enddate: _,
-        endDate: __,
-        endtime: ___,
-        ...updateDataWithoutOptionalFields
-      } = updateData;
-
-      const { data: retryUpdatedEvent, error: retryUpdateError } =
-        await supabase
+      if (
+        updateError &&
+        updateError.code === "PGRST204" &&
+        (updateError.message.includes("endDate") ||
+          updateError.message.includes("enddate") ||
+          updateError.message.includes("endTime") ||
+          updateError.message.includes("endtime") ||
+          updateError.message.includes("experienceHighlights") ||
+          updateError.message.includes("experience_highlights") ||
+          updateError.message.includes("experiencehighlights"))
+      ) {
+        const {
+          enddate: _,
+          endDate: __,
+          endtime: ___,
+          experienceHighlights: ____,
+          experience_highlights: _____,
+          experiencehighlights: ______,
+          ...updateDataWithoutOptionalFields
+        } = updateData;
+        const { data: retryUpdatedEvent, error: retryUpdateError } = await supabase
           .from("events")
           .update(updateDataWithoutOptionalFields)
           .eq("id", id)
           .select()
           .single();
-
-      updatedEvent = retryUpdatedEvent;
-      updateError = retryUpdateError;
+        updatedEvent = retryUpdatedEvent;
+        updateError = retryUpdateError;
+      }
     }
 
     if (updateError) {

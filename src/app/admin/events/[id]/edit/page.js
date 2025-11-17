@@ -25,6 +25,7 @@ export default function EditEventPage() {
     organizerName: "",
     organizerEmail: "",
     organizerPhone: "",
+    experienceHighlightsRaw: "",
   });
 
   // Gallery state
@@ -90,7 +91,7 @@ export default function EditEventPage() {
         date: eventDate.toISOString().split("T")[0],
         endDate: eventEndDate ? eventEndDate.toISOString().split("T")[0] : "",
         time: data.event.time || "",
-        endTime: data.event.endTime || data.event.endtime || "", // Handle both camelCase and lowercase
+        endTime: data.event.endTime || data.event.endtime || "",
         location: data.event.location || "",
         venue: data.event.venue || "",
         capacity: data.event.capacity || "",
@@ -99,6 +100,12 @@ export default function EditEventPage() {
         organizerName: data.event.organizerName || "",
         organizerEmail: data.event.organizerEmail || "",
         organizerPhone: data.event.organizerPhone || "",
+        experienceHighlightsRaw: (() => {
+          const highlights = data.event.experienceHighlights || data.event.experience_highlights || data.event.experiencehighlights;
+          return Array.isArray(highlights)
+            ? highlights.map((h) => `${h.title}${h.desc ? " - " + h.desc : ""}`).join("\n")
+            : "";
+        })(),
       });
 
       // Set gallery and discounts
@@ -239,15 +246,23 @@ export default function EditEventPage() {
 
       // ✅ Fix: Send date and time separately to preserve exact time values
       // Don't combine them into Date object to avoid timezone conversion issues
+      const parsedHighlights = (formData.experienceHighlightsRaw || "")
+        .split("\n")
+        .map((l) => {
+          const [title, desc] = l.split(" - ");
+          return { title: (title || "").trim(), desc: (desc || "").trim() };
+        })
+        .filter((h) => h.title);
       const eventData = {
         ...formData,
-        date: formData.date, // Send date as-is (YYYY-MM-DD)
-        endDate: formData.endDate || null, // Send endDate as-is (YYYY-MM-DD)
-        time: formData.time, // ✅ Send time as-is (HH:MM) - preserve exact value
-        endTime: formData.endTime || null, // ✅ Send endTime as-is (HH:MM) - preserve exact value
+        date: formData.date,
+        endDate: formData.endDate || null,
+        time: formData.time,
+        endTime: formData.endTime || null,
         capacity: parseInt(formData.capacity),
         price: parseFloat(formData.price),
         gallery: gallery,
+        experienceHighlights: parsedHighlights,
       };
 
       const response = await fetch(`/api/admin/events/${params.id}`, {
@@ -391,6 +406,18 @@ export default function EditEventPage() {
                 />
               </div>
 
+              <div className="space-y-2">
+                <label className="block text-white font-medium">What You'll Experience</label>
+                <textarea
+                  name="experienceHighlightsRaw"
+                  value={formData.experienceHighlightsRaw}
+                  onChange={handleInputChange}
+                  rows={3}
+                  className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-xl text-white placeholder-white/60 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  placeholder="🎤 Keynote Speeches - Industry leaders sharing insights"
+                />
+              </div>
+
               {/* Category and Featured */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
@@ -402,7 +429,7 @@ export default function EditEventPage() {
                     value={formData.category}
                     onChange={handleInputChange}
                     required
-                    className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-xl text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    className="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl text-black focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                   >
                     <option value="CONFERENCE">Conference</option>
                     <option value="WORKSHOP">Workshop</option>
@@ -413,6 +440,20 @@ export default function EditEventPage() {
                     <option value="CULTURAL">Cultural</option>
                     <option value="EDUCATIONAL">Educational</option>
                     <option value="CHARITY">Charity</option>
+                    <option value="WEBINAR">Webinar</option>
+                    <option value="MEETUP">Meetup</option>
+                    <option value="HACKATHON">Hackathon</option>
+                    <option value="EXHIBITION">Exhibition</option>
+                    <option value="CONCERT">Concert</option>
+                    <option value="FESTIVAL">Festival</option>
+                    <option value="COMPETITION">Competition</option>
+                    <option value="SUMMIT">Summit</option>
+                    <option value="PANEL">Panel</option>
+                    <option value="TRAINING">Training</option>
+                    <option value="BOOTCAMP">Bootcamp</option>
+                    <option value="STARTUP_PITCH">Startup Pitch</option>
+                    <option value="FUNDRAISER">Fundraiser</option>
+                    <option value="GAMING">Gaming</option>
                     <option value="OTHER">Other</option>
                   </select>
                 </div>

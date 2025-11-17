@@ -8,6 +8,20 @@ export default function VerificationSuccessPopup({
   autoCloseDelay = 5000,
 }) {
   const [progress, setProgress] = useState(100);
+  const formatDateTime = (value) => {
+    if (!value) return "Not set";
+    const d = new Date(value);
+    if (isNaN(d.getTime())) return "Invalid date";
+    return d.toLocaleString("en-IN", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+      timeZone: "Asia/Kolkata",
+    });
+  };
 
   useEffect(() => {
     if (!isVisible) {
@@ -92,101 +106,66 @@ export default function VerificationSuccessPopup({
             <div className="absolute inset-0 rounded-full border-4 border-green-400 animate-ping"></div>
           </div>
 
-          {/* Success message */}
           <h2 className="text-2xl font-bold text-green-400 mb-2">
-            {bookingData?.isFullyCompleted
-              ? "🎉 All Tickets Used!"
-              : "✅ Ticket Verified!"}
+            {bookingData?.isFullyCompleted ? "All Tickets Used" : "Ticket Verified"}
           </h2>
           <p className="text-green-200 mb-6">
             {bookingData?.isFullyCompleted
-              ? "Booking completed! Thank you for visiting throughout the event!"
+              ? "Booking marked as completed. Thank you for attending."
               : bookingData?.totalTickets > 1
-              ? `Ticket ${bookingData.ticketNumber || 1} of ${
-                  bookingData.totalTickets
-                } used. Welcome to the event!`
-              : "Welcome to the event! Entry approved."}
+              ? `Ticket ${bookingData.ticketNumber || 1} of ${bookingData.totalTickets} verified.`
+              : "Entry verified."}
           </p>
 
-          {/* Booking details */}
           {bookingData && (
             <div className="bg-black/30 rounded-lg p-4 mb-6 text-left">
-              <h3 className="text-green-300 font-semibold mb-3">
-                Booking Details:
-              </h3>
+              <h3 className="text-green-300 font-semibold mb-3">Booking Details</h3>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-green-200">Attendee:</span>
+                  <span className="text-green-200">Attendee</span>
                   <span className="text-white font-medium">
-                    {bookingData.userName}
+                    {bookingData.userName || bookingData.user?.name || "Unknown"}
                   </span>
                 </div>
-                {bookingData.userEmail && (
+                {(bookingData.userEmail || bookingData.user?.email) && (
                   <div className="flex justify-between">
-                    <span className="text-green-200">Email:</span>
-                    <span className="text-white">{bookingData.userEmail}</span>
+                    <span className="text-green-200">Email</span>
+                    <span className="text-white">{bookingData.userEmail || bookingData.user?.email}</span>
                   </div>
                 )}
                 <div className="flex justify-between">
-                  <span className="text-green-200">Event:</span>
+                  <span className="text-green-200">Event</span>
                   <span className="text-white font-medium">
-                    {bookingData.eventTitle}
+                    {bookingData.eventTitle || bookingData.event?.title || "Unknown"}
                   </span>
                 </div>
-
-                {/* Enhanced ticket information */}
                 <div className="flex justify-between">
-                  <span className="text-green-200">Total Tickets Booked:</span>
-                  <span className="text-white font-medium">
-                    {bookingData.totalTickets || bookingData.tickets || 1}
-                  </span>
+                  <span className="text-green-200">Booking ID</span>
+                  <span className="text-white">{bookingData.id}</span>
                 </div>
-
-                {/* Current ticket information */}
+                <div className="flex justify-between">
+                  <span className="text-green-200">Status</span>
+                  <span className="text-white font-medium">{bookingData.status || "CONFIRMED"}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-green-200">Total Tickets</span>
+                  <span className="text-white font-medium">{bookingData.totalTickets || bookingData.tickets || 1}</span>
+                </div>
                 {bookingData.ticketNumber && (
                   <div className="flex justify-between">
-                    <span className="text-green-200">Ticket Used Today:</span>
-                    <span className="text-white font-medium">
-                      #{bookingData.ticketNumber}
-                    </span>
+                    <span className="text-green-200">Ticket Used Today</span>
+                    <span className="text-white font-medium">#{bookingData.ticketNumber}</span>
                   </div>
                 )}
-
-                {/* Progress information */}
-                {bookingData.progressInfo && (
-                  <>
-                    <div className="flex justify-between">
-                      <span className="text-green-200">Event Day:</span>
-                      <span className="text-white">
-                        Day {bookingData.progressInfo.currentDay}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-green-200">Remaining Tickets:</span>
-                      <span className="text-white">
-                        {bookingData.progressInfo.remainingTickets}
-                      </span>
-                    </div>
-                  </>
-                )}
-
-                {/* Completion status for fully completed bookings */}
-                {bookingData.isFullyCompleted && (
+                {bookingData.progressInfo?.nextTicketAvailable && (
                   <div className="flex justify-between">
-                    <span className="text-green-200">Status:</span>
-                    <span className="text-green-400 font-medium">
-                      🎉 All Tickets Used!
-                    </span>
+                    <span className="text-green-200">Next Ticket</span>
+                    <span className="text-white">{bookingData.progressInfo.nextTicketAvailable}</span>
                   </div>
                 )}
-
                 <div className="flex justify-between">
-                  <span className="text-green-200">Verified At:</span>
-                  <span className="text-white">
-                    {new Date(
-                      bookingData.scannedAt || bookingData.verifiedAt
-                    ).toLocaleString()}
-                  </span>
+                  <span className="text-green-200">Verified At</span>
+                  <span className="text-white">{formatDateTime(bookingData.scannedAt || bookingData.verifiedAt)}</span>
                 </div>
               </div>
             </div>
@@ -202,10 +181,8 @@ export default function VerificationSuccessPopup({
             </p>
           </div>
 
-          {/* Auto-close notice */}
           <p className="text-xs text-green-300/70 mt-4">
-            This popup will close automatically in {Math.ceil(progress / 20)}{" "}
-            seconds
+            This popup will close automatically in {Math.ceil(autoCloseDelay / 1000)} seconds
           </p>
         </div>
       </div>

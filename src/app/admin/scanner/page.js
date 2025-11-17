@@ -60,8 +60,9 @@ export default function TicketScanner() {
 
   const fetchEventStatistics = async (eventId) => {
     try {
+      const scannerId = user?.dbUser?.id || user?.id || user?.uid;
       const response = await fetch(
-        `/api/admin/scan-ticket?eventId=${eventId}&scannerId=${user.uid}`
+        `/api/admin/scan-ticket?eventId=${eventId}&scannerId=${scannerId}`
       );
       if (!response.ok) throw new Error("Failed to fetch statistics");
 
@@ -93,7 +94,7 @@ export default function TicketScanner() {
         },
         body: JSON.stringify({
           bookingId: idToScan,
-          scannedBy: user.uid,
+          scannedBy: user?.dbUser?.id || user?.id || user?.uid,
           eventId: selectedEvent,
         }),
       });
