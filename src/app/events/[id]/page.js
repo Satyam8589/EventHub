@@ -758,7 +758,7 @@ export default function Page({ params }) {
                   )
                 ) : (
                   <Link
-                    href="/"
+                    href="/?login=true"
                     className="w-full inline-block text-center bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 text-white py-4 px-6 rounded-2xl font-bold text-lg hover:from-blue-700 hover:via-purple-700 hover:to-pink-700 transition-all duration-300 shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 hover:shadow-2xl hover:scale-[1.02] transform relative overflow-hidden group"
                   >
                     <span className="relative z-10 flex items-center justify-center gap-2">
