@@ -297,7 +297,7 @@ export default function AdminEvents() {
                     <div className="flex items-center gap-2 text-white/80">
                       <span className="text-blue-400">📅</span>
                       <span className="text-xs">
-                        {new Date(event.date).toLocaleDateString()} at{" "}
+                        {new Date(event.date).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })} at{" "}
                         {event.time}
                       </span>
                     </div>
@@ -421,7 +421,7 @@ export default function AdminEvents() {
                           <div className="flex items-center gap-2 text-white/80">
                             <span className="text-blue-400">📅</span>
                             <span className="text-xs">
-                              {new Date(event.date).toLocaleDateString()} at{" "}
+                              {new Date(event.date).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })} at{" "}
                               {event.time}
                             </span>
                           </div>
@@ -545,7 +545,7 @@ export default function AdminEvents() {
                           <div className="flex items-center gap-2 text-white/80">
                             <span className="text-blue-400">📅</span>
                             <span className="text-xs">
-                              {new Date(event.date).toLocaleDateString()} at{" "}
+                              {new Date(event.date).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })} at{" "}
                               {event.time}
                             </span>
                           </div>

@@ -345,11 +345,12 @@ export async function generateTicketImage(booking, event, user) {
 
     ctx.fillStyle = "#f1f5f9"; // slate-100
     ctx.font = "16px Arial";
-    const eventDate = new Date(event.date).toLocaleDateString("en-US", {
+    const eventDate = new Date(event.date).toLocaleDateString("en-IN", {
       weekday: "short",
       year: "numeric",
       month: "short",
       day: "numeric",
+      timeZone: "Asia/Kolkata",
     });
     ctx.fillText(eventDate, 80, yPosition + 60);
     if (event.time) {
@@ -524,7 +525,7 @@ export async function generateTicketImage(booking, event, user) {
       ctx.fillText(
         `Verified At: ${new Date(
           booking.paymentId.replace("SCANNED_", "")
-        ).toLocaleString()}`,
+        ).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}`,
         450,
         yPosition + 165
       );
@@ -561,7 +562,7 @@ export async function generateTicketImage(booking, event, user) {
         if (isScanned) {
           const scanInfo = getQRScanInfo(booking, 1, qrData);
           const scanDate = scanInfo
-            ? new Date(scanInfo.scannedAt).toLocaleString()
+            ? new Date(scanInfo.scannedAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })
             : "Previously";
           ctx.fillText(
             `This ticket was scanned on ${scanDate}`,
@@ -600,7 +601,7 @@ export async function generateTicketImage(booking, event, user) {
             ctx.fillStyle = "#991b1b";
             ctx.font = "14px Arial";
             ctx.fillText(
-              `Scanned: ${new Date(scanInfo.scannedAt).toLocaleString()}`,
+              `Scanned: ${new Date(scanInfo.scannedAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}`,
               450,
               yPosition + 190
             );
@@ -782,7 +783,7 @@ export async function generateTicketImage(booking, event, user) {
               ctx.fillStyle = "#991b1b";
               ctx.font = "10px Arial";
               ctx.fillText(
-                new Date(scanInfo.scannedAt).toLocaleDateString(),
+                new Date(scanInfo.scannedAt).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" }),
                 qrX + qrSize / 2,
                 qrY + qrSize / 2 + 30
               );
@@ -847,9 +848,10 @@ export async function generateTicketImage(booking, event, user) {
           ctx.fillStyle = isScanned ? "#991b1b" : "#64748b";
           ctx.font = "10px Arial";
           ctx.fillText(
-            dayDate.toLocaleDateString("en-US", {
+            dayDate.toLocaleDateString("en-IN", {
               month: "short",
               day: "numeric",
+              timeZone: "Asia/Kolkata",
             }),
             qrX + qrSize / 2,
             qrY + qrSize + 35
@@ -928,7 +930,7 @@ export async function generateTicketImage(booking, event, user) {
     ctx.fillStyle = "#475569";
     ctx.font = "11px Arial";
     ctx.fillText(
-      `Generated on ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}`,
+      `Generated on ${new Date().toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })} at ${new Date().toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata" })}`,
       450,
       yPosition + 20
     );

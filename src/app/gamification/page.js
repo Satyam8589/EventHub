@@ -578,9 +578,10 @@ export default function GamificationPage() {
                         <div className="flex items-center gap-1.5 bg-white/10 px-2 py-1 rounded-lg">
                           <span>📅</span>
                           <span>
-                            {new Date(event.date).toLocaleDateString("en-US", {
+                            {new Date(event.date).toLocaleDateString("en-IN", {
                               month: "short",
                               day: "numeric",
+                              timeZone: "Asia/Kolkata",
                             })}
                           </span>
                         </div>

@@ -791,11 +791,12 @@ export default function Page({ params }) {
                       Date & Time
                     </div>
                     <div className="text-sm text-gray-300">
-                      {new Date(event.date).toLocaleDateString("en-US", {
+                      {new Date(event.date).toLocaleDateString("en-IN", {
                         weekday: "long",
                         year: "numeric",
                         month: "long",
                         day: "numeric",
+                        timeZone: "Asia/Kolkata",
                       })}
                     </div>
                     <div className="text-sm text-gray-400">
@@ -841,11 +842,12 @@ export default function Page({ params }) {
                         {event.endDate || event.enddate
                           ? new Date(
                               event.endDate || event.enddate
-                            ).toLocaleDateString("en-US", {
+                            ).toLocaleDateString("en-IN", {
                               weekday: "long",
                               year: "numeric",
                               month: "long",
                               day: "numeric",
+                              timeZone: "Asia/Kolkata",
                             })
                           : "End date not specified"}
                       </div>
@@ -917,7 +919,7 @@ export default function Page({ params }) {
                     <div className="mt-2 text-sm text-gray-500">
                       <div>
                         {event.date
-                          ? new Date(event.date).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+                          ? new Date(event.date).toLocaleDateString("en-IN", { month: "short", day: "numeric", timeZone: "Asia/Kolkata" })
                           : "Date TBD"}
                         {event.time ? ` • ${event.time}` : ""}
                         {event.endTime || event.endtime ? ` - ${event.endTime || event.endtime}` : ""}

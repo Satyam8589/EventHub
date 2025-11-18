@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 
 // POST /api/admin/scan-ticket - Scan and verify ticket
@@ -218,12 +218,12 @@ export async function POST(request) {
         {
           error: "Event not started yet",
           isValid: false,
-          message: `Event starts on ${eventStartDate.toLocaleDateString()}. Please come back on the event day.`,
+          message: `Event starts on ${eventStartDate.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}. Please come back on the event day.`,
           booking: {
             id: booking.id,
             eventTitle: booking.event.title,
             userName: booking.user.name,
-            eventStartDate: eventStartDate.toLocaleDateString(),
+            eventStartDate: eventStartDate.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" }),
           },
         },
         { status: 400 }
@@ -328,7 +328,7 @@ export async function POST(request) {
           error: "Already verified",
           isValid: false,
           isAlreadyScanned: true, // Flag for red popup
-          message: `This ticket was already verified on ${scannedTime.toLocaleString()}. Thank you for visiting!`,
+          message: `This ticket was already verified on ${scannedTime.toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}. Thank you for visiting!`,
           booking: {
             id: booking.id,
             eventTitle: booking.event.title,
@@ -336,7 +336,7 @@ export async function POST(request) {
             userEmail: booking.user.email,
             eventDay: `Day ${ticketNumberForToday}`,
             totalEventDays: totalEventDays,
-            verifiedAt: scannedTime.toLocaleString(),
+            verifiedAt: scannedTime.toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }),
             // Removed remaining tickets field as requested
           },
         },
@@ -411,7 +411,7 @@ export async function POST(request) {
           ticketUsedToday: ticketNumberForToday,
           remainingTickets: totalTickets - ticketNumberForToday,
           nextTicketAvailable: nextTicketDay
-            ? `Day ${nextTicketDay} (${nextTicketDate.toLocaleDateString()})`
+            ? `Day ${nextTicketDay} (${nextTicketDate.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })})`
             : "All tickets used",
           allScannedTickets: scannedTicketsData,
           completionStatus: isLastTicket

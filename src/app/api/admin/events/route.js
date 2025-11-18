@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 
 // GET /api/admin/events - Get events for admin
@@ -159,6 +159,10 @@ export async function POST(request) {
       );
     }
 
+    const [y, m, d] = (date || "").split("-").map(Number);
+    const [hh, mm] = (time || "00:00").split(":").map(Number);
+    const eventDateISO = new Date(Date.UTC(y, (m || 1) - 1, d || 1, (hh || 0) - 5, (mm || 0) - 30)).toISOString();
+
     // Create the event
     const { data: event, error: createError } = await supabase
       .from("events")
@@ -170,7 +174,7 @@ export async function POST(request) {
           category: category || "CONFERENCE",
           location,
           venue: venue || location,
-          date: new Date(date).toISOString(),
+          date: eventDateISO,
           time,
           endtime: endTime || null, // Use lowercase to match PostgreSQL column name
           price: parseFloat(price) || 0,

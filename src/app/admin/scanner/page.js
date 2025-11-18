@@ -258,7 +258,7 @@ export default function TicketScanner() {
                         <span className="text-white ml-2">
                           {new Date(
                             events.find((e) => e.id === selectedEvent).date
-                          ).toLocaleDateString()}
+                          ).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}
                         </span>
                       </div>
                       <div>

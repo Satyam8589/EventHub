@@ -230,7 +230,7 @@ export default function QRScanner() {
                       <span className="text-slate-400">Scanned At:</span>
                       <br />
                       <span>
-                        {new Date(scanResult.scannedAt).toLocaleString()}
+                        {new Date(scanResult.scannedAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}
                       </span>
                     </div>
                   )}

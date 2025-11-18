@@ -244,11 +244,12 @@ export function generateBookingEmailHTML(booking, event, user) {
             <div class="event-title">${event.title}</div>
             <div class="event-detail">
               <span class="event-detail-icon">📅</span>
-              <span>${new Date(event.date).toLocaleDateString("en-US", {
+              <span>${new Date(event.date).toLocaleDateString("en-IN", {
                 weekday: "long",
                 year: "numeric",
                 month: "long",
                 day: "numeric",
+                timeZone: "Asia/Kolkata",
               })}</span>
             </div>
             <div class="event-detail">

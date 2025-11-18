@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 
 // POST /api/qr-scan - Handle QR code scanning
@@ -97,7 +97,7 @@ export async function POST(request) {
         return NextResponse.json(
           {
             success: false,
-            message: `Event hasn't started yet. Event begins on ${eventStartDate.toLocaleDateString()}`,
+            message: `Event hasn't started yet. Event begins on ${eventStartDate.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}`,
             error: "EVENT_NOT_STARTED",
           },
           { status: 400 }
@@ -124,7 +124,7 @@ export async function POST(request) {
         return NextResponse.json(
           {
             success: false,
-            message: `Cannot scan Day ${dayNumber} QR code yet. This QR code is valid on ${targetDate.toLocaleDateString()}. Today is Day ${currentEventDay} of the event.`,
+            message: `Cannot scan Day ${dayNumber} QR code yet. This QR code is valid on ${targetDate.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}. Today is Day ${currentEventDay} of the event.`,
             error: "FUTURE_DAY_QR",
             validDate: targetDate.toISOString(),
             currentEventDay,
@@ -166,7 +166,7 @@ export async function POST(request) {
         return NextResponse.json(
           {
             success: false,
-            message: `Event hasn't started yet. Event is on ${eventDate.toLocaleDateString()}`,
+            message: `Event hasn't started yet. Event is on ${eventDate.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}`,
             error: "EVENT_NOT_STARTED",
           },
           { status: 400 }
@@ -177,7 +177,7 @@ export async function POST(request) {
         return NextResponse.json(
           {
             success: false,
-            message: `Event has ended. Event was on ${eventDate.toLocaleDateString()}`,
+            message: `Event has ended. Event was on ${eventDate.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}`,
             error: "EVENT_ENDED",
           },
           { status: 400 }
@@ -210,7 +210,7 @@ export async function POST(request) {
           success: false,
           message: `This QR code for Day ${dayNumber} was already scanned on ${new Date(
             scannedInfo.scannedAt
-          ).toLocaleString()}`,
+          ).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}`,
           error: "QR_ALREADY_SCANNED",
           scannedAt: scannedInfo.scannedAt,
         },

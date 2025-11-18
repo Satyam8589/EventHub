@@ -77,16 +77,16 @@ export async function PUT(request, { params }) {
       experienceHighlights,
     } = body;
 
-    // ✅ Fix: Use time and endTime directly from form (preserve exact values)
-    // Convert date to ISO string (date only, no time component)
-    const eventDate = new Date(date + "T00:00:00"); // Add midnight to avoid timezone issues
-    const eventDateISO = eventDate.toISOString().split("T")[0] + "T00:00:00.000Z";
+    const [y, m, d] = (date || "").split("-").map(Number);
+    const [hh, mm] = (time || "00:00").split(":").map(Number);
+    const eventDateISO = new Date(Date.UTC(y, (m || 1) - 1, d || 1, (hh || 0) - 5, (mm || 0) - 30)).toISOString();
 
     // Handle endDate if provided
     let eventEndDateISO = null;
-    if (endDate) {
-      const eventEndDate = new Date(endDate + "T00:00:00");
-      eventEndDateISO = eventEndDate.toISOString().split("T")[0] + "T00:00:00.000Z";
+    if (endDate || endTime) {
+      const [ey, em, ed] = (endDate || date || "").split("-").map(Number);
+      const [ehh, emm] = (endTime || time || "00:00").split(":").map(Number);
+      eventEndDateISO = new Date(Date.UTC(ey, (em || 1) - 1, ed || 1, (ehh || 0) - 5, (emm || 0) - 30)).toISOString();
     }
 
     // Try to update with provided fields
@@ -110,7 +110,7 @@ export async function PUT(request, { params }) {
 
     // Add endDate and endTime if provided - use lowercase to match PostgreSQL column name
     if (eventEndDateISO) {
-      updateData.enddate = eventEndDateISO; // Use lowercase 'enddate'
+      updateData.enddate = eventEndDateISO;
     }
     if (endTime) {
       updateData.endtime = endTime; // ✅ Use endTime directly from form (HH:MM format)

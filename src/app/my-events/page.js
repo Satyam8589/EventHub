@@ -348,8 +348,9 @@ export default function MyEventsPage() {
       year: "numeric",
       month: "long",
       day: "numeric",
+      timeZone: "Asia/Kolkata",
     };
-    return `${date.toLocaleDateString("en-US", options)} at ${timeString}`;
+    return `${date.toLocaleDateString("en-IN", options)} at ${timeString}`;
   };
 
   // If user is not logged in, show login prompt
@@ -821,15 +822,17 @@ export default function MyEventsPage() {
                               ) {
                                 // Multi-day event
                                 return `${startDate.toLocaleDateString(
-                                  "en-US",
+                                  "en-IN",
                                   {
                                     month: "short",
                                     day: "numeric",
+                                    timeZone: "Asia/Kolkata",
                                   }
-                                )} - ${endDate.toLocaleDateString("en-US", {
+                                )} - ${endDate.toLocaleDateString("en-IN", {
                                   month: "short",
                                   day: "numeric",
                                   year: "numeric",
+                                  timeZone: "Asia/Kolkata",
                                 })}${
                                   booking.event.time
                                     ? ` • ${booking.event.time}`
@@ -906,10 +909,11 @@ export default function MyEventsPage() {
                                 booking.event.endDate ||
                                   booking.event.enddate ||
                                   booking.event.date
-                              ).toLocaleDateString("en-US", {
+                              ).toLocaleDateString("en-IN", {
                                 month: "2-digit",
                                 day: "2-digit",
                                 year: "2-digit",
+                                timeZone: "Asia/Kolkata",
                               })}
                             </div>
                           </div>

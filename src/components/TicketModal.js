@@ -306,14 +306,16 @@ export default function TicketModal({ booking, isOpen, onClose }) {
         // Multi-day event display
         const startDate = new Date(booking.event.date);
         const endDate = new Date(booking.event.endDate);
-        const startText = startDate.toLocaleDateString("en-US", {
+        const startText = startDate.toLocaleDateString("en-IN", {
           month: "short",
           day: "numeric",
+          timeZone: "Asia/Kolkata",
         });
-        const endText = endDate.toLocaleDateString("en-US", {
+        const endText = endDate.toLocaleDateString("en-IN", {
           month: "short",
           day: "numeric",
           year: "numeric",
+          timeZone: "Asia/Kolkata",
         });
         ctx.fillText(`${startText} - ${endText}`, 80, yPosition + 60);
         if (booking.event.time) {
@@ -327,12 +329,13 @@ export default function TicketModal({ booking, isOpen, onClose }) {
       } else {
         // Single day event display
         const eventDate = new Date(booking.event.date).toLocaleDateString(
-          "en-US",
+          "en-IN",
           {
             weekday: "short",
             year: "numeric",
             month: "short",
             day: "numeric",
+            timeZone: "Asia/Kolkata",
           }
         );
         ctx.fillText(eventDate, 80, yPosition + 60);
@@ -515,9 +518,10 @@ export default function TicketModal({ booking, isOpen, onClose }) {
 
           ctx.fillStyle = "#94a3b8";
           ctx.font = "12px Arial";
-          const dayText = eventDays[i].toLocaleDateString("en-US", {
+          const dayText = eventDays[i].toLocaleDateString("en-IN", {
             month: "short",
             day: "numeric",
+            timeZone: "Asia/Kolkata",
           });
           ctx.fillText(dayText, qrX + qrSize / 2, qrY + 5);
 
@@ -899,16 +903,18 @@ export default function TicketModal({ booking, isOpen, onClose }) {
                     startDate.toDateString() !== endDate.toDateString()
                   ) {
                     // Multi-day event
-                    return `${startDate.toLocaleDateString("en-US", {
+                    return `${startDate.toLocaleDateString("en-IN", {
                       weekday: "long",
                       year: "numeric",
                       month: "long",
                       day: "numeric",
-                    })} - ${endDate.toLocaleDateString("en-US", {
+                      timeZone: "Asia/Kolkata",
+                    })} - ${endDate.toLocaleDateString("en-IN", {
                       weekday: "long",
                       year: "numeric",
                       month: "long",
                       day: "numeric",
+                      timeZone: "Asia/Kolkata",
                     })}${
                       booking.event.time
                         ? ` • Starts at ${booking.event.time}`
@@ -916,11 +922,12 @@ export default function TicketModal({ booking, isOpen, onClose }) {
                     }`;
                   } else {
                     // Single day event
-                    return `${startDate.toLocaleDateString("en-US", {
+                    return `${startDate.toLocaleDateString("en-IN", {
                       weekday: "long",
                       year: "numeric",
                       month: "long",
                       day: "numeric",
+                      timeZone: "Asia/Kolkata",
                     })}${
                       booking.event.time ? ` at ${booking.event.time}` : ""
                     }`;
@@ -1067,10 +1074,11 @@ export default function TicketModal({ booking, isOpen, onClose }) {
                               Day {dayNumber}
                             </h5>
                             <span className="text-xs text-gray-500">
-                              {day.toLocaleDateString("en-US", {
+                              {day.toLocaleDateString("en-IN", {
                                 month: "short",
                                 day: "numeric",
                                 year: "numeric",
+                                timeZone: "Asia/Kolkata",
                               })}
                             </span>
                             {isScanned && (
@@ -1100,10 +1108,10 @@ export default function TicketModal({ booking, isOpen, onClose }) {
                                 Thank You for Visiting! ✓
                               </h6>
                               <p className="text-sm text-gray-600">
-                                Scanned on {scanTime?.toLocaleDateString()}
+                                Scanned on {scanTime?.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}
                               </p>
                               <p className="text-xs text-gray-500 mt-1">
-                                at {scanTime?.toLocaleTimeString()}
+                                at {scanTime?.toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata" })}
                               </p>
                             </div>
                           ) : (
@@ -1166,10 +1174,10 @@ export default function TicketModal({ booking, isOpen, onClose }) {
                           <div className="text-sm text-gray-500">
                             <p>
                               Scanned on{" "}
-                              {getTicketScanTime(1).toLocaleDateString()}
+                              {getTicketScanTime(1).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}
                             </p>
                             <p>
-                              at {getTicketScanTime(1).toLocaleTimeString()}
+                              at {getTicketScanTime(1).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata" })}
                             </p>
                           </div>
                         )}

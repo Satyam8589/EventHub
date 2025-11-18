@@ -161,7 +161,7 @@ export default function QRTestPage() {
                       className="bg-slate-900"
                     >
                       {event.title} -{" "}
-                      {new Date(event.date).toLocaleDateString()}
+                      {new Date(event.date).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}
                     </option>
                   ))}
                 </select>

@@ -164,10 +164,11 @@ export default function EventReviews({ eventId }) {
                   </div>
                 </div>
                 <p className="text-xs text-gray-500">
-                  {new Date(review.created_at).toLocaleDateString("en-US", {
+                  {new Date(review.created_at).toLocaleDateString("en-IN", {
                     year: "numeric",
                     month: "long",
                     day: "numeric",
+                    timeZone: "Asia/Kolkata",
                   })}
                 </p>
               </div>

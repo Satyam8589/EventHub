@@ -311,9 +311,10 @@ export default function EventCard({ event }) {
               {event.date ? (
                 <div className="flex items-center gap-1 text-gray-700 font-medium text-xs">
                   <span>
-                    {new Date(event.date).toLocaleDateString("en-US", {
+                    {new Date(event.date).toLocaleDateString("en-IN", {
                       month: "short",
                       day: "numeric",
+                      timeZone: "Asia/Kolkata",
                     })}
                   </span>
                   {event.time && (

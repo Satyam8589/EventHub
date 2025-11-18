@@ -256,26 +256,20 @@ export async function POST(request) {
       }
     }
 
-    // ✅ Fix: Combine date and time into a single ISO 8601 string
-    const eventStartDateTime = new Date(`${date}T${time}`);
-    const eventDateISO = eventStartDateTime.toISOString();
+    const [y, m, d] = (date || "").split("-").map(Number);
+    const [hh, mm] = (time || "00:00").split(":").map(Number);
+    const eventDateISO = new Date(Date.UTC(y, (m || 1) - 1, d || 1, (hh || 0) - 5, (mm || 0) - 30)).toISOString();
 
     // Handle endDate if provided
     let eventEndDateISO = null;
-    if (endDate && endTime) {
-      const eventEndDateTime = new Date(`${endDate}T${endTime}`);
-      eventEndDateISO = eventEndDateTime.toISOString();
-    } else if (endDate) {
-      // If only endDate is provided, use the same time as the start time
-      const eventEndDateTime = new Date(`${endDate}T${time}`);
-      eventEndDateISO = eventEndDateTime.toISOString();
+    if (endDate && (endTime || time)) {
+      const [ey, em, ed] = (endDate || "").split("-").map(Number);
+      const [ehh, emm] = (endTime || time || "00:00").split(":").map(Number);
+      eventEndDateISO = new Date(Date.UTC(ey, (em || 1) - 1, ed || 1, (ehh || 0) - 5, (emm || 0) - 30)).toISOString();
     }
 
     // Prepare event data
-    const now = new Date();
-    const datePart = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
-    const timePart = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }).format(now);
-    const nowIstIso = `${datePart}T${timePart}+05:30`;
+    const nowUtcIso = new Date().toISOString();
     const eventData = {
       id: crypto.randomUUID(),
       title,
@@ -295,8 +289,8 @@ export async function POST(request) {
       organizerPhone,
       featured: featured || false,
       status: "UPCOMING",
-      createdAt: nowIstIso,
-      updatedAt: nowIstIso,
+      createdAt: nowUtcIso,
+      updatedAt: nowUtcIso,
       experienceHighlights: body.experienceHighlights || null,
     };
 

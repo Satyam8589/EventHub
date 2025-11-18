@@ -185,8 +185,9 @@ export default function Home() {
       year: "numeric",
       month: "long",
       day: "numeric",
+      timeZone: "Asia/Kolkata",
     };
-    return `${date.toLocaleDateString("en-US", options)} at ${timeString}`;
+    return `${date.toLocaleDateString("en-IN", options)} at ${timeString}`;
   };
 
   return (
