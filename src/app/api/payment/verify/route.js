@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import Razorpay from "razorpay";
 import crypto from "crypto";
 import { supabase } from "@/lib/supabase";
@@ -204,6 +204,43 @@ export async function POST(request) {
         location: eventInfo.location,
       };
     }
+
+    // Persist verification metadata on booking
+    try {
+      const nowIstIso = (() => {
+        const now = new Date();
+        const datePart = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
+        const timePart = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }).format(now);
+        return `${datePart}T${timePart}+05:30`;
+      })();
+      let { error: metaError } = await supabase
+        .from("bookings")
+        .update({
+          paymentVerifiedAt: nowIstIso,
+          ticketgeneratedat: nowIstIso,
+          razorpaysignature: razorpay_signature,
+          updatedAt: nowIstIso,
+        })
+        .eq("id", bookingId);
+      if (metaError && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+        const { createClient } = require("@supabase/supabase-js");
+        const admin = createClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL,
+          process.env.SUPABASE_SERVICE_ROLE_KEY
+        );
+        const { error: metaError2 } = await admin
+          .from("bookings")
+          .update({
+            paymentVerifiedAt: nowIstIso,
+            ticketgeneratedat: nowIstIso,
+            razorpaysignature: razorpay_signature,
+            updatedAt: nowIstIso,
+          })
+          .eq("id", bookingId);
+        if (metaError2) {
+        }
+      }
+    } catch (_) {}
 
     // Return success response
     return NextResponse.json(successResponse);

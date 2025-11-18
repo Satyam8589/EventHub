@@ -670,23 +670,9 @@ export default function TicketScanner() {
                           {scanResult.booking.progressInfo.currentDay}
                         </div>
                         <div>
-                          <span className="font-medium">
-                            Remaining Tickets:
-                          </span>{" "}
-                          {scanResult.booking.progressInfo.remainingTickets}
+                          <span className="font-medium">Total Tickets:</span>{" "}
+                          {scanResult.booking.totalTickets || scanResult.booking.tickets}
                         </div>
-                        {scanResult.booking.progressInfo.nextTicketAvailable !==
-                          "All tickets used" && (
-                          <div>
-                            <span className="font-medium">
-                              Next Ticket Available:
-                            </span>{" "}
-                            {
-                              scanResult.booking.progressInfo
-                                .nextTicketAvailable
-                            }
-                          </div>
-                        )}
                         {scanResult.booking.progressInfo.remainingTickets ===
                           0 && (
                           <div className="text-green-300 font-medium">

@@ -338,6 +338,11 @@ export default function EventAnalyticsModal({ eventId, isOpen, onClose }) {
                           <tr key={booking.id} className="border-b border-white/5">
                             <td className="py-3 text-white">
                               {booking.userName || booking.user?.name || "Unknown"}
+                              {(booking.paymentId || booking.razorpayOrderId) && (
+                                <div className="text-white/40 text-xs mt-1">
+                                  {booking.paymentId || booking.razorpayOrderId}
+                                </div>
+                              )}
                             </td>
                             <td className="py-3 text-white/60 text-sm">
                               <div>{booking.userEmail || booking.user?.email || "Unknown"}</div>

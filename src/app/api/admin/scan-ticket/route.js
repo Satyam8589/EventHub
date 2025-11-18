@@ -172,11 +172,44 @@ export async function POST(request) {
 
     // Progressive ticket scanning logic - only allow scanning specific ticket numbers on specific days
     const totalTickets = booking.tickets || 1;
-    // For multi-day events, use the total days from QR code, otherwise use tickets count
-    const totalEventDays = totalDaysInQR || totalTickets;
-    // Calculate which day of the event it is (starting from day 1)
+    let totalEventDays = totalDaysInQR || totalTickets;
     const eventStartDate = new Date(event.date);
     const currentDate = new Date();
+    const parseTimeToMinutes = (t) => {
+      if (!t || typeof t !== "string") return null;
+      const s = t.trim();
+      const m = s.match(/^([0-1]?\d|2[0-3]):([0-5]\d)\s*(am|pm)?$/i);
+      if (!m) return null;
+      let hh = parseInt(m[1], 10);
+      const mm = parseInt(m[2], 10);
+      const ap = m[3] ? m[3].toLowerCase() : null;
+      if (ap) {
+        hh = hh % 12 + (ap === "pm" ? 12 : 0);
+      }
+      return hh * 60 + mm;
+    };
+    const hasEndDate = event.endDate || event.enddate;
+    if (hasEndDate) {
+      const endDate = new Date(event.endDate || event.enddate);
+      const startMinutes = parseTimeToMinutes(event.time);
+      const endMinutes = parseTimeToMinutes(event.endTime || event.endtime);
+      if (startMinutes !== null && endMinutes !== null) {
+        const startMidnight = new Date(eventStartDate);
+        startMidnight.setHours(0, 0, 0, 0);
+        const endMidnight = new Date(endDate);
+        endMidnight.setHours(0, 0, 0, 0);
+        const dayDiff = Math.round((endMidnight - startMidnight) / (24 * 60 * 60 * 1000));
+        const totalMinutes = dayDiff * 24 * 60 + (endMinutes - startMinutes);
+        if (totalMinutes <= 24 * 60) {
+          totalEventDays = 1;
+        }
+      } else {
+        const durationMs = endDate - eventStartDate;
+        if (durationMs <= 24 * 60 * 60 * 1000) {
+          totalEventDays = 1;
+        }
+      }
+    }
 
     // Reset time to midnight for accurate day calculation
     eventStartDate.setHours(0, 0, 0, 0);
@@ -185,7 +218,10 @@ export async function POST(request) {
     const daysDifference = Math.floor(
       (currentDate - eventStartDate) / (1000 * 60 * 60 * 24)
     );
-    const currentEventDay = daysDifference + 1; // Day 1, 2, 3, etc.
+    let currentEventDay = daysDifference + 1;
+    if (totalEventDays === 1) {
+      currentEventDay = 1;
+    }
 
     // If this is a day-specific QR code, validate that it matches the current day
     if (scannedDay !== null) {

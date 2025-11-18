@@ -47,6 +47,8 @@ export async function GET(request, { params }) {
         status: booking.status,
         paymentId: booking.paymentId,
         razorpayOrderId: booking.razorpayOrderId,
+        ticketgeneratedat: booking.ticketgeneratedat,
+        razorpaysignature: booking.razorpaysignature || booking.razorpaySignature,
         tickets: booking.tickets,
         totalAmount: booking.totalAmount,
         createdAt: booking.createdAt,

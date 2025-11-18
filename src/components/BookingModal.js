@@ -172,8 +172,18 @@ export default function BookingModal({ event, isOpen, onClose, onBookingSuccess 
 
       if (response.ok && data.success) {
         console.log("Payment order created:", data);
-        setOrderData(data);
-        setPaymentStep("payment");
+        if (data.free) {
+          setPaymentStep("success");
+          if (onBookingSuccess) onBookingSuccess();
+          setTimeout(() => {
+            resetModal();
+            onClose();
+            router.push("/my-events");
+          }, 2000);
+        } else {
+          setOrderData(data);
+          setPaymentStep("payment");
+        }
       } else {
         throw new Error(data.error || "Failed to create payment order");
       }
@@ -440,7 +450,7 @@ export default function BookingModal({ event, isOpen, onClose, onBookingSuccess 
                 {/* Submit Button */}
                 <button
                   type="submit"
-                  disabled={loading || isSoldOut || loadingUserData || userReachedLimit || loadingBookings}
+                  disabled={loading || isSoldOut}
                   className={`w-full py-3 rounded-lg font-semibold transition-all duration-300 transform shadow-lg text-sm ${
                     isSoldOut
                       ? "bg-gray-400 text-gray-200 cursor-not-allowed"

@@ -27,6 +27,39 @@ function calculateEventDays(event) {
   }
 
   const endDate = new Date(endDateValue);
+  const parseTimeToMinutes = (t) => {
+    if (!t || typeof t !== "string") return null;
+    const s = t.trim();
+    const m = s.match(/^([0-1]?\d|2[0-3]):([0-5]\d)\s*(am|pm)?$/i);
+    if (!m) return null;
+    let hh = parseInt(m[1], 10);
+    const mm = parseInt(m[2], 10);
+    const ap = m[3] ? m[3].toLowerCase() : null;
+    if (ap) {
+      hh = hh % 12 + (ap === "pm" ? 12 : 0);
+    }
+    return hh * 60 + mm;
+  };
+
+  const startMinutes = parseTimeToMinutes(event.time);
+  const endMinutes = parseTimeToMinutes(event.endTime || event.endtime);
+
+  if (startMinutes !== null && endMinutes !== null) {
+    const startMidnight = new Date(startDate);
+    startMidnight.setHours(0, 0, 0, 0);
+    const endMidnight = new Date(endDate);
+    endMidnight.setHours(0, 0, 0, 0);
+    const dayDiff = Math.round((endMidnight - startMidnight) / (24 * 60 * 60 * 1000));
+    const totalMinutes = dayDiff * 24 * 60 + (endMinutes - startMinutes);
+    if (totalMinutes <= 24 * 60) {
+      return 1;
+    }
+  } else {
+    const durationMs = endDate - startDate;
+    if (durationMs <= 24 * 60 * 60 * 1000) {
+      return 1;
+    }
+  }
 
   console.log("📅 Date calculation:", {
     startDate: startDate.toISOString(),

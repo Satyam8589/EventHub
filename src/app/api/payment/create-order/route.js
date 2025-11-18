@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import Razorpay from "razorpay";
 import crypto from "crypto";
 import { supabase } from "@/lib/supabase";
@@ -28,7 +28,7 @@ export async function POST(request) {
     }
 
     // Check if event exists
-    const { data: event, error: eventError } = await supabase
+  const { data: event, error: eventError } = await supabase
       .from("events")
       .select("*")
       .eq("id", eventId)
@@ -86,6 +86,63 @@ export async function POST(request) {
           { status: 400 }
         );
       }
+    }
+
+    // If totalAmount is 0 or less, confirm booking immediately without Razorpay
+    if (parseFloat(totalAmount) <= 0) {
+      const pendingBooking = {
+        id: crypto.randomUUID(),
+        userId,
+        eventId,
+        tickets: parseInt(tickets),
+        totalAmount: 0,
+        status: "CONFIRMED",
+        paymentMethod: "free",
+        paymentId: "FREE",
+        paymentVerifiedAt: nowIstIso,
+        ticketgeneratedat: nowIstIso,
+        createdAt: nowIstIso,
+        updatedAt: nowIstIso,
+      };
+
+      const { data: booking, error: bookingError } = await supabase
+        .from("bookings")
+        .insert([pendingBooking])
+        .select()
+        .single();
+
+      if (bookingError) {
+        throw bookingError;
+      }
+
+      // Update user profile with provided details
+      if (
+        userDetails &&
+        (userDetails.name || userDetails.phone || userDetails.phoneNumber)
+      ) {
+        const updateData = {};
+        if (userDetails.name) updateData.name = userDetails.name;
+        if (userDetails.phone) updateData.phone = userDetails.phone;
+        if (userDetails.phoneNumber) updateData.phone = userDetails.phoneNumber;
+        updateData.updatedAt = nowIstIso;
+        await supabase.from("users").update(updateData).eq("id", userId);
+      }
+
+      return NextResponse.json({
+        success: true,
+        free: true,
+        bookingId: booking.id,
+        amount: 0,
+        currency: "INR",
+        event: {
+          id: event.id,
+          title: event.title,
+          date: event.date,
+          time: event.time,
+          location: event.location,
+        },
+        userDetails,
+      });
     }
 
     // Create Razorpay order
