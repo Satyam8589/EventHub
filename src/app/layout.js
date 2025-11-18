@@ -17,11 +17,35 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "EventHub - Discover Amazing Events Near You",
+  metadataBase: new URL("https://event-hub-dusky.vercel.app"),
+  applicationName: "EventHub",
+  title: {
+    default: "EventHub",
+    template: "%s | EventHub",
+  },
   description:
     "Your ultimate destination for discovering and booking amazing events. Join thousands of people experiencing the best events in music, food, technology, and community.",
+  openGraph: {
+    title: "EventHub",
+    description:
+      "Your ultimate destination for discovering and booking amazing events.",
+    url: "https://event-hub-dusky.vercel.app",
+    siteName: "EventHub",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "EventHub",
+    description:
+      "Discover and book amazing events near you.",
+  },
   icons: {
-    icon: [{ url: "/eventhub-logo.svg", sizes: "any", type: "image/svg+xml" }],
+    icon: [
+      { url: "/favicon.ico" },
+      { url: "/eventhub-logo.svg", sizes: "any", type: "image/svg+xml" },
+    ],
+    shortcut: ["/favicon.ico"],
+    apple: ["/apple-touch-icon.png"],
   },
 };
 
@@ -34,11 +58,25 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <head>
+        <meta name="application-name" content="EventHub" />
+        <meta name="apple-mobile-web-app-title" content="EventHub" />
+        <meta property="og:site_name" content="EventHub" />
         <meta
           name="google-site-verification"
           content="lFMJ-P-rQSZM1roUYtf54Pde5-K-uYRM5nq1501brZQ"
         />
+        <link rel="icon" href="/favicon.ico" sizes="any" />
         <link rel="icon" href="/eventhub-logo.svg" type="image/svg+xml" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+        <script type="application/ld+json">
+          {JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "Organization",
+            name: "EventHub",
+            url: "https://event-hub-dusky.vercel.app",
+            logo: "https://event-hub-dusky.vercel.app/eventhub-logo.svg",
+          })}
+        </script>
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
