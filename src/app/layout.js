@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  metadataBase: new URL("https://event-hub-dusky.vercel.app"),
+  metadataBase: new URL("https://www.eventhubx.site"),
   applicationName: "EventHub",
   title: {
     default: "EventHub",
@@ -29,23 +29,22 @@ export const metadata = {
     title: "EventHub",
     description:
       "Your ultimate destination for discovering and booking amazing events.",
-    url: "https://event-hub-dusky.vercel.app",
+    url: "https://www.eventhubx.site",
     siteName: "EventHub",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
     title: "EventHub",
-    description:
-      "Discover and book amazing events near you.",
+    description: "Discover and book amazing events near you.",
   },
   icons: {
     icon: [
       { url: "/favicon.ico" },
-      { url: "/eventhub-logo.svg", sizes: "any", type: "image/svg+xml" },
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
     ],
-    shortcut: ["/favicon.ico"],
-    apple: ["/apple-touch-icon.png"],
+    apple: [{ url: "/icon-192.png" }],
   },
 };
 
@@ -65,19 +64,24 @@ export default function RootLayout({ children }) {
           name="google-site-verification"
           content="lFMJ-P-rQSZM1roUYtf54Pde5-K-uYRM5nq1501brZQ"
         />
+
+        {/* Icons */}
         <link rel="icon" href="/favicon.ico" sizes="any" />
         <link rel="icon" href="/eventhub-logo.svg" type="image/svg+xml" />
-        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+        <link rel="apple-touch-icon" href="/icon-192.png" />
+
+        {/* JSON-LD */}
         <script type="application/ld+json">
           {JSON.stringify({
             "@context": "https://schema.org",
             "@type": "Organization",
             name: "EventHub",
-            url: "https://event-hub-dusky.vercel.app",
-            logo: "https://event-hub-dusky.vercel.app/eventhub-logo.svg",
+            url: "https://www.eventhubx.site",
+            logo: "https://www.eventhubx.site/eventhub-logo.svg",
           })}
         </script>
       </head>
+
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
