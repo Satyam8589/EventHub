@@ -66,6 +66,7 @@ export default function RootLayout({ children }) {
         />
         <link rel="manifest" href="/manifest.json" />
 
+
         {/* Icons */}
         <link rel="icon" href="/favicon.ico" sizes="any" />
         <link rel="icon" href="/eventhub-logo.svg" type="image/svg+xml" />
