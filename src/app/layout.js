@@ -64,6 +64,7 @@ export default function RootLayout({ children }) {
           name="google-site-verification"
           content="lFMJ-P-rQSZM1roUYtf54Pde5-K-uYRM5nq1501brZQ"
         />
+        <link rel="manifest" href="/manifest.json" />
 
         {/* Icons */}
         <link rel="icon" href="/favicon.ico" sizes="any" />
