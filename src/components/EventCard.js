@@ -343,54 +343,30 @@ export default function EventCard({ event }) {
                 <span className="text-gray-500 text-xs">Date TBD</span>
               )}
               {(() => {
-                // Smart expired logic that considers start time, end date, and end time
                 const now = new Date();
                 let isExpired = false;
 
-                // If we have an end date, use that to determine if expired
+                const combineIstIso = (dateStr, timeStr, defaultTime) => {
+                  const t = (timeStr || defaultTime || "23:59").trim();
+                  const d = (dateStr || "").trim();
+                  const withOffset = `${d}T${t}:00+05:30`;
+                  const dt = new Date(withOffset);
+                  if (!isNaN(dt.getTime())) return dt.toISOString();
+                  const [yy, mm, dd] = d.split("-").map(Number);
+                  const [hh, min] = t.split(":").map(Number);
+                  return new Date(Date.UTC(yy, (mm || 1) - 1, dd || 1, hh || 0, min || 0)).toISOString();
+                };
+
                 if (event.endDate || event.enddate) {
-                  const endDate = new Date(event.endDate || event.enddate);
-
-                  // If we also have an end time, combine them
-                  if (event.endTime || event.endtime) {
-                    const endTime = event.endTime || event.endtime;
-                    const timeParts = endTime.split(":");
-                    if (timeParts.length >= 2) {
-                      endDate.setHours(
-                        parseInt(timeParts[0]),
-                        parseInt(timeParts[1]),
-                        0,
-                        0
-                      );
-                    }
-                  } else {
-                    // If no end time specified, assume end of day
-                    endDate.setHours(23, 59, 59, 999);
-                  }
-
-                  isExpired = now > endDate;
+                  const iso = combineIstIso(
+                    event.endDate || event.enddate,
+                    event.endTime || event.endtime,
+                    "23:59"
+                  );
+                  isExpired = now > new Date(iso);
                 } else if (event.date) {
-                  // No end date, so check if it's past the start date
-                  const eventDate = new Date(event.date);
-
-                  // If we have a start time, use it
-                  if (event.time) {
-                    const timeParts = event.time.split(":");
-                    if (timeParts.length >= 2) {
-                      // For single-day events without end time, assume 8-hour duration
-                      const startHours = parseInt(timeParts[0]);
-                      const startMinutes = parseInt(timeParts[1]);
-                      eventDate.setHours(startHours + 8, startMinutes, 0, 0); // Add 8 hours
-                    } else {
-                      // No valid time, assume end of day
-                      eventDate.setHours(23, 59, 59, 999);
-                    }
-                  } else {
-                    // No time specified, assume end of day
-                    eventDate.setHours(23, 59, 59, 999);
-                  }
-
-                  isExpired = now > eventDate;
+                  const iso = combineIstIso(event.date, event.time, "23:59");
+                  isExpired = now > new Date(iso);
                 }
 
                 return isExpired ? (

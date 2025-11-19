@@ -95,12 +95,37 @@ export async function PUT(request, { params }) {
       ...body,
       price: body.price ? parseFloat(body.price) : undefined,
       capacity: body.capacity ? parseInt(body.capacity) : undefined,
-      date: body.date ? new Date(body.date).toISOString() : undefined,
+      date: body.date
+        ? (() => {
+            const dateStr = String(body.date).trim();
+            const timeStr = String(body.time || "00:00").trim();
+            const withOffset = `${dateStr}T${timeStr}:00+05:30`;
+            const dt = new Date(withOffset);
+            if (!isNaN(dt.getTime())) return dt.toISOString();
+            const [yy, mm, dd] = dateStr.split("-").map(Number);
+            const [hh, min] = timeStr.split(":").map(Number);
+            return new Date(
+              Date.UTC(yy, (mm || 1) - 1, dd || 1, hh || 0, min || 0)
+            ).toISOString();
+          })()
+        : undefined,
     };
 
     // Add endDate if provided - use lowercase to match PostgreSQL column name
     if (body.endDate) {
-      updateData.enddate = new Date(body.endDate).toISOString(); // Use lowercase 'enddate'
+      const dateStr = String(body.endDate).trim();
+      const timeStr = String(body.endTime || body.time || "00:00").trim();
+      const withOffset = `${dateStr}T${timeStr}:00+05:30`;
+      const dt = new Date(withOffset);
+      updateData.enddate = !isNaN(dt.getTime())
+        ? dt.toISOString()
+        : (() => {
+            const [yy, mm, dd] = dateStr.split("-").map(Number);
+            const [hh, min] = timeStr.split(":").map(Number);
+            return new Date(
+              Date.UTC(yy, (mm || 1) - 1, dd || 1, hh || 0, min || 0)
+            ).toISOString();
+          })();
     }
 
     let { data: event, error } = await supabase
