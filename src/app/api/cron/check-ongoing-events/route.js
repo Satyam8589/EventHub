@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
-import { triggerNotification, NOTIFICATION_EVENTS } from "@/lib/pusher";
+import { sendNotificationToAll } from "@/lib/notificationHelper";
 
 // This endpoint checks for events that should be marked as ONGOING
 // and triggers notifications for them
@@ -11,9 +11,14 @@ export async function GET(request) {
     const cronSecret = process.env.CRON_SECRET;
 
     // Verify cron secret if set (for security)
-    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+    // Only enforce auth if CRON_SECRET is set AND we're not in development mode
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    
+    if (cronSecret && !isDevelopment && authHeader !== `Bearer ${cronSecret}`) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    
+    console.log('Checking ongoing events...');
 
     const now = new Date();
 
@@ -53,16 +58,13 @@ export async function GET(request) {
 
         updatedEvents.push(updatedEvent);
 
-        // Trigger real-time notification
-        await triggerNotification("events", NOTIFICATION_EVENTS.EVENT_ONGOING, {
+        // Send push notification to all subscribed users
+        await sendNotificationToAll('event-ongoing', {
           eventId: updatedEvent.id,
           eventTitle: updatedEvent.title,
-          eventDate: updatedEvent.date,
-          eventLocation: updatedEvent.location,
-          eventVenue: updatedEvent.venue,
         });
 
-        console.log(`Event ${event.title} is now ONGOING`);
+        console.log(`Event ${event.title} is now ONGOING - push notification sent`);
       }
     }
 

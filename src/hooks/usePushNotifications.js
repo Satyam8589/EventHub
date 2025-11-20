@@ -78,8 +78,11 @@ export const usePushNotifications = () => {
       setIsSubscribed(true);
 
       // Save subscription to server
+      console.log("Saving subscription for user:", user?.uid, user?.email);
       if (user) {
         await saveSubscriptionToServer(pushSubscription);
+      } else {
+        console.warn("No user logged in - subscription saved locally only");
       }
 
       console.log("Push notification subscription:", pushSubscription);
@@ -130,7 +133,7 @@ export const usePushNotifications = () => {
         },
         body: JSON.stringify({
           subscription,
-          userId: user?.id,
+          userId: user?.uid,
         }),
       });
 
@@ -155,7 +158,7 @@ export const usePushNotifications = () => {
         },
         body: JSON.stringify({
           subscription,
-          userId: user?.id,
+          userId: user?.uid,
         }),
       });
 

@@ -13,6 +13,9 @@ export async function POST(request) {
       );
     }
 
+    // Log for debugging
+    console.log("Saving push subscription for user:", userId);
+
     // Save subscription to database
     const { data, error } = await supabase
       .from("push_subscriptions")

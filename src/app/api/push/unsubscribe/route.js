@@ -13,6 +13,9 @@ export async function POST(request) {
       );
     }
 
+    // Log for debugging
+    console.log("Removing push subscription for user:", userId, "endpoint:", subscription.endpoint);
+
     // Remove subscription from database
     const { error } = await supabase
       .from("push_subscriptions")
