@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
+import { useEventStatusChecker } from "@/hooks/useEventStatusChecker";
 import EventCard from "../components/EventCard";
 import LoginForm from "../components/auth/LoginForm";
 import SignupForm from "../components/auth/SignupForm";
@@ -23,6 +24,10 @@ export default function Home() {
 
   const { user, loading: authLoading, mounted } = useAuth();
   const router = useRouter();
+
+  // Check for events that should be marked as ONGOING every 5 minutes
+  useEventStatusChecker(5);
+
 
   // Handle URL parameters for login/signup
   useEffect(() => {

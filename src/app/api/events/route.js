@@ -1,6 +1,7 @@
 ﻿import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 import { uploadToCloudinary } from "@/lib/cloudinary";
+import { sendPushNotificationToMultiple } from "@/lib/pushNotification";
 
 // GET /api/events - Get all events
 export async function GET() {
@@ -129,6 +130,25 @@ export async function GET() {
         status: e.status,
       }))
     );
+
+    // Check for low ticket events and trigger notifications
+    for (const event of eventsWithCounts) {
+      const remainingTickets = event.capacity - event._count.bookings;
+      const percentageRemaining = (remainingTickets / event.capacity) * 100;
+
+      // Trigger notification if less than 10% tickets remain and at least 1 ticket left
+      if (percentageRemaining < 10 && percentageRemaining > 0 && remainingTickets > 0) {
+        // Only trigger if we haven't notified recently (you might want to add a cache/db check)
+        await triggerNotification("events", NOTIFICATION_EVENTS.LOW_TICKETS, {
+          eventId: event.id,
+          eventTitle: event.title,
+          remainingTickets: remainingTickets,
+          capacity: event.capacity,
+          eventDate: event.date,
+        });
+      }
+    }
+
 
     const response = NextResponse.json({ events: eventsWithCounts });
     // Prevent caching
@@ -360,6 +380,48 @@ export async function POST(request) {
     if (createError) {
       throw createError;
     }
+
+    // Trigger real-time notification for new event
+    await triggerNotification("events", NOTIFICATION_EVENTS.NEW_EVENT, {
+      eventId: event.id,
+      eventTitle: event.title,
+      eventDate: event.date,
+      eventLocation: event.location,
+      eventPrice: event.price,
+      eventImage: event.imageUrl,
+    });
+
+    // Send push notifications to all subscribers
+    try {
+      const { data: subscriptions } = await supabase
+        .from("push_subscriptions")
+        .select("*");
+
+      if (subscriptions && subscriptions.length > 0) {
+        const pushSubscriptions = subscriptions.map((sub) => ({
+          endpoint: sub.endpoint,
+          keys: {
+            p256dh: sub.p256dh,
+            auth: sub.auth,
+          },
+        }));
+
+        await sendPushNotificationToMultiple(pushSubscriptions, {
+          title: "🎉 New Event Available!",
+          message: `${event.title} has been posted`,
+          icon: "/icon-192.png",
+          image: event.imageUrl,
+          data: {
+            url: `/events/${event.id}`,
+            eventId: event.id,
+          },
+        });
+      }
+    } catch (pushError) {
+      // Don't fail the request if push notifications fail
+      console.error("Failed to send push notifications:", pushError);
+    }
+
 
     return NextResponse.json({ event }, { status: 201 });
   } catch (error) {

@@ -1,13 +1,16 @@
 "use client";
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import EventHubLogo from "./EventHubLogo";
+import PushNotificationToggle from "./PushNotificationToggle";
 import UserMenu from "./auth/UserMenu";
 
 export default function Navbar({ setShowLogin, setShowSignup }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { user, loading: authLoading, signOut, mounted } = useAuth();
+  const pathname = usePathname();
 
   // Show minimal navbar until mounted to prevent hydration issues
   if (!mounted) {
@@ -108,6 +111,13 @@ export default function Navbar({ setShowLogin, setShowSignup }) {
           </div>
 
           <div className="flex items-center space-x-4">
+            {/* Mobile Push Notification Button - Only visible on small screens AND home page */}
+            {!authLoading && user && pathname === "/" && (
+              <div className="md:hidden">
+                <PushNotificationToggle />
+              </div>
+            )}
+
             {/* Authentication Section */}
             {!authLoading && (
               <>
@@ -142,6 +152,12 @@ export default function Navbar({ setShowLogin, setShowSignup }) {
                         />
                       </svg>
                     </button>
+                    {pathname === "/" && (
+                      <>
+                        <div className="h-8 w-px bg-white/20"></div>
+                        <PushNotificationToggle />
+                      </>
+                    )}
                   </div>
                 ) : (
                   <div className="hidden md:flex items-center space-x-3">

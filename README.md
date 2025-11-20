@@ -30,6 +30,14 @@ The platform also includes admin controls for event organizers to create, edit, 
 ✅ Secure ticket booking with online payment (Razorpay)  
 ✅ Instant digital ticket generation with QR code  
 ✅ Email notifications for successful bookings  
+✅ **Real-time notifications via Pusher**  
+  - 🎉 New event posted alerts  
+  - ⚠️ Low ticket availability warnings  
+  - 🔴 Event status updates (ONGOING)  
+✅ **Web Push Notifications (OS-level)**  
+  - 🔔 Native browser/OS notifications  
+  - 📱 Works even when browser is closed  
+  - 🎯 One-click enable/disable toggle  
 ✅ Admin dashboard to create and manage events  
 ✅ Analytics and database powered by Supabase  
 ✅ Responsive, modern UI with Tailwind CSS  

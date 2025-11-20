@@ -77,33 +77,16 @@ export async function PUT(request, { params }) {
       experienceHighlights,
     } = body;
 
-    const eventDateISO = (() => {
-      const dateStr = (date || "").trim();
-      const timeStr = (time || "00:00").trim();
-      const withOffset = `${dateStr}T${timeStr}:00+05:30`;
-      const dt = new Date(withOffset);
-      if (!isNaN(dt.getTime())) return dt.toISOString();
-      const [yy, mm, dd] = dateStr.split("-").map(Number);
-      const [hh, min] = timeStr.split(":").map(Number);
-      return new Date(Date.UTC(yy, (mm || 1) - 1, dd || 1, hh || 0, min || 0)).toISOString();
-    })();
+    const [y, m, d] = (date || "").split("-").map(Number);
+    const [hh, mm] = (time || "00:00").split(":").map(Number);
+    const eventDateISO = new Date(Date.UTC(y, (m || 1) - 1, d || 1, (hh || 0) - 5, (mm || 0) - 30)).toISOString();
 
     // Handle endDate if provided
     let eventEndDateISO = null;
     if (endDate || endTime) {
-      const dateStr = (endDate || date || "").trim();
-      const timeStr = (endTime || time || "00:00").trim();
-      const withOffset = `${dateStr}T${timeStr}:00+05:30`;
-      const dt = new Date(withOffset);
-      eventEndDateISO = !isNaN(dt.getTime())
-        ? dt.toISOString()
-        : (() => {
-            const [yy, mm, dd] = dateStr.split("-").map(Number);
-            const [hh, min] = timeStr.split(":").map(Number);
-            return new Date(
-              Date.UTC(yy, (mm || 1) - 1, dd || 1, hh || 0, min || 0)
-            ).toISOString();
-          })();
+      const [ey, em, ed] = (endDate || date || "").split("-").map(Number);
+      const [ehh, emm] = (endTime || time || "00:00").split(":").map(Number);
+      eventEndDateISO = new Date(Date.UTC(ey, (em || 1) - 1, ed || 1, (ehh || 0) - 5, (emm || 0) - 30)).toISOString();
     }
 
     // Try to update with provided fields
