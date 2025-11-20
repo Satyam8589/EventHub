@@ -1,7 +1,9 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 import { uploadToCloudinary } from "@/lib/cloudinary";
 import { sendPushNotificationToMultiple } from "@/lib/pushNotification";
+import { triggerNotification, NOTIFICATION_EVENTS } from "@/lib/pusher";
+import { randomUUID } from "crypto";
 
 // GET /api/events - Get all events
 export async function GET() {
@@ -291,7 +293,7 @@ export async function POST(request) {
     // Prepare event data
     const nowUtcIso = new Date().toISOString();
     const eventData = {
-      id: crypto.randomUUID(),
+      id: randomUUID(),
       title,
       description,
       category,
