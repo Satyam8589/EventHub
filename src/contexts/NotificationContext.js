@@ -133,6 +133,85 @@ export const NotificationProvider = ({ children }) => {
       );
     });
 
+    // Listen for payment success notifications
+    channel.bind(NOTIFICATION_EVENTS.PAYMENT_SUCCESS, (data) => {
+      const notification = {
+        id: Date.now(),
+        type: "payment-success",
+        title: "✅ Payment Successful!",
+        message: `Your payment for ${data.eventTitle} was successful`,
+        data: data,
+        timestamp: new Date(),
+      };
+
+      setNotifications((prev) => [notification, ...prev]);
+
+      toast.success(
+        <div className="flex flex-col">
+          <strong>{notification.title}</strong>
+          <span className="text-sm">{notification.message}</span>
+        </div>,
+        {
+          duration: 5000,
+          icon: "✅",
+        }
+      );
+    });
+
+    // Listen for payment pending notifications
+    channel.bind(NOTIFICATION_EVENTS.PAYMENT_PENDING, (data) => {
+      const notification = {
+        id: Date.now(),
+        type: "payment-pending",
+        title: "⏳ Payment Pending",
+        message: `Your payment for ${data.eventTitle} is being processed`,
+        data: data,
+        timestamp: new Date(),
+      };
+
+      setNotifications((prev) => [notification, ...prev]);
+
+      toast(
+        <div className="flex flex-col">
+          <strong>{notification.title}</strong>
+          <span className="text-sm">{notification.message}</span>
+        </div>,
+        {
+          duration: 4000,
+          icon: "⏳",
+          style: {
+            background: "#2196f3",
+            color: "#fff",
+          },
+        }
+      );
+    });
+
+    // Listen for payment failed notifications
+    channel.bind(NOTIFICATION_EVENTS.PAYMENT_FAILED, (data) => {
+      const notification = {
+        id: Date.now(),
+        type: "payment-failed",
+        title: "❌ Payment Failed",
+        message: `Your payment for ${data.eventTitle} failed. Please try again`,
+        data: data,
+        timestamp: new Date(),
+      };
+
+      setNotifications((prev) => [notification, ...prev]);
+
+      toast.error(
+        <div className="flex flex-col">
+          <strong>{notification.title}</strong>
+          <span className="text-sm">{notification.message}</span>
+        </div>,
+        {
+          duration: 6000,
+          icon: "❌",
+        }
+      );
+    });
+
     // Cleanup on unmount
     return () => {
       channel.unbind_all();

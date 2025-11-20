@@ -42,6 +42,8 @@ export const NOTIFICATION_EVENTS = {
   EVENT_ONGOING: "event-ongoing",
   EVENT_UPDATED: "event-updated",
   BOOKING_CONFIRMED: "booking-confirmed",
+  PAYMENT_SUCCESS: "payment-success",
+  PAYMENT_PENDING: "payment-pending",
   PAYMENT_FAILED: "payment-failed",
 };
 

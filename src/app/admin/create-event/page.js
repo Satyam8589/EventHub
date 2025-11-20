@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import AdminLayout from "@/components/AdminLayout";
 import { useFileUpload } from "@/hooks/useFileUpload";
+import EventCard from "@/components/EventCard";
 
 export default function CreateEvent() {
   const { user, loading: authLoading } = useAuth();
@@ -168,22 +169,37 @@ export default function CreateEvent() {
     );
   }
 
+  const previewEvent = {
+    id: "preview",
+    title: formData.title || "Event Title",
+    description: formData.description || "Event description will appear here.",
+    category: formData.category || "OTHER",
+    imageUrl: uploadedImageUrl || imagePreview || "",
+    gallery: [],
+    date: formData.date || new Date().toISOString().split("T")[0],
+    endDate: formData.endDate || null,
+    time: formData.time || "09:00",
+    endTime: formData.endTime || formData.time || "09:00",
+    location: formData.location || "Location",
+    price: formData.ticketPrice ? parseFloat(formData.ticketPrice) : 499,
+    capacity: formData.maxAttendees ? parseInt(formData.maxAttendees) : 100,
+    featured: !!formData.featured,
+    max_tickets_per_user: formData.max_tickets_per_user ? parseInt(formData.max_tickets_per_user) : null,
+    _count: { bookings: 0 },
+    isExpired: false,
+  };
+
   return (
     <AdminLayout activeTab="events">
       <div className="space-y-6">
-        {/* Header */}
         <div className="bg-gradient-to-r from-blue-600/20 to-purple-600/20 backdrop-blur-md rounded-2xl border border-blue-500/30 p-6">
-          <h1 className="text-2xl font-bold text-white mb-2">
-            Create New Event
-          </h1>
-          <p className="text-blue-200">
-            Fill in the details below to create a new event for your platform.
-          </p>
+          <h1 className="text-2xl font-bold text-white mb-2">Create New Event</h1>
+          <p className="text-blue-200">Fill in the details below to create a new event for your platform.</p>
         </div>
 
-        {/* Form */}
-        <div className="bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 p-6">
-          <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+          <div className="lg:col-span-2 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 p-6">
+            <form onSubmit={handleSubmit} className="space-y-6">
             {/* Event Image Upload */}
             <div className="space-y-4">
               <label className="block text-white font-medium">
@@ -558,7 +574,6 @@ export default function CreateEvent() {
               </div>
             </div>
 
-            {/* Action Buttons */}
             <div className="flex flex-col sm:flex-row gap-4 pt-6">
               <button
                 type="submit"
@@ -584,6 +599,19 @@ export default function CreateEvent() {
               </button>
             </div>
           </form>
+          </div>
+
+          <div className="lg:col-span-1 space-y-4">
+            <div className="sticky top-6">
+              <div className="bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 p-4 mb-4">
+                <div className="flex items-center justify-between">
+                  <div className="text-white font-semibold">Live Preview</div>
+                  <div className="text-xs text-white/60">Updates as you type</div>
+                </div>
+              </div>
+              <EventCard event={previewEvent} />
+            </div>
+          </div>
         </div>
       </div>
     </AdminLayout>

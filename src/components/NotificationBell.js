@@ -33,6 +33,12 @@ export default function NotificationBell() {
         return "🔴";
       case "event-updated":
         return "📝";
+      case "payment-success":
+        return "✅";
+      case "payment-pending":
+        return "⏳";
+      case "payment-failed":
+        return "❌";
       default:
         return "🔔";
     }

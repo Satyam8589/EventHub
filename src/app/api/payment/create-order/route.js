@@ -2,8 +2,7 @@ import { NextResponse } from "next/server";
 import Razorpay from "razorpay";
 import crypto from "crypto";
 import { supabase } from "@/lib/supabase";
-import { sendPushNotificationToMultiple } from "@/lib/pushNotification";
-import { triggerNotification, NOTIFICATION_EVENTS } from "@/lib/pusher";
+import { sendNotificationToUser } from "@/lib/notificationHelper";
 
 // Initialize Razorpay instance
 const razorpay = new Razorpay({
@@ -118,24 +117,8 @@ export async function POST(request) {
       }
 
       try {
-        const { data: subscriptions } = await supabase
-          .from("push_subscriptions")
-          .select("endpoint,p256dh,auth")
-          .eq("user_id", userId);
-        if (subscriptions && subscriptions.length > 0) {
-          const pushSubscriptions = subscriptions.map((sub) => ({
-            endpoint: sub.endpoint,
-            keys: { p256dh: sub.p256dh, auth: sub.auth },
-          }));
-          await sendPushNotificationToMultiple(pushSubscriptions, {
-            title: "Booking Confirmed",
-            message: `Thank you! Your booking for ${event.title} is confirmed.`,
-            data: { url: `/my-events` },
-            tag: "booking-confirmed",
-          });
-        }
-        await triggerNotification("bookings", NOTIFICATION_EVENTS.BOOKING_CONFIRMED, {
-          bookingId: booking.id,
+        await sendNotificationToUser(userId, "booking-confirmed", {
+          eventTitle: event.title,
           eventId: event.id,
         });
       } catch (_) {}
@@ -222,6 +205,15 @@ export async function POST(request) {
     // ✅ PENDING booking created - capacity NOT reduced yet
     // Capacity will only be reduced when payment succeeds (CONFIRMED status)
     // If user cancels payment, PENDING booking remains but doesn't affect capacity
+    
+    // Send pending payment notification
+    try {
+      await sendNotificationToUser(userId, "payment-pending", {
+        eventTitle: event.title,
+        eventId: event.id,
+      });
+    } catch (_) {}
+    
     // Update user profile with any new details provided during booking
     if (
       userDetails &&
