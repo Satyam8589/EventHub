@@ -41,6 +41,8 @@ export const NOTIFICATION_EVENTS = {
   LOW_TICKETS: "low-tickets",
   EVENT_ONGOING: "event-ongoing",
   EVENT_UPDATED: "event-updated",
+  BOOKING_CONFIRMED: "booking-confirmed",
+  PAYMENT_FAILED: "payment-failed",
 };
 
 // Helper function to trigger notifications

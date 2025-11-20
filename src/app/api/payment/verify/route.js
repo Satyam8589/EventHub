@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import Razorpay from "razorpay";
 import crypto from "crypto";
 import { supabase } from "@/lib/supabase";
+import { sendPushNotificationToMultiple } from "@/lib/pushNotification";
+import { triggerNotification, NOTIFICATION_EVENTS } from "@/lib/pusher";
 
 // Initialize Razorpay instance
 const razorpay = new Razorpay({
@@ -70,6 +72,41 @@ export async function POST(request) {
           updatedAt: nowIstIso,
         })
         .eq("id", bookingId);
+
+      try {
+        const { data: bookingForPush } = await supabase
+          .from("bookings")
+          .select("id,userId,eventId")
+          .eq("id", bookingId)
+          .single();
+        if (bookingForPush) {
+          const { data: eventInfo } = await supabase
+            .from("events")
+            .select("id,title")
+            .eq("id", bookingForPush.eventId)
+            .single();
+          const { data: subscriptions } = await supabase
+            .from("push_subscriptions")
+            .select("endpoint,p256dh,auth")
+            .eq("user_id", bookingForPush.userId);
+          if (subscriptions && subscriptions.length > 0) {
+            const pushSubscriptions = subscriptions.map((sub) => ({
+              endpoint: sub.endpoint,
+              keys: { p256dh: sub.p256dh, auth: sub.auth },
+            }));
+            await sendPushNotificationToMultiple(pushSubscriptions, {
+              title: "Payment Failed",
+              message: `Your payment for ${eventInfo?.title || "the event"} failed. Please try again.`,
+              data: { url: `/events/${bookingForPush.eventId}` },
+              tag: "payment-failed",
+            });
+          }
+          await triggerNotification("bookings", NOTIFICATION_EVENTS.PAYMENT_FAILED, {
+            bookingId: bookingForPush.id,
+            eventId: bookingForPush.eventId,
+          });
+        }
+      } catch (_) {}
 
       return NextResponse.json(
         {
@@ -242,6 +279,29 @@ export async function POST(request) {
       }
     } catch (_) {}
 
+    try {
+      const { data: subscriptions } = await supabase
+        .from("push_subscriptions")
+        .select("endpoint,p256dh,auth")
+        .eq("user_id", confirmedBooking.userId);
+      if (subscriptions && subscriptions.length > 0) {
+        const pushSubscriptions = subscriptions.map((sub) => ({
+          endpoint: sub.endpoint,
+          keys: { p256dh: sub.p256dh, auth: sub.auth },
+        }));
+        await sendPushNotificationToMultiple(pushSubscriptions, {
+          title: "Booking Confirmed",
+          message: `Thank you! Your booking for ${eventInfo?.title || "the event"} is confirmed.`,
+          data: { url: `/my-events` },
+          tag: "booking-confirmed",
+        });
+      }
+      await triggerNotification("bookings", NOTIFICATION_EVENTS.BOOKING_CONFIRMED, {
+        bookingId: confirmedBooking.id,
+        eventId: eventInfo?.id,
+      });
+    } catch (_) {}
+
     // Return success response
     return NextResponse.json(successResponse);
   } catch (error) {
@@ -262,6 +322,40 @@ export async function POST(request) {
             updatedAt: nowIstIso,
           })
           .eq("id", body.bookingId);
+        try {
+          const { data: bookingForPush } = await supabase
+            .from("bookings")
+            .select("id,userId,eventId")
+            .eq("id", body.bookingId)
+            .single();
+          if (bookingForPush) {
+            const { data: eventInfo } = await supabase
+              .from("events")
+              .select("id,title")
+              .eq("id", bookingForPush.eventId)
+              .single();
+            const { data: subscriptions } = await supabase
+              .from("push_subscriptions")
+              .select("endpoint,p256dh,auth")
+              .eq("user_id", bookingForPush.userId);
+            if (subscriptions && subscriptions.length > 0) {
+              const pushSubscriptions = subscriptions.map((sub) => ({
+                endpoint: sub.endpoint,
+                keys: { p256dh: sub.p256dh, auth: sub.auth },
+              }));
+              await sendPushNotificationToMultiple(pushSubscriptions, {
+                title: "Payment Failed",
+                message: `Your payment for ${eventInfo?.title || "the event"} failed. Please try again.`,
+                data: { url: `/events/${bookingForPush.eventId}` },
+                tag: "payment-failed",
+              });
+            }
+            await triggerNotification("bookings", NOTIFICATION_EVENTS.PAYMENT_FAILED, {
+              bookingId: bookingForPush.id,
+              eventId: bookingForPush.eventId,
+            });
+          }
+        } catch (_) {}
       } catch (updateError) {
       }
     }
