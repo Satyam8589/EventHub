@@ -570,8 +570,8 @@ export async function POST(request) {
 
     // Determine success message based on completion status
     const successMessage = isLastTicket
-      ? "ðŸŽ‰ All Tickets Used! Thank You for Visiting Throughout the Event! âœ“"
-      : "Thank You for Visiting! âœ“";
+      ? "🎉 All Tickets Used! Thank You for Visiting Throughout the Event! ✓"
+      : "Thank You for Visiting! ✓";
 
     return NextResponse.json({
       isValid: true,
@@ -588,6 +588,13 @@ export async function POST(request) {
         status: isLastTicket ? "COMPLETED" : booking.status,
         isScanned: true,
         isFullyCompleted: isLastTicket,
+        // Add fields for completed bookings display
+        ...(isLastTicket && {
+          scannedDays: Object.keys(scannedTicketsData).length,
+          totalEventDays: totalEventDays,
+          daysAttended: Object.keys(scannedTicketsData).sort().join(", "),
+          completionMessage: "This booking is fully completed - all event days have been attended successfully!",
+        }),
         progressInfo: {
           currentDay: currentEventDay,
           ticketUsedToday: ticketNumberForToday,

@@ -639,12 +639,12 @@ export default function TicketScanner() {
                       </div>
                       <div>
                         <span className="font-medium">Scanned Tickets:</span>{" "}
-                        {scanResult.booking.scannedTickets} /{" "}
-                        {scanResult.booking.totalTickets}
+                        {scanResult.booking.scannedDays || scanResult.booking.scannedTickets} /{" "}
+                        {scanResult.booking.totalEventDays || scanResult.booking.totalTickets}
                       </div>
                       <div>
                         <span className="font-medium">Days Attended:</span>{" "}
-                        {scanResult.booking.daysAttended}
+                        {scanResult.booking.daysAttended || "N/A"}
                       </div>
                       <div className="text-center text-green-200 text-xs mt-2">
                         {scanResult.booking.completionMessage}
