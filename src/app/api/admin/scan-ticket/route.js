@@ -174,7 +174,6 @@ export async function POST(request) {
     const totalTickets = booking.tickets || 1;
     let totalEventDays = totalDaysInQR || totalTickets;
     const eventStartDate = new Date(event.date);
-    const currentDate = new Date();
     const parseTimeToMinutes = (t) => {
       if (!t || typeof t !== "string") return null;
       const s = t.trim();
@@ -211,10 +210,14 @@ export async function POST(request) {
       }
     }
 
-    // Calculate current event day (for date comparison only)
+    // Calculate current event day (for date comparison only) - Use IST timezone
     const eventStartDateOnly = new Date(eventStartDate);
     eventStartDateOnly.setHours(0, 0, 0, 0);
-    const currentDateOnly = new Date(currentDate);
+    
+    // Get current date in IST
+    const nowUTC = new Date();
+    const nowIST = new Date(nowUTC.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+    const currentDateOnly = new Date(nowIST);
     currentDateOnly.setHours(0, 0, 0, 0);
 
     const daysDifference = Math.floor(
@@ -275,11 +278,15 @@ export async function POST(request) {
       const eventEndTimeMinutes = parseTimeToMinutes(event.endTime || event.endtime);
       
       if (eventTimeMinutes !== null) {
-        // Calculate the date for the current event day
+        // Get current time in IST
+        const nowUTC = new Date();
+        const nowIST = new Date(nowUTC.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+        
+        // Calculate the date for the current event day in IST
         const currentEventDayDate = new Date(eventStartDateOnly);
         currentEventDayDate.setDate(currentEventDayDate.getDate() + (currentEventDay - 1));
         
-        // Set the event start time for this specific day
+        // Set the event start time for this specific day in IST
         const eventStartDateTime = new Date(currentEventDayDate);
         const eventHours = Math.floor(eventTimeMinutes / 60);
         const eventMinutes = eventTimeMinutes % 60;
@@ -289,8 +296,8 @@ export async function POST(request) {
         const earliestScanTime = new Date(eventStartDateTime);
         earliestScanTime.setHours(earliestScanTime.getHours() - 2);
         
-        // Get current time (without resetting to midnight)
-        const now = new Date();
+        // Get current time (use IST time)
+        const now = nowIST;
         
         // Check if current time is before the earliest allowed scan time
         if (now < earliestScanTime) {
