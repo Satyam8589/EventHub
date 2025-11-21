@@ -295,6 +295,10 @@ export default function CreateEvent() {
                 className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-xl text-white placeholder-white/60 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none"
                 placeholder="Describe your event in detail"
               />
+              <p className="text-white/60 text-sm flex items-center gap-1">
+                <span>💡</span>
+                <span>Tip: Any URLs (https://...) will automatically become clickable links</span>
+              </p>
             </div>
 
             <div className="space-y-2">
@@ -307,6 +311,10 @@ export default function CreateEvent() {
                 className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-xl text-white placeholder-white/60 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                 placeholder="🎤 Keynote Speeches - Industry leaders sharing insights"
               />
+              <p className="text-white/60 text-sm flex items-center gap-1">
+                <span>💡</span>
+                <span>Tip: URLs in descriptions will automatically become clickable links</span>
+              </p>
             </div>
 
             {/* Category and Time Row */}

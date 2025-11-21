@@ -57,6 +57,24 @@ export default function Page({ params }) {
     return eventDateOnly < nowDateOnly;
   };
 
+  // Helper function to convert URLs in text to clickable links
+  const linkifyText = (text) => {
+    if (!text) return '';
+    
+    // Regular expression to match URLs
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    
+    // Replace URLs with anchor tags with word-break styles
+    const linkedText = text.replace(urlRegex, (url) => {
+      return `<a href="${url}" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:text-blue-300 underline transition-colors" style="word-break: break-all; overflow-wrap: anywhere;">${url}</a>`;
+    });
+    
+    // Also handle line breaks
+    return linkedText.replace(/\n/g, '<br />');
+  };
+
+
+
   useEffect(() => {
     if (user && event) {
       const fetchUserBookings = async () => {
@@ -434,13 +452,16 @@ export default function Page({ params }) {
                     <h3 className="text-2xl font-bold text-white mb-4">
                       About This Event
                     </h3>
-                    <p className="text-gray-300 leading-relaxed mb-4">
-                      {event.description ||
-                        "A premier gathering of tech leaders, innovators and entrepreneurs. Experience keynote speeches from industry giants, hands-on workshops, networking opportunities, and product launches."}
-                    </p>
-                    <p className="text-gray-300 leading-relaxed">
-                      Join us for an unforgettable experience where cutting-edge
-                      technology meets practical innovation.
+                    <div 
+                      className="text-gray-300 leading-relaxed mb-4 break-words"
+                      style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}
+                      dangerouslySetInnerHTML={{
+                        __html: linkifyText(event.description ||
+                          "A premier gathering of tech leaders, innovators and entrepreneurs. Experience keynote speeches from industry giants, hands-on workshops, networking opportunities, and product launches.")
+                      }}
+                    />
+                    <p className="text-gray-300 leading-relaxed font-bold">
+                      🎤 Join us for a unique experience that brings people together, inspires new energy, and creates unforgettable moments—no matter the vibe.
                     </p>
                   </div>
 
@@ -469,13 +490,17 @@ export default function Page({ params }) {
                           <div className="text-3xl group-hover:scale-110 transition-transform">
                             {item.icon || ""}
                           </div>
-                          <div>
+                          <div className="min-w-0 flex-1">
                             <div className="font-semibold text-white mb-1">
                               {item.title}
                             </div>
-                            <div className="text-sm text-gray-400">
-                              {item.desc}
-                            </div>
+                            <div 
+                              className="text-sm text-gray-400 break-words overflow-wrap-anywhere"
+                              style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}
+                              dangerouslySetInnerHTML={{
+                                __html: linkifyText(item.desc || '')
+                              }}
+                            />
                           </div>
                         </div>
                       ))}
