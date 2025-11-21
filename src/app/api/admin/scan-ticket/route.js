@@ -211,12 +211,14 @@ export async function POST(request) {
       }
     }
 
-    // Reset time to midnight for accurate day calculation
-    eventStartDate.setHours(0, 0, 0, 0);
-    currentDate.setHours(0, 0, 0, 0);
+    // Calculate current event day (for date comparison only)
+    const eventStartDateOnly = new Date(eventStartDate);
+    eventStartDateOnly.setHours(0, 0, 0, 0);
+    const currentDateOnly = new Date(currentDate);
+    currentDateOnly.setHours(0, 0, 0, 0);
 
     const daysDifference = Math.floor(
-      (currentDate - eventStartDate) / (1000 * 60 * 60 * 24)
+      (currentDateOnly - eventStartDateOnly) / (1000 * 60 * 60 * 24)
     );
     let currentEventDay = daysDifference + 1;
     if (totalEventDays === 1) {
@@ -248,22 +250,159 @@ export async function POST(request) {
       }
     }
 
-    // Check if we're within the valid event period
+    // Check if we're within the valid event period (date check)
     if (currentEventDay < 1) {
       return NextResponse.json(
         {
           error: "Event not started yet",
           isValid: false,
-          message: `Event starts on ${eventStartDate.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}. Please come back on the event day.`,
+          message: `Event starts on ${eventStartDateOnly.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}. Please come back on the event day.`,
           booking: {
             id: booking.id,
             eventTitle: booking.event.title,
             userName: booking.user.name,
-            eventStartDate: eventStartDate.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" }),
+            eventStartDate: eventStartDateOnly.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" }),
           },
         },
         { status: 400 }
       );
+    }
+
+    // NEW: Time-based validation - Allow scanning 2 hours before event start time until event end time
+    if (currentEventDay >= 1 && currentEventDay <= totalEventDays) {
+      // Parse event start time and end time
+      const eventTimeMinutes = parseTimeToMinutes(event.time);
+      const eventEndTimeMinutes = parseTimeToMinutes(event.endTime || event.endtime);
+      
+      if (eventTimeMinutes !== null) {
+        // Calculate the date for the current event day
+        const currentEventDayDate = new Date(eventStartDateOnly);
+        currentEventDayDate.setDate(currentEventDayDate.getDate() + (currentEventDay - 1));
+        
+        // Set the event start time for this specific day
+        const eventStartDateTime = new Date(currentEventDayDate);
+        const eventHours = Math.floor(eventTimeMinutes / 60);
+        const eventMinutes = eventTimeMinutes % 60;
+        eventStartDateTime.setHours(eventHours, eventMinutes, 0, 0);
+        
+        // Calculate earliest allowed scanning time (2 hours before event start)
+        const earliestScanTime = new Date(eventStartDateTime);
+        earliestScanTime.setHours(earliestScanTime.getHours() - 2);
+        
+        // Get current time (without resetting to midnight)
+        const now = new Date();
+        
+        // Check if current time is before the earliest allowed scan time
+        if (now < earliestScanTime) {
+          const timeUntilScanning = Math.ceil((earliestScanTime - now) / (1000 * 60)); // minutes
+          const hoursUntil = Math.floor(timeUntilScanning / 60);
+          const minutesUntil = timeUntilScanning % 60;
+          
+          return NextResponse.json(
+            {
+              error: "Scanning not yet available",
+              isValid: false,
+              message: `Ticket scanning for Day ${currentEventDay} will open at ${earliestScanTime.toLocaleTimeString("en-IN", { 
+                timeZone: "Asia/Kolkata",
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: true
+              })} (2 hours before event start time).`,
+              details: hoursUntil > 0 
+                ? `Please come back in ${hoursUntil} hour${hoursUntil > 1 ? 's' : ''} and ${minutesUntil} minute${minutesUntil > 1 ? 's' : ''}.`
+                : `Please come back in ${minutesUntil} minute${minutesUntil > 1 ? 's' : ''}.`,
+              booking: {
+                id: booking.id,
+                eventTitle: booking.event.title,
+                userName: booking.user.name,
+                eventDay: currentEventDay,
+                eventStartTime: eventStartDateTime.toLocaleTimeString("en-IN", { 
+                  timeZone: "Asia/Kolkata",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  hour12: true
+                }),
+                scanningOpensAt: earliestScanTime.toLocaleTimeString("en-IN", { 
+                  timeZone: "Asia/Kolkata",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  hour12: true
+                }),
+                currentTime: now.toLocaleTimeString("en-IN", { 
+                  timeZone: "Asia/Kolkata",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  hour12: true
+                }),
+              },
+            },
+            { status: 400 }
+          );
+        }
+        
+        // NEW: Check if current time is after the event end time
+        if (eventEndTimeMinutes !== null) {
+          // Set the event end time for this specific day
+          const eventEndDateTime = new Date(currentEventDayDate);
+          const endHours = Math.floor(eventEndTimeMinutes / 60);
+          const endMinutes = eventEndTimeMinutes % 60;
+          eventEndDateTime.setHours(endHours, endMinutes, 0, 0);
+          
+          // Check if current time is after the event end time
+          if (now > eventEndDateTime) {
+            const timeSinceEnd = Math.ceil((now - eventEndDateTime) / (1000 * 60)); // minutes
+            const hoursSince = Math.floor(timeSinceEnd / 60);
+            const minutesSince = timeSinceEnd % 60;
+            
+            return NextResponse.json(
+              {
+                error: "Scanning window closed",
+                isValid: false,
+                message: `Ticket scanning for Day ${currentEventDay} has ended. The event ended at ${eventEndDateTime.toLocaleTimeString("en-IN", { 
+                  timeZone: "Asia/Kolkata",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  hour12: true
+                })}.`,
+                details: hoursSince > 0
+                  ? `The event ended ${hoursSince} hour${hoursSince > 1 ? 's' : ''} and ${minutesSince} minute${minutesSince > 1 ? 's' : ''} ago.`
+                  : `The event ended ${minutesSince} minute${minutesSince > 1 ? 's' : ''} ago.`,
+                booking: {
+                  id: booking.id,
+                  eventTitle: booking.event.title,
+                  userName: booking.user.name,
+                  eventDay: currentEventDay,
+                  eventStartTime: eventStartDateTime.toLocaleTimeString("en-IN", { 
+                    timeZone: "Asia/Kolkata",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    hour12: true
+                  }),
+                  eventEndTime: eventEndDateTime.toLocaleTimeString("en-IN", { 
+                    timeZone: "Asia/Kolkata",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    hour12: true
+                  }),
+                  scanningClosedAt: eventEndDateTime.toLocaleTimeString("en-IN", { 
+                    timeZone: "Asia/Kolkata",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    hour12: true
+                  }),
+                  currentTime: now.toLocaleTimeString("en-IN", { 
+                    timeZone: "Asia/Kolkata",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    hour12: true
+                  }),
+                },
+              },
+              { status: 400 }
+            );
+          }
+        }
+      }
     }
 
     if (currentEventDay > totalEventDays) {
