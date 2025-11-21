@@ -274,15 +274,7 @@ export default function EventCard({ event }) {
           </h3>
         </div>
 
-        {/* Expired Event Overlay */}
-        {isExpired && (
-          <div className="absolute top-2 left-2 bg-red-600/90 text-white px-3 py-1.5 rounded-lg text-sm font-bold backdrop-blur-sm border border-red-500/50 shadow-lg">
-            <span className="flex items-center gap-1.5">
-              <span>🚫</span>
-              <span className="tracking-wide">EXPIRED</span>
-            </span>
-          </div>
-        )}
+
       </div>
 
       {/* Event Details */}
@@ -342,39 +334,7 @@ export default function EventCard({ event }) {
               ) : (
                 <span className="text-gray-500 text-xs">Date TBD</span>
               )}
-              {(() => {
-                const now = new Date();
-                let isExpired = false;
 
-                const combineIstIso = (dateStr, timeStr, defaultTime) => {
-                  const t = (timeStr || defaultTime || "23:59").trim();
-                  const d = (dateStr || "").trim();
-                  const withOffset = `${d}T${t}:00+05:30`;
-                  const dt = new Date(withOffset);
-                  if (!isNaN(dt.getTime())) return dt.toISOString();
-                  const [yy, mm, dd] = d.split("-").map(Number);
-                  const [hh, min] = t.split(":").map(Number);
-                  return new Date(Date.UTC(yy, (mm || 1) - 1, dd || 1, hh || 0, min || 0)).toISOString();
-                };
-
-                if (event.endDate || event.enddate) {
-                  const iso = combineIstIso(
-                    event.endDate || event.enddate,
-                    event.endTime || event.endtime,
-                    "23:59"
-                  );
-                  isExpired = now > new Date(iso);
-                } else if (event.date) {
-                  const iso = combineIstIso(event.date, event.time, "23:59");
-                  isExpired = now > new Date(iso);
-                }
-
-                return isExpired ? (
-                  <span className="px-1.5 py-0.5 bg-red-100 text-red-600 text-xs rounded font-medium">
-                    Expired
-                  </span>
-                ) : null;
-              })()}
             </div>
           </div>
 
