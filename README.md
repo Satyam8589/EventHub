@@ -7,8 +7,9 @@ A **modern event booking and ticketing web platform** built using **Next.js** an
 
 ## 🚀 Overview
 
-EventHub allows users to browse, book, and manage events online. It supports digital tickets with QR codes, online payments via Razorpay, and seamless authentication and data storage through Firebase and Supabase.  
-The platform also includes admin controls for event organizers to create, edit, and monitor event details, ticket sales, and user engagement.
+EventHub is a comprehensive **digital event management and community platform** that provides online services for event discovery, digital registration, virtual event access, online workshops, webinars, and community engagement. The platform supports digital credentials with QR codes, secure online payments via Razorpay, and seamless authentication through Firebase and Supabase.
+
+EventHub facilitates digital event experiences, online learning opportunities, and community building through technology. Event organizers can create, manage, and monitor their digital events, track engagement, and manage participant access through our admin dashboard.
 
 ---
 
@@ -26,21 +27,22 @@ The platform also includes admin controls for event organizers to create, edit, 
 ## ⚙️ Features
 
 ✅ User authentication (Sign up / Log in via Firebase)  
-✅ Browse upcoming and ongoing events  
-✅ Secure ticket booking with online payment (Razorpay)  
-✅ Instant digital ticket generation with QR code  
-✅ Email notifications for successful bookings  
+✅ Browse upcoming digital events, workshops, and webinars  
+✅ Secure event registration with online payment (Razorpay)  
+✅ Instant digital access credentials with QR code  
+✅ Email notifications for successful registrations  
 ✅ **Real-time notifications via Pusher**  
   - 🎉 New event posted alerts  
-  - ⚠️ Low ticket availability warnings  
+  - ⚠️ Low availability warnings  
   - 🔴 Event status updates (ONGOING)  
 ✅ **Web Push Notifications (OS-level)**  
   - 🔔 Native browser/OS notifications  
   - 📱 Works even when browser is closed  
   - 🎯 One-click enable/disable toggle  
-✅ Admin dashboard to create and manage events  
+✅ Admin dashboard to create and manage digital events  
 ✅ Analytics and database powered by Supabase  
 ✅ Responsive, modern UI with Tailwind CSS  
+✅ Digital event management and community engagement tools  
 
 
 ## 🧾 Available Scripts

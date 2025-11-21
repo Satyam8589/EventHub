@@ -150,10 +150,13 @@ export default function TermsConditionsPage() {
                 2. Service Description
               </h2>
               <p className="text-white/80 leading-relaxed">
-                EventHub provides an online platform for booking event tickets
-                digitally. All tickets are delivered electronically via email or
-                through your account dashboard. We do not provide physical
-                ticket delivery services.
+                EventHub is a comprehensive digital event management and community 
+                platform that provides online services including event discovery, 
+                digital registration, virtual event access, online workshops, webinars, 
+                and community engagement tools. Our platform facilitates digital 
+                event experiences, online learning opportunities, and community building 
+                through technology. All services are delivered digitally via email or 
+                through your account dashboard.
               </p>
             </div>
 
@@ -187,22 +190,25 @@ export default function TermsConditionsPage() {
             {/* Section 4 */}
             <div className="space-y-4">
               <h2 className="text-2xl sm:text-3xl font-bold text-white">
-                4. Ticket Booking
+                4. Registration & Platform Access
               </h2>
               <div className="text-white/80 leading-relaxed space-y-2">
-                <p>When booking tickets through our platform:</p>
+                <p>When registering for events and accessing our digital platform services:</p>
                 <ul className="list-disc list-inside space-y-2 ml-4">
-                  <li>All sales are final once payment is confirmed</li>
+                  <li>All registrations are final once payment is confirmed</li>
                   <li>
-                    Ticket prices are displayed in INR and include applicable
+                    Service fees are displayed in INR and include applicable
                     taxes
                   </li>
-                  <li>Tickets are subject to availability</li>
+                  <li>Event access is subject to availability</li>
                   <li>
-                    We reserve the right to limit ticket quantities per user
+                    We reserve the right to limit registrations per user
                   </li>
                   <li>
                     Promotional codes cannot be combined with other offers
+                  </li>
+                  <li>
+                    Digital access credentials are non-transferable
                   </li>
                 </ul>
               </div>
@@ -235,13 +241,15 @@ export default function TermsConditionsPage() {
             {/* Section 6 */}
             <div className="space-y-4">
               <h2 className="text-2xl sm:text-3xl font-bold text-white">
-                6. Digital Ticket Delivery
+                6. Digital Service Delivery
               </h2>
               <p className="text-white/80 leading-relaxed">
-                Since all tickets are delivered digitally, there is no shipping
-                policy. Tickets will be sent to your registered email address
-                and available in your account dashboard immediately after
-                successful payment confirmation.
+                All services are delivered digitally. Event access credentials, 
+                workshop materials, webinar links, and digital resources will be 
+                sent to your registered email address and available in your account 
+                dashboard immediately after successful payment confirmation. We do 
+                not provide physical delivery services as all our offerings are 
+                digital and online-based.
               </p>
             </div>
 
