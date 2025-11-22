@@ -111,17 +111,26 @@ export default function EventsPage() {
       return false;
     }
 
+    // Helper to ensure UTC format
+    const ensureUTCString = (dateStr) => {
+      if (!dateStr) return null;
+      if (dateStr.includes('T') && dateStr.endsWith('Z')) return dateStr;
+      if (dateStr.includes('T')) return dateStr + 'Z';
+      return dateStr.replace(' ', 'T') + 'Z';
+    };
+
     // If event has endDate, use it to determine if event is still active
-    const endDateValue = event.endDate || event.enddate;
+    const endDateValue = event.enddate || event.endDate;
     if (endDateValue) {
-      const endDate = new Date(endDateValue);
-      // Be more strict - only show if end date is clearly in the future
+      const utcEndDate = ensureUTCString(endDateValue);
+      const endDate = new Date(utcEndDate);
+      // Only show if end date is clearly in the future
       return endDate > now;
     }
 
     // If no endDate, consider it a single-day event
-    const eventDate = new Date(event.date);
-    // Be more strict - only show if event date is today or future
+    const eventDate = new Date(ensureUTCString(event.date));
+    // Only show if event date is today or future
     const eventDateOnly = new Date(
       eventDate.getFullYear(),
       eventDate.getMonth(),

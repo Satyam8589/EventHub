@@ -92,19 +92,47 @@ export default function CreateEvent() {
         }
       }
 
-      // ✅ Fix: Send date and time separately to preserve exact time values
-      // Don't combine them into Date object to avoid timezone conversion issues
-      // Date should be just the date part (YYYY-MM-DD)
-      // Time should be sent separately as HH:MM format
+      // ✅ Convert IST date/time to UTC before sending to backend
+      // The form inputs are in IST (user's local timezone)
+      // We need to convert them to UTC for storage in the database
+      
+      // Helper function to convert IST date/time to UTC ISO string
+      const convertISTtoUTC = (dateStr, timeStr) => {
+        if (!dateStr || !timeStr) return null;
+        
+        // Parse the date and time strings
+        const [year, month, day] = dateStr.split('-').map(Number);
+        const [hours, minutes] = timeStr.split(':').map(Number);
+        
+        // Create a date object representing IST time
+        // Note: JavaScript Date months are 0-indexed
+        const istDate = new Date(year, month - 1, day, hours, minutes, 0);
+        
+        // IST is UTC+5:30, so subtract 5 hours and 30 minutes to get UTC
+        const utcDate = new Date(istDate.getTime() - (5 * 60 + 30) * 60 * 1000);
+        
+        return utcDate.toISOString();
+      };
+
+      // Convert start date/time to UTC
+      const startDateUTC = convertISTtoUTC(formData.date, formData.time);
+      
+      // Convert end date/time to UTC if provided
+      let endDateUTC = null;
+      if (formData.endDate && formData.endTime) {
+        endDateUTC = convertISTtoUTC(formData.endDate, formData.endTime);
+      }
 
       // Prepare data for API
       const eventData = {
         title: formData.title,
         description: formData.description,
         category: formData.category,
-        date: formData.date,
+        dateUTC: startDateUTC, // Send UTC datetime
+        endDateUTC: endDateUTC, // Send UTC datetime
+        date: formData.date, // Keep original IST date for reference
         endDate: formData.endDate || null,
-        time: formData.time,
+        time: formData.time, // Keep original IST time for reference
         endTime: formData.endTime || null,
         location: formData.location,
         venue: formData.venue,

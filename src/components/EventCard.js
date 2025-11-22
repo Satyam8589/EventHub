@@ -103,16 +103,36 @@ export default function EventCard({ event }) {
 
   // Check if event is sold out
   const isSoldOut = capacity > 0 && spotsLeft === 0;
-  const startDate = event?.date ? new Date(event.date) : null;
+  
+  
+  // ✅ Event status calculation with proper UTC timezone handling
+  // Helper to ensure proper UTC format
+  const ensureUTCString = (dateStr) => {
+    if (!dateStr) return null;
+    if (dateStr.includes('T') && dateStr.endsWith('Z')) return dateStr;
+    if (dateStr.includes('T')) return dateStr + 'Z';
+    return dateStr.replace(' ', 'T') + 'Z';
+  };
+  
+  const startDate = event?.date ? new Date(ensureUTCString(event.date)) : null;
   const rawEnd = event?.endDate || event?.enddate || null;
-  const endDate = rawEnd ? new Date(rawEnd) : startDate ? new Date(startDate.getTime() + 24 * 60 * 60 * 1000) : null;
+  const endDate = rawEnd ? new Date(ensureUTCString(rawEnd)) : startDate ? new Date(startDate.getTime() + 24 * 60 * 60 * 1000) : null;
+  
+  // Use UTC for comparison (database stores UTC)
   const now = new Date();
+  
+  // Determine event status
   const isUpcoming = startDate && now < startDate;
   const isOngoing = startDate && endDate && now >= startDate && now <= endDate;
+  const isPast = endDate && now > endDate;
+  
+  // Status badge configuration
   const statusBadge = isOngoing
     ? { text: "ONGOING", classes: "from-green-500 to-emerald-600 border-green-300/50" }
     : isUpcoming
     ? { text: "UPCOMING", classes: "from-blue-500 to-cyan-600 border-blue-300/50" }
+    : isPast
+    ? { text: "PAST", classes: "from-gray-500 to-gray-600 border-gray-300/50" }
     : null;
   const statusTopClass = event.featured ? "top-14" : "top-3";
 

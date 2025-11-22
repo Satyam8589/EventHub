@@ -31,20 +31,42 @@ export async function GET() {
     );
 
     // Filter out expired events - show only upcoming and currently running events
+    // ✅ Use UTC for comparison with database UTC timestamps
     const now = new Date();
+    console.log('🕐 Current time (UTC):', now.toISOString());
 
     const activeEvents = events.filter((event) => {
       // Skip events with CANCELLED status
       if (event.status === "CANCELLED") {
+        console.log(`❌ Skipping cancelled event: ${event.title}`);
         return false;
       }
 
       // If event has endDate (either endDate or enddate), use it to determine if event is still active
-      const endDateValue = event.endDate || event.enddate;
+      // Use enddate (lowercase) which is the correct field from database
+      const endDateValue = event.enddate || event.endDate;
       if (endDateValue) {
-        const endDate = new Date(endDateValue);
-        // Be more strict - only show if end date is clearly in the future
-        return endDate > now;
+        // Ensure proper UTC format
+        let utcEndDate = endDateValue;
+        if (!endDateValue.includes('T') || !endDateValue.endsWith('Z')) {
+          // Convert "2025-11-22 17:30:00" to "2025-11-22T17:30:00Z"
+          utcEndDate = endDateValue.replace(' ', 'T');
+          if (!utcEndDate.endsWith('Z')) utcEndDate += 'Z';
+        }
+        const endDate = new Date(utcEndDate);
+        const isActive = endDate > now;
+        
+        console.log(`📅 Event: ${event.title}`, {
+          endDateValue,
+          utcEndDate,
+          endDate: endDate.toISOString(),
+          now: now.toISOString(),
+          isActive,
+          comparison: `${endDate.toISOString()} > ${now.toISOString()} = ${isActive}`
+        });
+        
+        // ✅ Compare UTC with UTC - only show if end date is in the future
+        return isActive;
       }
 
       // If no endDate, consider the event as a single-day event
@@ -61,8 +83,14 @@ export async function GET() {
         now.getDate()
       );
 
+      const isActive = eventDateOnly >= nowDateOnly;
+      console.log(`📅 Event (no enddate): ${event.title}`, {
+        eventDate: eventDate.toISOString(),
+        isActive
+      });
+
       // Show events that are today or in the future
-      return eventDateOnly >= nowDateOnly;
+      return isActive;
     });
     console.log(
       "Active events:",

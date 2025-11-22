@@ -89,15 +89,23 @@ export async function GET(request) {
       createdAt: booking.createdAt,
     }));
 
+    // Helper to ensure UTC format
+    const ensureUTCString = (dateStr) => {
+      if (!dateStr) return null;
+      if (dateStr.includes('T') && dateStr.endsWith('Z')) return dateStr;
+      if (dateStr.includes('T')) return dateStr + 'Z';
+      return dateStr.replace(' ', 'T') + 'Z';
+    };
+
     const analytics = {
       event: {
         id: event.id,
-        name: event.name,
+        name: event.name || event.title,
         description: event.description,
         price: event.price,
         capacity: event.capacity,
-        startDate: event.date, // Map database 'date' field to 'startDate'
-        endDate: event.endDate,
+        startDate: ensureUTCString(event.date), // Proper UTC ISO format
+        endDate: ensureUTCString(event.enddate || event.endDate), // Proper UTC ISO format
         location: event.location,
         createdAt: event.createdAt,
       },

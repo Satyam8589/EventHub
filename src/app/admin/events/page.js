@@ -72,26 +72,55 @@ export default function AdminEvents() {
 
   // Function to calculate event status based on dates
   const calculateEventStatus = (event) => {
+    // Get current time in UTC for comparison with database UTC timestamps
     const now = new Date();
-    const eventStartDate = new Date(event.date);
+    
+    // Helper function to ensure we have a proper UTC ISO string
+    const ensureUTCString = (dateStr) => {
+      if (!dateStr) return null;
+      // If it's already in ISO format with Z, return as is
+      if (dateStr.includes('T') && dateStr.endsWith('Z')) return dateStr;
+      // If it has T but no Z, add Z
+      if (dateStr.includes('T')) return dateStr + 'Z';
+      // If it's in format "2025-11-22 17:30:00", convert to ISO
+      return dateStr.replace(' ', 'T') + 'Z';
+    };
+    
+    // Event dates from database are in UTC
+    const eventStartDate = new Date(ensureUTCString(event.date));
 
     // Calculate end date/time
     let eventEndDateTime;
-    if (event.endDate || event.enddate) {
-      // Event has an end date
-      const endDateValue = event.endDate || event.enddate;
-      eventEndDateTime = new Date(endDateValue);
+    const endDateValue = event.endDate || event.enddate;
+    
+    console.log(`🔍 Calculating status for: ${event.title}`, {
+      hasEndDate: !!endDateValue,
+      endDateValue,
+      endDateValueConverted: ensureUTCString(endDateValue),
+      hasEndTime: !!event.endTime,
+      endTime: event.endTime
+    });
+    
+    if (endDateValue) {
+      // Event has an end date (UTC timestamp)
+      // Ensure it's properly formatted as UTC
+      const utcEndDate = ensureUTCString(endDateValue);
+      eventEndDateTime = new Date(utcEndDate);
+      
+      console.log(`✅ Using endDate: ${utcEndDate} → ${eventEndDateTime.toISOString()}`);
       
       // If we have endTime and endDate doesn't include time, combine them
-      if (event.endTime && !endDateValue.includes("T")) {
-        const combinedDateTime = `${endDateValue.split("T")[0]}T${event.endTime}`;
+      // Note: This shouldn't happen since we store full UTC timestamps
+      if (event.endTime && !endDateValue.includes("T") && !endDateValue.includes(":")) {
+        const combinedDateTime = `${endDateValue}T${event.endTime}Z`;
         eventEndDateTime = new Date(combinedDateTime);
+        console.log(`⚠️ Combined endDate with endTime: ${combinedDateTime}`);
       }
     } else {
       // No end date, use start date + time or end of day
       if (event.time) {
         const combinedDateTime = `${event.date.split("T")[0]}T${event.time}`;
-        eventEndDateTime = new Date(combinedDateTime);
+        eventEndDateTime = new Date(ensureUTCString(combinedDateTime));
         if (isNaN(eventEndDateTime.getTime())) {
           eventEndDateTime = new Date(eventStartDate);
           eventEndDateTime.setHours(23, 59, 59, 999);
@@ -100,16 +129,42 @@ export default function AdminEvents() {
         eventEndDateTime = new Date(eventStartDate);
         eventEndDateTime.setHours(23, 59, 59, 999);
       }
+      console.log(`⚠️ No endDate found, using: ${eventEndDateTime.toISOString()}`);
     }
 
-    // Determine status
+    // ✅ Determine status by comparing UTC times
+    let status;
     if (now < eventStartDate) {
-      return "upcoming";
+      status = "upcoming";
     } else if (now >= eventStartDate && now <= eventEndDateTime) {
-      return "ongoing";
+      status = "ongoing";
     } else {
-      return "completed";
+      status = "completed";
     }
+
+    // 🔍 Debug logging
+    console.log(`📊 Event: ${event.title}`, {
+      nowUTC: now.toISOString(),
+      nowTime: now.getTime(),
+      eventStartDate: eventStartDate.toISOString(),
+      eventStartTime: eventStartDate.getTime(),
+      eventEndDateTime: eventEndDateTime.toISOString(),
+      eventEndTime: eventEndDateTime.getTime(),
+      comparison: {
+        'now < start': now < eventStartDate,
+        'now >= start': now >= eventStartDate,
+        'now <= end': now <= eventEndDateTime,
+      },
+      status,
+      rawData: {
+        eventDateFromDB: event.date,
+        eventEndDateFromDB: event.endDate || event.enddate,
+        eventTime: event.time,
+        eventEndTime: event.endTime
+      }
+    });
+
+    return status;
   };
 
   // Group events by status
@@ -121,6 +176,8 @@ export default function AdminEvents() {
 
   events.forEach((event) => {
     const status = calculateEventStatus(event);
+    // Add the calculated status to the event object for display
+    event.calculatedStatus = status;
     eventsByStatus[status].push(event);
   });
 
@@ -266,14 +323,14 @@ export default function AdminEvents() {
                   <div className="absolute top-3 left-3 flex flex-col gap-2">
                     <span
                       className={`px-3 py-1 rounded-full text-xs font-medium ${
-                        event.status === "UPCOMING"
+                        event.calculatedStatus === "upcoming"
                           ? "bg-green-500/80 text-white"
-                          : event.status === "ONGOING"
+                          : event.calculatedStatus === "ongoing"
                           ? "bg-blue-500/80 text-white"
                           : "bg-gray-500/80 text-white"
                       }`}
                     >
-                      {event.status}
+                      {event.calculatedStatus.toUpperCase()}
                     </span>
                     {event.featured && (
                       <span className="px-3 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-yellow-400 to-yellow-600 text-white flex items-center gap-1">

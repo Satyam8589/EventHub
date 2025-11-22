@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
+import { convertUTCtoISTStrings } from "@/lib/timezone";
 
 // GET /api/admin/events - Get events for admin
 export async function GET(request) {
@@ -96,11 +97,31 @@ export async function GET(request) {
           const totalRevenue = confirmedBookings.reduce(
             (sum, b) => sum + (b.totalAmount || 0),
             0
-          );
+          )
+
+          // ✅ Convert UTC datetime to IST before sending to frontend
+          const startDateIST = convertUTCtoISTStrings(event.date);
+          // Use enddate (lowercase) which is the correct field from database
+          const endDateValue = event.enddate || event.endDate;
+          const endDateIST = endDateValue ? convertUTCtoISTStrings(endDateValue) : null;
 
           return {
             ...event,
             bookings: bookings || [],
+            // Keep original UTC date for internal use
+            dateUTC: event.date,
+            endDateUTC: endDateValue,
+            // Ensure we send the correct enddate field
+            endDate: endDateValue,
+            enddate: endDateValue,
+            // Keep original time fields for status calculation
+            time: event.time,
+            endTime: event.endtime || event.endTime,
+            // Add IST date/time strings for easy display
+            dateIST: startDateIST.date,
+            timeIST: startDateIST.time,
+            endDateIST: endDateIST?.date,
+            endTimeIST: endDateIST?.time,
             _count: {
               totalBookings: bookings?.length || 0,
               confirmedBookings: confirmedBookings.length,

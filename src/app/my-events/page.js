@@ -177,7 +177,9 @@ export default function MyEventsPage() {
 
   // Filter bookings by upcoming/ongoing/past with precise date and time support
   const filterBookings = (bookings, type) => {
-    const now = new Date();
+    // ✅ Use IST for event status comparison
+    const nowUTC = new Date();
+    const nowIST = new Date(nowUTC.getTime() + (5 * 60 + 30) * 60 * 1000);
     console.log(`Filtering ${bookings.length} bookings for ${type} events`);
 
     const filtered = bookings.filter((booking) => {
@@ -263,10 +265,10 @@ export default function MyEventsPage() {
         }
       }
 
-      // Determine event status
-      const isUpcoming = now < eventStartDate;
-      const isOngoing = now >= eventStartDate && now <= eventEndDateTime;
-      const isPast = now > eventEndDateTime;
+      // Determine event status using IST
+      const isUpcoming = nowIST < eventStartDate;
+      const isOngoing = nowIST >= eventStartDate && nowIST <= eventEndDateTime;
+      const isPast = nowIST > eventEndDateTime;
 
       let result = false;
       switch (type) {
@@ -295,7 +297,7 @@ export default function MyEventsPage() {
         calculatedEndDateTime: isNaN(eventEndDateTime.getTime())
           ? "Invalid Date"
           : eventEndDateTime.toISOString(),
-        currentTime: now.toISOString(),
+        currentTime: nowIST.toISOString(),
         isUpcoming,
         isOngoing,
         isPast,
@@ -748,7 +750,9 @@ export default function MyEventsPage() {
                       />
                       <div className="absolute top-2 left-2">
                         {(() => {
-                          const now = new Date();
+                          // ✅ Use IST for status badge
+                          const nowUTC = new Date();
+                          const nowIST = new Date(nowUTC.getTime() + (5 * 60 + 30) * 60 * 1000);
                           const eventStartDate = new Date(booking.event.date);
 
                           let eventEndDateTime;
@@ -765,10 +769,10 @@ export default function MyEventsPage() {
                             eventEndDateTime.setHours(23, 59, 59, 999);
                           }
 
-                          const isUpcoming = now < eventStartDate;
+                          const isUpcoming = nowIST < eventStartDate;
                           const isOngoing =
-                            now >= eventStartDate && now <= eventEndDateTime;
-                          const isPast = now > eventEndDateTime;
+                            nowIST >= eventStartDate && nowIST <= eventEndDateTime;
+                          const isPast = nowIST > eventEndDateTime;
 
                           if (isUpcoming) {
                             return (
