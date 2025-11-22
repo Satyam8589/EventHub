@@ -14,6 +14,7 @@ export default function AdminEvents() {
     isOpen: false,
     eventId: null,
   });
+  const [reportGenerating, setReportGenerating] = useState({});
 
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
@@ -69,6 +70,38 @@ export default function AdminEvents() {
       fetchEvents();
     }
   }, [user]);
+
+  // Function to handle report generation
+  const handleGenerateReport = async (eventId, eventTitle) => {
+    if (!confirm(`Generate and send report for "${eventTitle}" to the organizer's email?`)) {
+      return;
+    }
+
+    setReportGenerating((prev) => ({ ...prev, [eventId]: true }));
+
+    try {
+      const response = await fetch("/api/admin/generate-event-report", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ eventId }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        alert(`✅ Report generated and sent successfully!\n\nSent to: ${data.message}`);
+      } else {
+        alert(`❌ Error: ${data.error}\n${data.details || ""}`);
+      }
+    } catch (error) {
+      console.error("Error generating report:", error);
+      alert("❌ Failed to generate report. Please try again.");
+    } finally {
+      setReportGenerating((prev) => ({ ...prev, [eventId]: false }));
+    }
+  };
 
   // Function to calculate event status based on dates
   const calculateEventStatus = (event) => {
@@ -398,6 +431,13 @@ export default function AdminEvents() {
                         >
                           Admins
                         </Link>
+                        <button
+                          onClick={() => handleGenerateReport(event.id, event.title)}
+                          disabled={reportGenerating[event.id]}
+                          className="flex-1 bg-orange-600/20 text-white px-3 py-2 rounded-lg text-xs font-medium border border-orange-500/30 hover:bg-orange-600/30 transition-all text-center disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {reportGenerating[event.id] ? "Sending..." : "📊 Report"}
+                        </button>
                       </>
                     ) : (
                       <>
@@ -522,6 +562,13 @@ export default function AdminEvents() {
                               >
                                 Admins
                               </Link>
+                              <button
+                                onClick={() => handleGenerateReport(event.id, event.title)}
+                                disabled={reportGenerating[event.id]}
+                                className="flex-1 bg-orange-600/20 text-white px-3 py-2 rounded-lg text-xs font-medium border border-orange-500/30 hover:bg-orange-600/30 transition-all text-center disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                {reportGenerating[event.id] ? "Sending..." : "📊 Report"}
+                              </button>
                             </>
                           ) : (
                             <>
@@ -646,6 +693,13 @@ export default function AdminEvents() {
                               >
                                 Admins
                               </Link>
+                              <button
+                                onClick={() => handleGenerateReport(event.id, event.title)}
+                                disabled={reportGenerating[event.id]}
+                                className="flex-1 bg-orange-600/20 text-white px-3 py-2 rounded-lg text-xs font-medium border border-orange-500/30 hover:bg-orange-600/30 transition-all text-center disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                {reportGenerating[event.id] ? "Sending..." : "📊 Report"}
+                              </button>
                             </>
                           ) : (
                             <>

@@ -3,6 +3,7 @@ import Razorpay from "razorpay";
 import crypto from "crypto";
 import { supabase } from "@/lib/supabase";
 import { sendNotificationToUser } from "@/lib/notificationHelper";
+import { sendTicketToUser } from "@/lib/ticketEmail";
 
 // Initialize Razorpay instance
 const razorpay = new Razorpay({
@@ -274,6 +275,32 @@ export async function POST(request) {
         eventId: eventInfo?.id,
       });
     } catch (_) {}
+
+    // 📧 SEND TICKET EMAIL WITH QR CODE
+    try {
+      const ticketResult = await sendTicketToUser(confirmedBooking.id, eventInfo);
+      
+      if (ticketResult.success) {
+        console.log("✅ Ticket email sent for booking:", confirmedBooking.id);
+        
+        // 🔔 Send push notification to user about ticket email
+        try {
+          await sendNotificationToUser(confirmedBooking.userId, "ticket-sent", {
+            eventTitle: eventInfo?.title || "the event",
+            eventId: eventInfo?.id,
+          });
+          console.log("✅ Ticket sent notification delivered to user");
+        } catch (notifError) {
+          console.error("❌ Error sending ticket notification:", notifError);
+          // Don't fail if notification fails
+        }
+      } else {
+        console.error("❌ Ticket email failed:", ticketResult.error);
+      }
+    } catch (emailError) {
+      console.error("❌ Error sending ticket email:", emailError);
+      // Don't fail the payment if email fails
+    }
 
     // Return success response
     return NextResponse.json(successResponse);

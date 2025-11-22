@@ -35,6 +35,16 @@ function getTransporter() {
   return transporter;
 }
 
+/**
+ * Send email using Gmail SMTP
+ * Used for: ticket confirmations, event reports, notifications, etc.
+ * @param {Object} params - Email parameters
+ * @param {string} params.to - Recipient email address
+ * @param {string} params.subject - Email subject
+ * @param {string} params.html - HTML content of the email
+ * @param {Array} params.attachments - Optional attachments (e.g., QR code images)
+ * @returns {Promise<Object>} - { success: boolean, messageId?: string, error?: string }
+ */
 export async function sendTicketEmail({ to, subject, html, attachments }) {
   try {
     const transport = getTransporter();

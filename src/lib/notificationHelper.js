@@ -143,6 +143,14 @@ function getNotificationContent(event, data) {
       data: { url: `/events/${data.eventId}` },
       requireInteraction: true,
     },
+    "ticket-sent": {
+      title: "📧 Ticket Sent to Email!",
+      message: `Check your Gmail! Your ticket for ${eventTitle} has been sent.`,
+      icon: "/icon-192.png",
+      tag: "ticket-sent",
+      data: { url: `/my-events` },
+      requireInteraction: true,
+    },
   };
 
   return (

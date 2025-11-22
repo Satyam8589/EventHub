@@ -1,6 +1,6 @@
 import { createCanvas, loadImage } from "canvas";
 
-// Helper function to calculate event duration in days
+// Helper function to calculate event duration in days (IST timezone aware)
 function calculateEventDays(event) {
   console.log("🔍 Calculating event days for:", {
     eventId: event.id,
@@ -27,61 +27,53 @@ function calculateEventDays(event) {
   }
 
   const endDate = new Date(endDateValue);
-  const parseTimeToMinutes = (t) => {
-    if (!t || typeof t !== "string") return null;
-    const s = t.trim();
-    const m = s.match(/^([0-1]?\d|2[0-3]):([0-5]\d)\s*(am|pm)?$/i);
-    if (!m) return null;
-    let hh = parseInt(m[1], 10);
-    const mm = parseInt(m[2], 10);
-    const ap = m[3] ? m[3].toLowerCase() : null;
-    if (ap) {
-      hh = hh % 12 + (ap === "pm" ? 12 : 0);
-    }
-    return hh * 60 + mm;
-  };
-
-  const startMinutes = parseTimeToMinutes(event.time);
-  const endMinutes = parseTimeToMinutes(event.endTime || event.endtime);
-
-  if (startMinutes !== null && endMinutes !== null) {
-    const startMidnight = new Date(startDate);
-    startMidnight.setHours(0, 0, 0, 0);
-    const endMidnight = new Date(endDate);
-    endMidnight.setHours(0, 0, 0, 0);
-    const dayDiff = Math.round((endMidnight - startMidnight) / (24 * 60 * 60 * 1000));
-    const totalMinutes = dayDiff * 24 * 60 + (endMinutes - startMinutes);
-    if (totalMinutes <= 24 * 60) {
-      return 1;
-    }
-  } else {
-    const durationMs = endDate - startDate;
-    if (durationMs <= 24 * 60 * 60 * 1000) {
-      return 1;
-    }
-  }
-
-  console.log("📅 Date calculation:", {
-    startDate: startDate.toISOString(),
-    endDate: endDate.toISOString(),
-    hasEndDate: !!endDate,
+  
+  // Convert to IST timezone for proper day comparison
+  console.log("🕐 Timezone comparison:", {
+    startUTC: startDate.toISOString(),
+    endUTC: endDate.toISOString(),
+    startIST: startDate.toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }),
+    endIST: endDate.toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }),
   });
 
-  // Use the same logic as TicketModal.js for consistency
+  // Helper function to get date in IST timezone (YYYY-MM-DD format)
+  const getISTDateString = (date) => {
+    const istDate = new Date(date.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+    return istDate.toISOString().split("T")[0];
+  };
+
+  const startDateIST = getISTDateString(startDate);
+  const endDateIST = getISTDateString(endDate);
+
+  console.log("📅 IST Date strings for comparison:", {
+    startDateIST,
+    endDateIST,
+    areSameDay: startDateIST === endDateIST,
+  });
+
+  // If same day in IST, it's a single-day event
+  if (startDateIST === endDateIST) {
+    console.log("✅ Same day in IST timezone, returning 1 day");
+    return 1;
+  }
+
+  console.log("📅 Multi-day event detected in IST");
+
+  // Calculate days between start and end in IST
   const days = [];
   const currentDate = new Date(startDate);
-  while (currentDate <= endDate) {
+  while (getISTDateString(currentDate) <= endDateIST) {
     days.push(new Date(currentDate));
     currentDate.setDate(currentDate.getDate() + 1);
   }
 
   const finalDays = Math.max(1, days.length);
-  console.log("✅ Event duration calculated:", {
-    startDate: startDate.toDateString(),
-    endDate: endDate.toDateString(),
+  console.log("✅ Event duration calculated (IST):", {
+    startDateIST,
+    endDateIST,
     daysCount: days.length,
     finalDays,
-    calculatedDays: days.map((d) => d.toDateString()),
+    calculatedDaysIST: days.map((d) => getISTDateString(d)),
   });
 
   return finalDays;
@@ -121,6 +113,7 @@ function getQRScanInfo(booking, dayNumber, qrData) {
     return null;
   }
 }
+
 export async function generateTicketImage(booking, event, user) {
   try {
     console.log("🎫 Generating ticket with user data:", {
