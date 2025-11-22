@@ -276,33 +276,29 @@ export async function POST(request) {
       });
     } catch (_) {}
 
-    // 📧 SEND TICKET EMAIL WITH QR CODE
-    try {
-      const ticketResult = await sendTicketToUser(confirmedBooking.id, eventInfo);
-      
-      if (ticketResult.success) {
-        console.log("✅ Ticket email sent for booking:", confirmedBooking.id);
-        
-        // 🔔 Send push notification to user about ticket email
-        try {
-          await sendNotificationToUser(confirmedBooking.userId, "ticket-sent", {
+    // 📧 SEND TICKET EMAIL WITH QR CODE (in background - don't wait)
+    // This prevents timeout issues since ticket generation can take several seconds
+    sendTicketToUser(confirmedBooking.id, eventInfo)
+      .then((ticketResult) => {
+        if (ticketResult.success) {
+          console.log("✅ Ticket email sent for booking:", confirmedBooking.id);
+          
+          // 🔔 Send push notification to user about ticket email
+          sendNotificationToUser(confirmedBooking.userId, "ticket-sent", {
             eventTitle: eventInfo?.title || "the event",
             eventId: eventInfo?.id,
-          });
-          console.log("✅ Ticket sent notification delivered to user");
-        } catch (notifError) {
-          console.error("❌ Error sending ticket notification:", notifError);
-          // Don't fail if notification fails
+          })
+            .then(() => console.log("✅ Ticket sent notification delivered to user"))
+            .catch((notifError) => console.error("❌ Error sending ticket notification:", notifError));
+        } else {
+          console.error("❌ Ticket email failed:", ticketResult.error);
         }
-      } else {
-        console.error("❌ Ticket email failed:", ticketResult.error);
-      }
-    } catch (emailError) {
-      console.error("❌ Error sending ticket email:", emailError);
-      // Don't fail the payment if email fails
-    }
+      })
+      .catch((emailError) => {
+        console.error("❌ Error sending ticket email:", emailError);
+      });
 
-    // Return success response
+    // Return success response immediately (don't wait for ticket email)
     return NextResponse.json(successResponse);
   } catch (error) {
     // Try to mark booking as failed if we have bookingId
