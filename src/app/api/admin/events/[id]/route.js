@@ -30,6 +30,13 @@ export async function GET(request, { params }) {
       .select("id")
       .eq("eventId", id);
 
+    // Get discounts for this event
+    const { data: discounts } = await supabase
+      .from("event_discounts")
+      .select("*")
+      .eq("eventId", id)
+      .order("createdAt", { ascending: false });
+
     // Add additional data to event object
     const enrichedEvent = {
       ...event,
@@ -39,6 +46,7 @@ export async function GET(request, { params }) {
         reviews: 0, // TODO: Implement reviews if needed
       },
       gallery: event.gallery || [],
+      discounts: discounts || [],
     };
 
     return NextResponse.json({ event: enrichedEvent });

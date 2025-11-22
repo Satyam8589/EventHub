@@ -23,6 +23,10 @@ export default function BookingModal({ event, isOpen, onClose, onBookingSuccess 
   const [errorMessage, setErrorMessage] = useState("");
   const [userTotalTickets, setUserTotalTickets] = useState(0);
   const [loadingBookings, setLoadingBookings] = useState(false);
+  const [discountCode, setDiscountCode] = useState("");
+  const [appliedDiscount, setAppliedDiscount] = useState(null);
+  const [discountError, setDiscountError] = useState("");
+  const [validatingDiscount, setValidatingDiscount] = useState(false);
 
   // Fetch user details from backend when modal opens
   useEffect(() => {
@@ -112,8 +116,66 @@ export default function BookingModal({ event, isOpen, onClose, onBookingSuccess 
     }));
   };
 
+  // Calculate discount amount
+  const getDiscountAmount = () => {
+    if (!appliedDiscount) return 0;
+    
+    const baseTotal = (event?.price || 0) * formData.numberOfTickets;
+    
+    if (appliedDiscount.type === "PERCENTAGE") {
+      return (baseTotal * appliedDiscount.value) / 100;
+    } else if (appliedDiscount.type === "FIXED") {
+      return appliedDiscount.value;
+    }
+    
+    return 0;
+  };
+
   const calculateTotal = () => {
-    return (event?.price || 0) * formData.numberOfTickets;
+    const baseTotal = (event?.price || 0) * formData.numberOfTickets;
+    const discountAmount = getDiscountAmount();
+    return Math.max(0, baseTotal - discountAmount);
+  };
+
+  // Handle applying discount code
+  const handleApplyDiscount = async () => {
+    if (!discountCode.trim()) {
+      setDiscountError("Please enter a discount code");
+      return;
+    }
+
+    setValidatingDiscount(true);
+    setDiscountError("");
+
+    try {
+      const response = await fetch(`/api/events/${event.id}/validate-discount`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: discountCode.trim() }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setAppliedDiscount(data.discount);
+        setDiscountError("");
+      } else {
+        setDiscountError(data.error || "Invalid discount code");
+        setAppliedDiscount(null);
+      }
+    } catch (error) {
+      setDiscountError("Failed to validate discount code");
+      setAppliedDiscount(null);
+    } finally {
+      setValidatingDiscount(false);
+    }
+  };
+
+  // Handle removing discount
+  const handleRemoveDiscount = () => {
+    setAppliedDiscount(null);
+    setDiscountCode("");
+    setDiscountError("");
   };
 
   const handleSubmit = async (e) => {
@@ -159,7 +221,8 @@ export default function BookingModal({ event, isOpen, onClose, onBookingSuccess 
           userId: user.uid,
           eventId: event.id,
           tickets: parseInt(formData.numberOfTickets),
-          totalAmount: calculateTotal(),
+          totalAmount: (event?.price || 0) * parseInt(formData.numberOfTickets),
+          discountCode: discountCode || null,
           userDetails: {
             fullName: formData.fullName,
             email: formData.email,
@@ -249,6 +312,9 @@ export default function BookingModal({ event, isOpen, onClose, onBookingSuccess 
     setOrderData(null);
     setSuccess(false);
     setErrorMessage("");
+    setDiscountCode("");
+    setAppliedDiscount(null);
+    setDiscountError("");
     setFormData({
       fullName: "",
       email: "",
@@ -426,8 +492,73 @@ export default function BookingModal({ event, isOpen, onClose, onBookingSuccess 
                   </select>
                 </div>
 
+                {/* Discount Code */}
+                <div className="bg-blue-50/50 rounded-lg p-3 border border-blue-200">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Discount Code (Optional)
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={discountCode}
+                      onChange={(e) => setDiscountCode(e.target.value.toUpperCase())}
+                      placeholder="Enter discount code"
+                      disabled={validatingDiscount || !!appliedDiscount}
+                      className="flex-1 px-3 py-2.5 rounded-lg bg-white border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-gray-800 placeholder-gray-400 text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    />
+                    {!appliedDiscount ? (
+                      <button
+                        type="button"
+                        onClick={handleApplyDiscount}
+                        disabled={validatingDiscount || !discountCode.trim()}
+                        className="px-4 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                      >
+                        {validatingDiscount ? "Validating..." : "Apply"}
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={handleRemoveDiscount}
+                        className="px-4 py-2.5 bg-red-100 text-red-600 rounded-lg text-sm font-medium hover:bg-red-200 transition-colors whitespace-nowrap"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                  
+                  {/* Success Message */}
+                  {appliedDiscount && (
+                    <div className="mt-2 text-sm text-green-700 font-medium flex items-center gap-1.5">
+                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                      <span>
+                        {appliedDiscount.code} applied - {appliedDiscount.type === "PERCENTAGE" ? `${appliedDiscount.value}% off` : `₹${appliedDiscount.value} off`}
+                      </span>
+                    </div>
+                  )}
+                  
+                  {/* Error Message */}
+                  {discountError && (
+                    <p className="mt-2 text-sm text-red-600">{discountError}</p>
+                  )}
+                </div>
+
                 {/* Total Amount */}
                 <div className="bg-gray-100/60 rounded-lg p-3 border border-gray-200">
+                  {appliedDiscount && (
+                    <>
+                      <div className="flex justify-between items-center text-sm text-gray-600 mb-1">
+                        <span>Original Price:</span>
+                        <span className="line-through">₹{((event?.price || 0) * formData.numberOfTickets).toLocaleString("en-IN")}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-sm text-green-600 mb-2">
+                        <span>Discount:</span>
+                        <span>-₹{getDiscountAmount().toLocaleString("en-IN")}</span>
+                      </div>
+                      <div className="border-t border-gray-300 my-2"></div>
+                    </>
+                  )}
                   <div className="flex justify-between items-center">
                     <span className="font-medium text-gray-700 text-sm">Total Amount:</span>
                     <span className="text-xl font-bold text-gray-800">₹{calculateTotal().toLocaleString("en-IN")}</span>

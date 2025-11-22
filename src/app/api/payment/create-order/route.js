@@ -19,7 +19,7 @@ export async function POST(request) {
     const timePart = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }).format(now);
     const nowIstIso = `${datePart}T${timePart}+05:30`;
     const body = await request.json();
-    const { userId, eventId, tickets, totalAmount, userDetails } = body;
+    const { userId, eventId, tickets, totalAmount, userDetails, discountCode } = body;
     // Validate required fields
     if (!userId || !eventId || !tickets || !totalAmount) {
       return NextResponse.json(
@@ -37,6 +37,81 @@ export async function POST(request) {
 
     if (eventError || !event) {
       return NextResponse.json({ error: "Event not found" }, { status: 404 });
+    }
+
+    // ✅ DISCOUNT CODE VALIDATION
+    let discountId = null;
+    let discountAmount = 0;
+    let originalAmount = totalAmount;
+    let finalAmount = totalAmount;
+
+    if (discountCode && discountCode.trim()) {
+      try {
+        const { data: discount, error: discountError } = await supabase
+          .from("event_discounts")
+          .select("*")
+          .eq("eventId", eventId)
+          .eq("code", discountCode.toUpperCase())
+          .eq("isActive", true)
+          .single();
+
+        if (discountError || !discount) {
+          return NextResponse.json(
+            { error: "Invalid discount code" },
+            { status: 400 }
+          );
+        }
+
+        // Check expiry
+        if (discount.validUntil) {
+          const nowCheck = new Date();
+          const nowIST = new Date(nowCheck.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+          const validUntil = new Date(discount.validUntil);
+
+          if (nowIST > validUntil) {
+            return NextResponse.json(
+              { error: "Discount code has expired" },
+              { status: 400 }
+            );
+          }
+        }
+
+        // Check max uses
+        if (discount.maxUses && discount.currentUses >= discount.maxUses) {
+          return NextResponse.json(
+            { error: "Discount code usage limit reached" },
+            { status: 400 }
+          );
+        }
+
+        // Calculate discount
+        const baseTotal = totalAmount;
+        if (discount.type === "PERCENTAGE") {
+          discountAmount = (baseTotal * discount.value) / 100;
+        } else if (discount.type === "FIXED") {
+          discountAmount = discount.value;
+        }
+
+        discountId = discount.id;
+        originalAmount = totalAmount;
+        finalAmount = Math.max(0, totalAmount - discountAmount);
+
+        console.log("✅ Discount applied:", {
+          code: discountCode,
+          discountId,
+          type: discount.type,
+          value: discount.value,
+          discountAmount,
+          originalAmount,
+          finalAmount,
+        });
+      } catch (error) {
+        console.error("Error validating discount:", error);
+        return NextResponse.json(
+          { error: "Failed to validate discount" },
+          { status: 500 }
+        );
+      }
     }
 
     // 🔒 ATOMIC AVAILABILITY CHECK
@@ -163,7 +238,7 @@ export async function POST(request) {
       40
     );
     const razorpayOrder = await razorpay.orders.create({
-      amount: totalAmount * 100, // Razorpay expects amount in paise (multiply by 100)
+      amount: Math.round(finalAmount * 100), // ✅ Use finalAmount (discounted price) in paise
       currency: "INR",
       receipt: shortReceipt,
       notes: {
@@ -184,10 +259,13 @@ export async function POST(request) {
       userId,
       eventId,
       tickets: parseInt(tickets),
-      totalAmount: parseFloat(totalAmount),
+      totalAmount: parseFloat(finalAmount),
+      discountAmount: parseFloat(discountAmount),
+      originalAmount: parseFloat(originalAmount),
       status: "PENDING",
       paymentMethod: "razorpay",
-      paymentId: `PENDING_${razorpayOrder.id}`, // Temporary: store order ID here
+      paymentId: `PENDING_${razorpayOrder.id}`,
+      discountId: discountId || null,
       createdAt: nowIstIso,
       updatedAt: nowIstIso,
     };

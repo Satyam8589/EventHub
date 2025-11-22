@@ -10,7 +10,6 @@ const razorpay = new Razorpay({
   key_secret: process.env.RAZORPAY_KEY_SECRET,
 });
 
-// Log presence of Razorpay environment variables (helps debug misconfiguration)
 // POST /api/payment/verify - Verify Razorpay payment
 export async function POST(request) {
   let body = null;
@@ -99,9 +98,8 @@ export async function POST(request) {
         { status: 400 }
       );
     }
+
     // Get the pending booking
-    // Temporarily using paymentId field where order ID is stored with PENDING_ prefix
-    // First, try to find by bookingId alone
     let { data: booking, error: bookingError } = await supabase
       .from("bookings")
       .select("*")
@@ -109,8 +107,6 @@ export async function POST(request) {
       .single();
 
     console.log("=== BOOKING QUERY RESULT (by ID) ===");
-    if (booking) {
-    }
 
     if (bookingError || !booking) {
       return NextResponse.json(
@@ -151,8 +147,6 @@ export async function POST(request) {
     }
 
     // 🔒 ATOMIC BOOKING CONFIRMATION WITH AVAILABILITY CHECK
-    // Use database function to atomically check availability and confirm booking
-    // This prevents race conditions when multiple users try to book the last ticket
     const { data: confirmationResult, error: rpcError } = await supabase.rpc(
       "confirm_booking_with_availability_check",
       {
@@ -163,18 +157,14 @@ export async function POST(request) {
 
     if (rpcError) {
       console.error("RPC Error:", rpcError);
-      // Fallback to old method if RPC fails (for backward compatibility)
-      // But this should not happen if migration is applied
       throw new Error(
         `Database function error: ${rpcError.message}. Please ensure the database migration has been applied.`
       );
     }
 
-    // Parse the JSONB result from the function
     const result = confirmationResult;
 
     if (!result.success) {
-      // Booking could not be confirmed (likely overselling prevented)
       return NextResponse.json(
         {
           success: false,
@@ -185,14 +175,10 @@ export async function POST(request) {
       );
     }
 
-
-
     // Extract booking and event from result
     const confirmedBooking = result.booking;
     const eventInfo = result.event;
 
-    // ✅ paymentId is now stored in database with the actual Razorpay transaction ID
-    // Use the stored paymentId from the confirmed booking (not the variable)
     const storedPaymentId = confirmedBooking.paymentId || razorpay_payment_id;
 
     // Prepare success response
@@ -205,16 +191,14 @@ export async function POST(request) {
         status: confirmedBooking.status,
         tickets: confirmedBooking.tickets,
         totalAmount: confirmedBooking.totalAmount,
-        paymentId: storedPaymentId, // ✅ Transaction ID stored in database
+        paymentId: storedPaymentId,
         event: {
           id: eventInfo.id,
           title: eventInfo.title,
-          // Get additional event details if needed
         },
       },
     };
 
-    // Use event details returned from the confirmation function (avoids type mismatch issues)
     if (eventInfo) {
       successResponse.booking.event = {
         id: eventInfo.id,
@@ -258,10 +242,32 @@ export async function POST(request) {
           })
           .eq("id", bookingId);
         if (metaError2) {
+          console.error("Metadata update error with admin client:", metaError2);
         }
       }
     } catch (_) {}
 
+    // ✅ INCREMENT DISCOUNT USAGE AFTER SUCCESSFUL PAYMENT
+    if (confirmedBooking.discountId) {
+      try {
+        const { error: discountError } = await supabase.rpc(
+          "increment_discount_usage",
+          { 
+            discount_id: confirmedBooking.discountId 
+          }
+        );
+        if (discountError) {
+          console.error("❌ Error incrementing discount usage:", discountError);
+        } else {
+          console.log("✅ Discount usage incremented for:", confirmedBooking.discountId);
+        }
+      } catch (discountError) {
+        console.error("❌ Exception incrementing discount usage:", discountError);
+        // Don't fail payment if discount increment fails
+      }
+    }
+
+    // Send success notification
     try {
       await sendNotificationToUser(confirmedBooking.userId, "payment-success", {
         eventTitle: eventInfo?.title || "the event",
@@ -308,6 +314,7 @@ export async function POST(request) {
           }
         } catch (_) {}
       } catch (updateError) {
+        console.error("Error updating booking status:", updateError);
       }
     }
 
