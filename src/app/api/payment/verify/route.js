@@ -5,17 +5,46 @@ import { supabase } from "@/lib/supabase";
 import { sendNotificationToUser } from "@/lib/notificationHelper";
 import { sendTicketToUser } from "@/lib/ticketEmail";
 
+// ⚡ Route segment config for Vercel deployment
+export const runtime = 'nodejs'; // Use Node.js runtime (not Edge)
+export const maxDuration = 60; // Maximum execution time in seconds (Pro plan)
+// For free plan, use: export const maxDuration = 10;
+
 // Initialize Razorpay instance
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
   key_secret: process.env.RAZORPAY_KEY_SECRET,
 });
 
+// Helper function to get current IST timestamp
+const getIstTimestamp = () => {
+  const now = new Date();
+  const datePart = new Intl.DateTimeFormat("en-CA", { 
+    timeZone: "Asia/Kolkata", 
+    year: "numeric", 
+    month: "2-digit", 
+    day: "2-digit" 
+  }).format(now);
+  const timePart = new Intl.DateTimeFormat("en-GB", { 
+    timeZone: "Asia/Kolkata", 
+    hour: "2-digit", 
+    minute: "2-digit", 
+    second: "2-digit", 
+    hour12: false 
+  }).format(now);
+  return `${datePart}T${timePart}+05:30`;
+};
+
 // POST /api/payment/verify - Verify Razorpay payment
 export async function POST(request) {
+  const startTime = Date.now();
   let body = null;
 
   try {
+    console.log("🚀 Payment verification started at:", new Date().toISOString());
+    console.log("🌍 Environment:", process.env.NODE_ENV);
+    console.log("⚡ Runtime:", process.env.VERCEL_REGION || 'local');
+
     body = await request.json();
     const {
       razorpay_order_id,
@@ -23,6 +52,7 @@ export async function POST(request) {
       razorpay_signature,
       bookingId,
     } = body;
+    
     console.log(
       "Full request body:",
       JSON.stringify(
@@ -55,14 +85,10 @@ export async function POST(request) {
       .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
       .update(`${razorpay_order_id}|${razorpay_payment_id}`)
       .digest("hex");
+    
     if (generatedSignature !== razorpay_signature) {
-      // Mark booking as failed
-      const nowIstIso = (() => {
-        const now = new Date();
-        const datePart = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
-        const timePart = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }).format(now);
-        return `${datePart}T${timePart}+05:30`;
-      })();
+      const nowIstIso = getIstTimestamp();
+      
       await supabase
         .from("bookings")
         .update({
@@ -179,7 +205,6 @@ export async function POST(request) {
     // Extract booking and event from result
     const confirmedBooking = result.booking;
     const eventInfo = result.event;
-
     const storedPaymentId = confirmedBooking.paymentId || razorpay_payment_id;
 
     // Prepare success response
@@ -196,28 +221,16 @@ export async function POST(request) {
         event: {
           id: eventInfo.id,
           title: eventInfo.title,
+          date: eventInfo.date,
+          time: eventInfo.time,
+          location: eventInfo.location,
         },
       },
     };
 
-    if (eventInfo) {
-      successResponse.booking.event = {
-        id: eventInfo.id,
-        title: eventInfo.title,
-        date: eventInfo.date,
-        time: eventInfo.time,
-        location: eventInfo.location,
-      };
-    }
-
     // Persist verification metadata on booking
     try {
-      const nowIstIso = (() => {
-        const now = new Date();
-        const datePart = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
-        const timePart = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }).format(now);
-        return `${datePart}T${timePart}+05:30`;
-      })();
+      const nowIstIso = getIstTimestamp();
       let { error: metaError } = await supabase
         .from("bookings")
         .update({
@@ -227,6 +240,7 @@ export async function POST(request) {
           updatedAt: nowIstIso,
         })
         .eq("id", bookingId);
+      
       if (metaError && process.env.SUPABASE_SERVICE_ROLE_KEY) {
         const { createClient } = require("@supabase/supabase-js");
         const admin = createClient(
@@ -278,13 +292,14 @@ export async function POST(request) {
 
     // 📧 SEND TICKET EMAIL WITH QR CODE (in background - don't wait)
     // This prevents timeout issues since ticket generation can take several seconds
-    sendTicketToUser(confirmedBooking.id, eventInfo)
+    // Using Promise.race to ensure we don't wait too long even in edge cases
+    const ticketPromise = sendTicketToUser(confirmedBooking.id, eventInfo)
       .then((ticketResult) => {
         if (ticketResult.success) {
           console.log("✅ Ticket email sent for booking:", confirmedBooking.id);
           
           // 🔔 Send push notification to user about ticket email
-          sendNotificationToUser(confirmedBooking.userId, "ticket-sent", {
+          return sendNotificationToUser(confirmedBooking.userId, "ticket-sent", {
             eventTitle: eventInfo?.title || "the event",
             eventId: eventInfo?.id,
           })
@@ -298,18 +313,21 @@ export async function POST(request) {
         console.error("❌ Error sending ticket email:", emailError);
       });
 
+    // Don't await - let it run in background
+    // The serverless function will keep running even after response is sent
+    ticketPromise.catch(() => {}); // Prevent unhandled rejection
+
+    const duration = Date.now() - startTime;
+    console.log(`⏱️ Payment verification completed in ${duration}ms`);
+
     // Return success response immediately (don't wait for ticket email)
     return NextResponse.json(successResponse);
+    
   } catch (error) {
     // Try to mark booking as failed if we have bookingId
     if (body?.bookingId) {
       try {
-        const nowIstIso = (() => {
-          const now = new Date();
-          const datePart = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
-          const timePart = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }).format(now);
-          return `${datePart}T${timePart}+05:30`;
-        })();
+        const nowIstIso = getIstTimestamp();
         await supabase
           .from("bookings")
           .update({
@@ -318,6 +336,7 @@ export async function POST(request) {
             updatedAt: nowIstIso,
           })
           .eq("id", body.bookingId);
+        
         try {
           const { data: bookingForPush } = await supabase
             .from("bookings")
