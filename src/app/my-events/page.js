@@ -177,10 +177,11 @@ export default function MyEventsPage() {
 
   // Filter bookings by upcoming/ongoing/past with precise date and time support
   const filterBookings = (bookings, type) => {
-    // ✅ Use IST for event status comparison
-    const nowUTC = new Date();
-    const nowIST = new Date(nowUTC.getTime() + (5 * 60 + 30) * 60 * 1000);
+    // ✅ Use current time in IST for comparison
+    const now = new Date();
     console.log(`Filtering ${bookings.length} bookings for ${type} events`);
+    console.log(`Current time (UTC): ${now.toISOString()}`);
+    console.log(`Current time (IST): ${now.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}`);
 
     const filtered = bookings.filter((booking) => {
       // Safety check for event and date existence
@@ -194,14 +195,40 @@ export default function MyEventsPage() {
         return false; // Skip bookings without valid event data
       }
 
-      // Calculate start and end date/time for the event
-      const eventStartDate = new Date(booking.event.date);
+      // Helper function to parse date/time as IST and convert to UTC for comparison
+      const parseAsIST = (dateStr, timeStr = null) => {
+        let dateTimeStr;
+        
+        // If we have a separate time string, use it (prioritize separate time field)
+        if (timeStr) {
+          // Extract just the date part from dateStr (in case it has time)
+          const datePart = dateStr.split('T')[0];
+          dateTimeStr = `${datePart}T${timeStr}`;
+        } else if (dateStr.includes("T")) {
+          // Date already includes time
+          dateTimeStr = dateStr;
+        } else {
+          // Just a date, no time
+          dateTimeStr = dateStr;
+        }
+        
+        // If no timezone info, treat as IST by appending +05:30
+        if (!dateTimeStr.includes('Z') && !dateTimeStr.includes('+') && !dateTimeStr.includes('-', 10)) {
+          dateTimeStr += '+05:30';
+        }
+        
+        return new Date(dateTimeStr);
+      };
+
+      // Calculate start and end date/time for the event (treating as IST)
+      const eventStartDate = parseAsIST(booking.event.date, booking.event.time);
 
       // Validate start date
       if (isNaN(eventStartDate.getTime())) {
         console.error("Invalid start date for booking:", {
           bookingId: booking?.id || "unknown",
           eventDate: booking?.event?.date || "undefined",
+          eventTime: booking?.event?.time || "undefined",
           eventTitle: booking?.event?.title || "undefined",
           fullBooking: booking,
         });
@@ -212,24 +239,16 @@ export default function MyEventsPage() {
       if (booking.event.endDate || booking.event.enddate) {
         // Event has an end date/time
         const endDateValue = booking.event.endDate || booking.event.enddate;
-
-        // Check if we also have endtime to combine
-        if (booking.event.endtime && !endDateValue.includes("T")) {
-          // If enddate doesn't include time (just date) and we have endtime, combine them
-          eventEndDateTime = new Date(
-            `${endDateValue}T${booking.event.endtime}`
-          );
-        } else {
-          // Use enddate as-is (already includes time)
-          eventEndDateTime = new Date(endDateValue);
-        }
+        const endTimeValue = booking.event.endtime;
+        
+        eventEndDateTime = parseAsIST(endDateValue, endTimeValue);
 
         // Validate end date
         if (isNaN(eventEndDateTime.getTime())) {
           console.error("Invalid end date for booking:", {
             bookingId: booking?.id || "unknown",
             endDate: endDateValue,
-            endTime: booking?.event?.endtime || "undefined",
+            endTime: endTimeValue,
             eventTitle: booking?.event?.title || "undefined",
             fullBooking: booking,
           });
@@ -238,12 +257,10 @@ export default function MyEventsPage() {
           eventEndDateTime.setHours(23, 59, 59, 999);
         }
       } else {
-        // No end date, create end time from start date + time
+        // No end date, use start date with time or end of day
         if (booking.event.time) {
-          // If event has a specific time, use that date with time
-          eventEndDateTime = new Date(
-            `${booking.event.date}T${booking.event.time}`
-          );
+          // If event has a specific time, use that as end time too
+          eventEndDateTime = parseAsIST(booking.event.date, booking.event.time);
 
           // Validate combined date/time
           if (isNaN(eventEndDateTime.getTime())) {
@@ -265,10 +282,10 @@ export default function MyEventsPage() {
         }
       }
 
-      // Determine event status using IST
-      const isUpcoming = nowIST < eventStartDate;
-      const isOngoing = nowIST >= eventStartDate && nowIST <= eventEndDateTime;
-      const isPast = nowIST > eventEndDateTime;
+      // Determine event status (both dates are now in UTC, representing IST times)
+      const isUpcoming = now < eventStartDate;
+      const isOngoing = now >= eventStartDate && now <= eventEndDateTime;
+      const isPast = now > eventEndDateTime;
 
       let result = false;
       switch (type) {
@@ -291,13 +308,14 @@ export default function MyEventsPage() {
         eventEndDate:
           booking?.event?.endDate || booking?.event?.enddate || "undefined",
         eventTime: booking?.event?.time || "undefined",
+        eventEndTime: booking?.event?.endtime || "undefined",
         calculatedStartDateTime: isNaN(eventStartDate.getTime())
           ? "Invalid Date"
           : eventStartDate.toISOString(),
         calculatedEndDateTime: isNaN(eventEndDateTime.getTime())
           ? "Invalid Date"
           : eventEndDateTime.toISOString(),
-        currentTime: nowIST.toISOString(),
+        currentTime: now.toISOString(),
         isUpcoming,
         isOngoing,
         isPast,
@@ -751,28 +769,51 @@ export default function MyEventsPage() {
                       <div className="absolute top-2 left-2">
                         {(() => {
                           // ✅ Use IST for status badge
-                          const nowUTC = new Date();
-                          const nowIST = new Date(nowUTC.getTime() + (5 * 60 + 30) * 60 * 1000);
-                          const eventStartDate = new Date(booking.event.date);
+                          // ✅ Use current time for status badge
+                          const now = new Date();
+                          
+                          // Helper function to parse date/time as IST
+                          const parseAsIST = (dateStr, timeStr = null) => {
+                            let dateTimeStr;
+                            
+                            // If we have a separate time string, use it (prioritize separate time field)
+                            if (timeStr) {
+                              // Extract just the date part from dateStr (in case it has time)
+                              const datePart = dateStr.split('T')[0];
+                              dateTimeStr = `${datePart}T${timeStr}`;
+                            } else if (dateStr.includes("T")) {
+                              // Date already includes time
+                              dateTimeStr = dateStr;
+                            } else {
+                              // Just a date, no time
+                              dateTimeStr = dateStr;
+                            }
+                            
+                            if (!dateTimeStr.includes('Z') && !dateTimeStr.includes('+') && !dateTimeStr.includes('-', 10)) {
+                              dateTimeStr += '+05:30';
+                            }
+                            
+                            return new Date(dateTimeStr);
+                          };
+
+                          const eventStartDate = parseAsIST(booking.event.date, booking.event.time);
 
                           let eventEndDateTime;
                           if (booking.event.endDate || booking.event.enddate) {
-                            eventEndDateTime = new Date(
-                              booking.event.endDate || booking.event.enddate
+                            eventEndDateTime = parseAsIST(
+                              booking.event.endDate || booking.event.enddate,
+                              booking.event.endtime
                             );
                           } else if (booking.event.time) {
-                            eventEndDateTime = new Date(
-                              `${booking.event.date}T${booking.event.time}`
-                            );
+                            eventEndDateTime = parseAsIST(booking.event.date, booking.event.time);
                           } else {
                             eventEndDateTime = new Date(eventStartDate);
                             eventEndDateTime.setHours(23, 59, 59, 999);
                           }
 
-                          const isUpcoming = nowIST < eventStartDate;
-                          const isOngoing =
-                            nowIST >= eventStartDate && nowIST <= eventEndDateTime;
-                          const isPast = nowIST > eventEndDateTime;
+                          const isUpcoming = now < eventStartDate;
+                          const isOngoing = now >= eventStartDate && now <= eventEndDateTime;
+                          const isPast = now > eventEndDateTime;
 
                           if (isUpcoming) {
                             return (
