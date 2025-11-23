@@ -290,10 +290,13 @@ export async function POST(request) {
       });
     } catch (_) {}
 
-    // 📧 SEND TICKET EMAIL WITH QR CODE (in background - don't wait)
-    // This prevents timeout issues since ticket generation can take several seconds
-    // Using Promise.race to ensure we don't wait too long even in edge cases
-    const ticketPromise = sendTicketToUser(confirmedBooking.id, eventInfo)
+    // 📧 SEND TICKET EMAIL WITH QR CODE (in background with 15-second delay)
+    // Wait 15 seconds before sending ticket email to give user time to see payment success
+    const ticketPromise = new Promise((resolve) => setTimeout(resolve, 15000))
+      .then(() => {
+        console.log("⏰ 15 seconds elapsed, sending ticket email now...");
+        return sendTicketToUser(confirmedBooking.id, eventInfo);
+      })
       .then((ticketResult) => {
         if (ticketResult.success) {
           console.log("✅ Ticket email sent for booking:", confirmedBooking.id);
