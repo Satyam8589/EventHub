@@ -36,7 +36,7 @@ export async function sendTicketToUser(bookingId, eventInfo) {
     }
 
     // Generate ticket view URL
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://eventhub.vercel.app';
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.eventhubx.site';
     const ticketUrl = `${siteUrl}/my-events`;
 
     // Format date and time
