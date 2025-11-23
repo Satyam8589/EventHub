@@ -290,40 +290,38 @@ export async function POST(request) {
       });
     } catch (_) {}
 
-    // 📧 SEND TICKET EMAIL WITH QR CODE (in background with 15-second delay)
-    // Wait 15 seconds before sending ticket email to give user time to see payment success
-    const ticketPromise = new Promise((resolve) => setTimeout(resolve, 15000))
-      .then(() => {
-        console.log("⏰ 15 seconds elapsed, sending ticket email now...");
-        return sendTicketToUser(confirmedBooking.id, eventInfo);
-      })
-      .then((ticketResult) => {
-        if (ticketResult.success) {
-          console.log("✅ Ticket email sent for booking:", confirmedBooking.id);
-          
-          // 🔔 Send push notification to user about ticket email
-          return sendNotificationToUser(confirmedBooking.userId, "ticket-sent", {
+    // 📧 SEND TICKET EMAIL WITH QR CODE
+    // Send email immediately to ensure it's sent before function terminates
+    console.log("📧 Sending ticket email immediately...");
+    
+    try {
+      const ticketResult = await sendTicketToUser(confirmedBooking.id, eventInfo);
+      
+      if (ticketResult.success) {
+        console.log("✅ Ticket email sent successfully for booking:", confirmedBooking.id);
+        
+        // 🔔 Send push notification to user about ticket email
+        try {
+          await sendNotificationToUser(confirmedBooking.userId, "ticket-sent", {
             eventTitle: eventInfo?.title || "the event",
             eventId: eventInfo?.id,
-          })
-            .then(() => console.log("✅ Ticket sent notification delivered to user"))
-            .catch((notifError) => console.error("❌ Error sending ticket notification:", notifError));
-        } else {
-          console.error("❌ Ticket email failed:", ticketResult.error);
+          });
+          console.log("✅ Ticket sent notification delivered to user");
+        } catch (notifError) {
+          console.error("❌ Error sending ticket notification:", notifError);
         }
-      })
-      .catch((emailError) => {
-        console.error("❌ Error sending ticket email:", emailError);
-      });
-
-    // Don't await - let it run in background
-    // The serverless function will keep running even after response is sent
-    ticketPromise.catch(() => {}); // Prevent unhandled rejection
+      } else {
+        console.error("❌ Ticket email failed:", ticketResult.error);
+      }
+    } catch (emailError) {
+      console.error("❌ Error sending ticket email:", emailError);
+      // Don't fail the payment verification if email fails
+    }
 
     const duration = Date.now() - startTime;
     console.log(`⏱️ Payment verification completed in ${duration}ms`);
 
-    // Return success response immediately (don't wait for ticket email)
+    // Return success response
     return NextResponse.json(successResponse);
     
   } catch (error) {
