@@ -1,4 +1,4 @@
-import { createCanvas, loadImage } from "@napi-rs/canvas";
+import { createCanvas, loadImage } from "canvas";
 
 // Helper function to calculate event duration in days (IST timezone aware)
 function calculateEventDays(event) {
