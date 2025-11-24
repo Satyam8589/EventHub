@@ -22,6 +22,7 @@ export default function EditEventPage() {
     capacity: "",
     price: "",
     featured: false,
+    booking_closed: false,
     organizerName: "",
     organizerEmail: "",
     organizerPhone: "",
@@ -97,6 +98,7 @@ export default function EditEventPage() {
         capacity: data.event.capacity || "",
         price: data.event.price || "",
         featured: data.event.featured || false,
+        booking_closed: data.event.booking_closed || false,
         organizerName: data.event.organizerName || "",
         organizerEmail: data.event.organizerEmail || "",
         organizerPhone: data.event.organizerPhone || "",
@@ -466,21 +468,43 @@ export default function EditEventPage() {
                   </select>
                 </div>
 
-                <div className="flex items-center space-x-3 p-4 bg-white/5 rounded-xl border border-white/20">
-                  <input
-                    type="checkbox"
-                    id="featured"
-                    name="featured"
-                    checked={formData.featured}
-                    onChange={handleInputChange}
-                    className="w-5 h-5 rounded border-2 border-white/20 bg-white/5 text-blue-600 focus:ring-blue-500 focus:ring-2"
-                  />
-                  <label
-                    htmlFor="featured"
-                    className="text-white font-medium cursor-pointer"
-                  >
-                    ⭐ Featured Event
-                  </label>
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-3 p-4 bg-white/5 rounded-xl border border-white/20">
+                    <input
+                      type="checkbox"
+                      id="featured"
+                      name="featured"
+                      checked={formData.featured}
+                      onChange={handleInputChange}
+                      className="w-5 h-5 rounded border-2 border-white/20 bg-white/5 text-blue-600 focus:ring-blue-500 focus:ring-2"
+                    />
+                    <label
+                      htmlFor="featured"
+                      className="text-white font-medium cursor-pointer"
+                    >
+                      ⭐ Featured Event
+                    </label>
+                  </div>
+
+                  <div className="flex items-center space-x-3 p-4 bg-white/5 rounded-xl border border-white/20">
+                    <input
+                      type="checkbox"
+                      id="booking_closed"
+                      name="booking_closed"
+                      checked={formData.booking_closed}
+                      onChange={handleInputChange}
+                      className="w-5 h-5 rounded border-2 border-white/20 bg-white/5 text-orange-600 focus:ring-orange-500 focus:ring-2"
+                    />
+                    <label
+                      htmlFor="booking_closed"
+                      className="text-white font-medium cursor-pointer"
+                    >
+                      🚫 Close Bookings Manually
+                    </label>
+                  </div>
+                  <p className="text-white/60 text-xs px-4">
+                    When enabled, prevents new bookings regardless of event timing
+                  </p>
                 </div>
               </div>
 

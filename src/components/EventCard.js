@@ -105,7 +105,7 @@ export default function EventCard({ event }) {
   const isSoldOut = capacity > 0 && spotsLeft === 0;
   
   
-  // ✅ Event status calculation with proper UTC timezone handling
+  // ✅ Event status calculation with IST timezone handling
   // Helper to ensure proper UTC format
   const ensureUTCString = (dateStr) => {
     if (!dateStr) return null;
@@ -118,13 +118,88 @@ export default function EventCard({ event }) {
   const rawEnd = event?.endDate || event?.enddate || null;
   const endDate = rawEnd ? new Date(ensureUTCString(rawEnd)) : startDate ? new Date(startDate.getTime() + 24 * 60 * 60 * 1000) : null;
   
-  // Use UTC for comparison (database stores UTC)
-  const now = new Date();
+  // Get current time in IST
+  const nowIST = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+  
+  // Create event start datetime in IST
+  let eventStartIST = null;
+  let hasEventStarted = false;
+  
+  if (startDate && event.time) {
+    try {
+      // Get current time
+      const now = new Date();
+      
+      // Parse event date (stored as UTC in database)
+      const eventDateUTC = new Date(event.date);
+      
+      // Convert to IST date string and parse back
+      const eventDateISTString = eventDateUTC.toLocaleString("en-US", { 
+        timeZone: "Asia/Kolkata",
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      });
+      
+      // Parse the IST date string (format: MM/DD/YYYY)
+      const [month, day, year] = eventDateISTString.split('/').map(num => parseInt(num));
+      
+      // Parse event time
+      let hours = 0, minutes = 0;
+      const timeStr = event.time;
+      
+      if (timeStr.includes('AM') || timeStr.includes('PM')) {
+        // 12-hour format
+        const match = timeStr.match(/(\d+):(\d+)\s*(AM|PM)/i);
+        if (match) {
+          hours = parseInt(match[1]);
+          minutes = parseInt(match[2]);
+          const period = match[3].toUpperCase();
+          if (period === 'PM' && hours !== 12) hours += 12;
+          if (period === 'AM' && hours === 12) hours = 0;
+        }
+      } else {
+        // 24-hour format
+        const parts = timeStr.split(':');
+        if (parts.length >= 2) {
+          hours = parseInt(parts[0]);
+          minutes = parseInt(parts[1]);
+        }
+      }
+      
+      // Create event start datetime in IST (month is 0-indexed)
+      eventStartIST = new Date(year, month - 1, day, hours, minutes, 0);
+      
+      // Get current time in IST
+      const nowISTString = now.toLocaleString("en-US", { 
+        timeZone: "Asia/Kolkata",
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+      });
+      
+      // Parse current IST time
+      const [datePartNow, timePartNow] = nowISTString.split(', ');
+      const [monthNow, dayNow, yearNow] = datePartNow.split('/').map(num => parseInt(num));
+      const [hoursNow, minutesNow, secondsNow] = timePartNow.split(':').map(num => parseInt(num));
+      const nowISTDate = new Date(yearNow, monthNow - 1, dayNow, hoursNow, minutesNow, secondsNow);
+      
+      // Check if event has started
+      hasEventStarted = nowISTDate >= eventStartIST;
+    } catch (error) {
+      console.error('EventCard: Error calculating event start time:', error);
+      hasEventStarted = false;
+    }
+  }
   
   // Determine event status
-  const isUpcoming = startDate && now < startDate;
-  const isOngoing = startDate && endDate && now >= startDate && now <= endDate;
-  const isPast = endDate && now > endDate;
+  const isUpcoming = startDate && nowIST < startDate;
+  const isOngoing = startDate && endDate && nowIST >= startDate && nowIST <= endDate;
+  const isPast = endDate && nowIST > endDate;
   
   // Status badge configuration
   const statusBadge = isOngoing
@@ -437,7 +512,7 @@ export default function EventCard({ event }) {
               href={`/events/${event.id}`}
               className="bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-6 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl inline-block text-center"
             >
-              Book Now
+              Details
             </Link>
           )}
         </div>
