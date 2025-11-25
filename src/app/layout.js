@@ -26,17 +26,46 @@ export const metadata = {
   description:
     "Your ultimate destination for discovering and booking amazing events. Join thousands of people experiencing the best events in music, food, technology, and community.",
   openGraph: {
-    title: "EventHub",
+    title: "EventHub - Discover Amazing Events Near You",
     description:
-      "Your ultimate destination for discovering and booking amazing events.",
+      "Your ultimate destination for discovering and booking amazing events. Join thousands of people experiencing the best events in music, food, technology, and community.",
     url: "https://www.eventhubx.site",
     siteName: "EventHub",
     type: "website",
+    locale: "en_US",
+    images: [
+      {
+        url: "https://www.eventhubx.site/icon-512.png",
+        width: 512,
+        height: 512,
+        alt: "EventHub Logo",
+      },
+      {
+        url: "https://www.eventhubx.site/icon-192.png",
+        width: 192,
+        height: 192,
+        alt: "EventHub Logo",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "EventHub",
-    description: "Discover and book amazing events near you.",
+    title: "EventHub - Discover Amazing Events Near You",
+    description: "Discover and book amazing events near you. Join thousands experiencing the best events in music, food, technology, and community.",
+    images: ["https://www.eventhubx.site/icon-512.png"],
+    creator: "@eventhub",
+    site: "@eventhub",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
   },
   icons: {
     icon: [
@@ -83,8 +112,19 @@ export default function RootLayout({ children }) {
             "@context": "https://schema.org",
             "@type": "Organization",
             name: "EventHub",
+            alternateName: "EventHub - Event Management Platform",
             url: "https://www.eventhubx.site",
-            logo: "https://www.eventhubx.site/eventhub-logo.svg",
+            logo: {
+              "@type": "ImageObject",
+              url: "https://www.eventhubx.site/icon-512.png",
+              width: 512,
+              height: 512,
+            },
+            image: "https://www.eventhubx.site/icon-512.png",
+            description: "Your ultimate destination for discovering and booking amazing events. Join thousands of people experiencing the best events in music, food, technology, and community.",
+            sameAs: [
+              "https://www.eventhubx.site",
+            ],
           })}
         </script>
       </head>
