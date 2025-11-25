@@ -40,11 +40,15 @@ export const metadata = {
   },
   icons: {
     icon: [
-      { url: "/favicon.ico" },
+      { url: "/favicon-new.png", sizes: "any" },
+      { url: "/eventhub-logo.svg", type: "image/svg+xml" },
       { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
       { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
     ],
-    apple: [{ url: "/icon-192.png" }],
+    apple: [
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" }
+    ],
+    shortcut: [{ url: "/favicon-new.png" }],
   },
 };
 
@@ -68,9 +72,10 @@ export default function RootLayout({ children }) {
 
 
         {/* Icons */}
-        <link rel="icon" href="/favicon.ico" sizes="any" />
+        <link rel="icon" href="/favicon-new.png" sizes="any" />
         <link rel="icon" href="/eventhub-logo.svg" type="image/svg+xml" />
         <link rel="apple-touch-icon" href="/icon-192.png" />
+        <link rel="shortcut icon" href="/favicon-new.png" />
 
         {/* JSON-LD */}
         <script type="application/ld+json">
