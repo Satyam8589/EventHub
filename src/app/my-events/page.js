@@ -1,10 +1,451 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import TicketModal from "@/components/TicketModal";
 import EventHubLogo from "@/components/EventHubLogo";
+
+// ===== UTILITY FUNCTIONS =====
+
+// Parse date/time as IST and convert to UTC for comparison
+const parseAsIST = (dateStr, timeStr = null) => {
+  let dateTimeStr;
+  
+  if (timeStr) {
+    const datePart = dateStr.split('T')[0];
+    dateTimeStr = `${datePart}T${timeStr}`;
+  } else if (dateStr.includes("T")) {
+    dateTimeStr = dateStr;
+  } else {
+    dateTimeStr = dateStr;
+  }
+  
+  if (!dateTimeStr.includes('Z') && !dateTimeStr.includes('+') && !dateTimeStr.includes('-', 10)) {
+    dateTimeStr += '+05:30';
+  }
+  
+  return new Date(dateTimeStr);
+};
+
+// Get event end date/time
+const getEventEndDateTime = (event) => {
+  const eventStartDate = parseAsIST(event.date, event.time);
+  
+  if (event.endDate || event.enddate) {
+    const endDateValue = event.endDate || event.enddate;
+    const endTimeValue = event.endtime;
+    const eventEndDateTime = parseAsIST(endDateValue, endTimeValue);
+    
+    if (!isNaN(eventEndDateTime.getTime())) {
+      return eventEndDateTime;
+    }
+  }
+  
+  // Fallback: use start date with end of day
+  const fallbackEnd = new Date(eventStartDate);
+  if (event.time) {
+    return eventStartDate;
+  }
+  fallbackEnd.setHours(23, 59, 59, 999);
+  return fallbackEnd;
+};
+
+// Get event status
+const getEventStatus = (event) => {
+  if (!event || !event.date) return 'unknown';
+  
+  const now = new Date();
+  const eventStartDate = parseAsIST(event.date, event.time);
+  const eventEndDateTime = getEventEndDateTime(event);
+  
+  if (isNaN(eventStartDate.getTime()) || isNaN(eventEndDateTime.getTime())) {
+    return 'unknown';
+  }
+  
+  if (now < eventStartDate) return 'upcoming';
+  if (now >= eventStartDate && now <= eventEndDateTime) return 'ongoing';
+  return 'past';
+};
+
+// Format event date for display
+const formatEventDate = (dateString, timeString) => {
+  const date = new Date(dateString);
+  const options = {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    timeZone: "Asia/Kolkata",
+  };
+  return `${date.toLocaleDateString("en-IN", options)} at ${timeString}`;
+};
+
+// ===== COMPONENTS =====
+
+// Status Badge Component
+const StatusBadge = ({ event }) => {
+  const status = getEventStatus(event);
+  
+  switch (status) {
+    case 'upcoming':
+      return (
+        <span className="px-2 py-1 rounded-md text-xs font-medium bg-blue-500/80 text-white">
+          Upcoming
+        </span>
+      );
+    case 'ongoing':
+      return (
+        <span className="px-2 py-1 rounded-md text-xs font-medium bg-green-500/80 text-white animate-pulse">
+          Live Now
+        </span>
+      );
+    case 'past':
+      return (
+        <span className="px-2 py-1 rounded-md text-xs font-medium bg-gray-500/80 text-white">
+          Finished
+        </span>
+      );
+    default:
+      return (
+        <span className="px-2 py-1 rounded-md text-xs font-medium bg-gray-500/80 text-white">
+          Event
+        </span>
+      );
+  }
+};
+
+// Event Date Display Component
+const EventDateDisplay = ({ event }) => {
+  const startDate = new Date(event.date);
+  const endDate = event.endDate ? new Date(event.endDate) : null;
+
+  if (endDate && startDate.toDateString() !== endDate.toDateString()) {
+    // Multi-day event
+    return (
+      <>
+        {startDate.toLocaleDateString("en-IN", {
+          month: "short",
+          day: "numeric",
+          timeZone: "Asia/Kolkata",
+        })} - {endDate.toLocaleDateString("en-IN", {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+          timeZone: "Asia/Kolkata",
+        })}{event.time ? ` • ${event.time}` : ""}
+      </>
+    );
+  }
+  
+  // Single day event
+  return formatEventDate(event.date, event.time);
+};
+
+// Completed Stamp Component
+const CompletedStamp = ({ event }) => (
+  <div className="relative flex items-center justify-center py-6 px-4">
+    <div className="relative">
+      {/* Outer Ring - Shadow Effect */}
+      <div className="absolute inset-0 w-24 h-24 rounded-full bg-green-800/30 border-4 border-green-600/40 transform rotate-12"></div>
+
+      {/* Main Stamp Circle */}
+      <div className="relative w-24 h-24 rounded-full bg-gradient-to-br from-green-600/40 to-green-800/60 border-4 border-green-500/60 flex flex-col items-center justify-center transform -rotate-6 transition-transform hover:rotate-0 duration-300">
+        {/* Inner Circle */}
+        <div className="w-16 h-16 rounded-full border-2 border-green-400/50 border-dashed flex flex-col items-center justify-center">
+          {/* Checkmark Icon */}
+          <div className="w-8 h-8 rounded-full bg-green-500/80 flex items-center justify-center mb-1">
+            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+
+          {/* Text */}
+          <div className="text-center">
+            <div className="text-green-200 text-[8px] font-bold uppercase tracking-wider leading-none">
+              EVENT
+            </div>
+            <div className="text-green-100 text-[8px] font-bold uppercase tracking-wider leading-none">
+              COMPLETED
+            </div>
+          </div>
+        </div>
+
+        {/* Decorative elements */}
+        <div className="absolute top-1 left-3 w-1 h-1 rounded-full bg-green-300/60"></div>
+        <div className="absolute top-3 right-1 w-1 h-1 rounded-full bg-green-300/60"></div>
+        <div className="absolute bottom-1 right-3 w-1 h-1 rounded-full bg-green-300/60"></div>
+        <div className="absolute bottom-3 left-1 w-1 h-1 rounded-full bg-green-300/60"></div>
+      </div>
+
+      {/* Date stamp effect */}
+      <div className="absolute -bottom-2 -right-2 bg-green-700/80 text-green-100 text-[6px] font-mono px-1 py-0.5 rounded transform rotate-12">
+        {new Date(event.endDate || event.enddate || event.date).toLocaleDateString("en-IN", {
+          month: "2-digit",
+          day: "2-digit",
+          year: "2-digit",
+          timeZone: "Asia/Kolkata",
+        })}
+      </div>
+    </div>
+  </div>
+);
+
+// Event Card Component
+const EventCard = ({ booking, activeTab, onViewTicket }) => (
+  <div className="bg-white/10 backdrop-blur-md rounded-xl border border-white/20 overflow-hidden hover:bg-white/15 transition-all duration-200 group">
+    {/* Event Image */}
+    <div className="relative h-32 overflow-hidden">
+      <img
+        src={booking.event.imageUrl || "/api/placeholder/400/200"}
+        alt={booking.event.title}
+        className="w-full h-full object-cover"
+      />
+      <div className="absolute top-2 left-2">
+        <StatusBadge event={booking.event} />
+      </div>
+    </div>
+
+    {/* Event Details */}
+    <div className="p-4">
+      <h3 className="text-lg font-semibold text-white mb-2 line-clamp-1">
+        {booking.event.title}
+      </h3>
+
+      <div className="space-y-2 mb-4">
+        <div className="flex items-center gap-2 text-white/80">
+          <span className="text-blue-400">📅</span>
+          <span className="text-xs">
+            <EventDateDisplay event={booking.event} />
+          </span>
+        </div>
+        <div className="flex items-center gap-2 text-white/80">
+          <span className="text-purple-400">📍</span>
+          <span className="text-xs line-clamp-1">
+            {booking.event.location}
+          </span>
+        </div>
+      </div>
+
+      {/* Action Buttons or Completed Stamp */}
+      {activeTab === "past" ? (
+        <CompletedStamp event={booking.event} />
+      ) : (
+        <div className="space-y-2">
+          <div className="flex gap-2">
+            <button
+              onClick={() => onViewTicket(booking)}
+              className="flex-1 bg-blue-600/20 text-white px-3 py-2 rounded-lg text-xs font-medium border border-blue-500/30 hover:bg-blue-600/30 transition-all"
+            >
+              View Ticket
+            </button>
+            <Link
+              href={`/events/${booking.event.id}`}
+              className="flex-1 bg-white/10 text-white px-3 py-2 rounded-lg text-xs font-medium border border-white/20 hover:bg-white/20 transition-all text-center"
+            >
+              Details
+            </Link>
+          </div>
+        </div>
+      )}
+    </div>
+  </div>
+);
+
+// Empty State Component
+const EmptyState = ({ activeTab }) => (
+  <div className="col-span-full text-center py-12">
+    <div className="bg-white/10 backdrop-blur-md rounded-3xl p-12 border border-white/20 max-w-md mx-auto">
+      <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-blue-600/20 to-purple-600/20 rounded-full flex items-center justify-center border border-blue-500/30">
+        <svg className="w-10 h-10 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
+        </svg>
+      </div>
+      <h3 className="text-2xl font-bold text-white mb-4">
+        No {activeTab} events
+      </h3>
+      <p className="text-gray-300 mb-6">
+        {activeTab === "upcoming"
+          ? "You haven't booked any upcoming events yet. Discover amazing events happening near you!"
+          : activeTab === "ongoing"
+          ? "You don't have any ongoing events right now. Events that are currently happening will appear here."
+          : "You don't have any past events yet. Your attended events will appear here."}
+      </p>
+      {activeTab === "upcoming" && (
+        <Link
+          href="/events"
+          className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-xl font-medium hover:from-blue-700 hover:to-purple-700 transition-all transform hover:scale-105 shadow-lg shadow-blue-500/25"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          Browse Events
+        </Link>
+      )}
+    </div>
+  </div>
+);
+
+// Background Animation Component
+const AnimatedBackground = ({ particles, mousePosition }) => (
+  <div className="absolute inset-0">
+    {/* Floating particles */}
+    {particles.map((particle) => (
+      <div
+        key={particle.id}
+        className="absolute w-1 h-1 bg-white rounded-full opacity-20 animate-pulse"
+        style={{
+          left: `${particle.left}%`,
+          top: `${particle.top}%`,
+          animationDelay: `${particle.animationDelay}s`,
+          animationDuration: `${particle.animationDuration}s`,
+        }}
+      />
+    ))}
+
+    {/* Moving gradient orbs */}
+    <div
+      className="absolute w-96 h-96 bg-gradient-to-r from-blue-400 to-purple-600 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob"
+      style={{
+        transform: `translate(${mousePosition.x * 0.02}px, ${mousePosition.y * 0.02}px)`,
+      }}
+    />
+    <div
+      className="absolute w-96 h-96 bg-gradient-to-r from-yellow-400 to-pink-600 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-2000 top-20 right-20"
+      style={{
+        transform: `translate(${mousePosition.x * -0.01}px, ${mousePosition.y * -0.01}px)`,
+      }}
+    />
+    <div
+      className="absolute w-96 h-96 bg-gradient-to-r from-green-400 to-blue-600 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-4000 bottom-20 left-20"
+      style={{
+        transform: `translate(${mousePosition.x * 0.015}px, ${mousePosition.y * 0.015}px)`,
+      }}
+    />
+  </div>
+);
+
+// Navigation Component
+const Navigation = ({ user, authLoading, signOut }) => (
+  <nav className="relative z-10 bg-black/20 backdrop-blur-md border-b border-white/10">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="flex items-center justify-between h-16 md:h-20">
+        <Link href="/" className="flex items-center space-x-2">
+          <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+            <span className="text-white font-bold text-sm">E</span>
+          </div>
+          <span className="text-white font-bold text-lg sm:text-xl">
+            EventHub
+          </span>
+        </Link>
+
+        <div className="flex items-center space-x-4">
+          {/* Admin Panel Link - Only show for admins */}
+          {!authLoading && user && (user.role === "SUPER_ADMIN" || user.role === "EVENT_ADMIN") && (
+            <Link
+              href="/admin"
+              className="text-blue-400 hover:text-blue-300 transition-colors font-medium bg-blue-600/20 px-3 py-1 rounded-lg border border-blue-500/30"
+            >
+              🛡️ Admin Panel
+            </Link>
+          )}
+
+          <Link
+            href="/"
+            className="text-white/80 hover:text-white transition-colors font-medium"
+          >
+            ← Back to Home
+          </Link>
+
+          {/* Desktop Sign Out Icon */}
+          {user && (
+            <button
+              onClick={async () => {
+                try {
+                  const result = await signOut();
+                  if (!result.error) {
+                    window.location.reload();
+                  }
+                } catch (error) {
+                  console.error("Error signing out:", error);
+                }
+              }}
+              className="text-white/80 hover:text-white transition-colors p-2 hover:bg-white/10 rounded-lg"
+              title="Sign Out"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  </nav>
+);
+
+// Login Required Component
+const LoginRequired = ({ redirectCountdown, particles, mousePosition, user, signOut }) => {
+  const router = useRouter();
+  
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 relative overflow-hidden">
+      <AnimatedBackground particles={particles} mousePosition={mousePosition} />
+      <Navigation user={user} authLoading={false} signOut={signOut} />
+
+      {/* Login Required Content */}
+      <div className="relative z-10 flex items-center justify-center min-h-[calc(100vh-80px)] px-4">
+        <div className="text-center max-w-md mx-auto">
+          <div className="bg-white/10 backdrop-blur-md rounded-3xl p-8 border border-white/20 shadow-2xl">
+            {/* Logo */}
+            <div className="flex justify-center mb-6">
+              <EventHubLogo size={64} showText={false} />
+            </div>
+
+            <div className="w-20 h-20 mx-auto mb-6 bg-linear-to-br from-blue-600/20 to-purple-600/20 rounded-full flex items-center justify-center border border-blue-500/30">
+              <svg className="w-10 h-10 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
+              </svg>
+            </div>
+
+            <h1 className="text-3xl font-bold bg-linear-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent mb-4">
+              Authentication Required
+            </h1>
+            <p className="text-gray-300 mb-2 leading-relaxed">
+              Sign in to access your booked events, manage your tickets, and view your event history.
+            </p>
+            <p className="text-white/50 mb-6 text-sm">
+              Redirecting to home page in{" "}
+              <span className="text-blue-400 font-bold text-xl">
+                {redirectCountdown}
+              </span>{" "}
+              seconds...
+            </p>
+
+            <div className="space-y-3">
+              <Link
+                href="/"
+                className="inline-flex items-center gap-2 w-full justify-center bg-linear-to-r from-blue-600 to-purple-600 text-white px-8 py-3 rounded-xl font-medium hover:from-blue-700 hover:to-purple-700 transition-all transform hover:scale-105 shadow-lg shadow-blue-500/25"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                </svg>
+                Go to Home & Sign In
+              </Link>
+              <button
+                onClick={() => router.back()}
+                className="w-full bg-white/10 hover:bg-white/20 text-white px-8 py-3 rounded-xl transition-colors border border-white/20"
+              >
+                Go Back
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ===== MAIN COMPONENT =====
 
 export default function MyEventsPage() {
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
@@ -19,6 +460,7 @@ export default function MyEventsPage() {
   const { user, loading: authLoading, signOut } = useAuth();
   const router = useRouter();
 
+  // Mouse movement effect
   useEffect(() => {
     const handleMouseMove = (e) => {
       setMousePosition({ x: e.clientX, y: e.clientY });
@@ -28,20 +470,16 @@ export default function MyEventsPage() {
     return () => window.removeEventListener("mousemove", handleMouseMove);
   }, []);
 
-  // Generate particles on client side only to avoid hydration issues
+  // Generate particles
   useEffect(() => {
-    const generateParticles = () => {
-      const newParticles = [...Array(40)].map((_, i) => ({
-        id: i,
-        left: Math.random() * 100,
-        top: Math.random() * 100,
-        animationDelay: Math.random() * 2,
-        animationDuration: 2 + Math.random() * 3,
-      }));
-      setParticles(newParticles);
-    };
-
-    generateParticles();
+    const newParticles = [...Array(40)].map((_, i) => ({
+      id: i,
+      left: Math.random() * 100,
+      top: Math.random() * 100,
+      animationDelay: Math.random() * 2,
+      animationDuration: 2 + Math.random() * 3,
+    }));
+    setParticles(newParticles);
   }, []);
 
   // Redirect countdown when user is not authenticated
@@ -62,577 +500,115 @@ export default function MyEventsPage() {
     }
   }, [authLoading, user, router]);
 
-  // Fetch user's bookings when user is available
+  // Fetch bookings function
+  const fetchBookings = useCallback(async () => {
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const cacheBuster = Date.now();
+      const response = await fetch(
+        `/api/bookings?userId=${user.uid}&status=CONFIRMED&_=${cacheBuster}`,
+        {
+          cache: "no-store",
+          headers: {
+            "Cache-Control": "no-cache",
+          },
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        setBookings(data.bookings || []);
+      } else {
+        setBookings([]);
+      }
+    } catch (error) {
+      console.error("Error fetching bookings:", error);
+      setBookings([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
+
+  // Fetch bookings when user is available
   useEffect(() => {
-    const fetchBookings = async () => {
-      if (!user) {
-        setLoading(false);
-        return;
-      }
-
-      try {
-        setLoading(true);
-        console.log("Fetching bookings for user:", user.uid);
-
-        // Add cache buster and fetch only CONFIRMED bookings (for now)
-        const cacheBuster = Date.now();
-        const response = await fetch(
-          `/api/bookings?userId=${user.uid}&status=CONFIRMED&_=${cacheBuster}`,
-          {
-            cache: "no-store",
-            headers: {
-              "Cache-Control": "no-cache",
-            },
-          }
-        );
-
-        console.log("Fetch response status:", response.status);
-        console.log("Fetch response ok:", response.ok);
-
-        // Always try to parse response, even if not ok
-        let data;
-        try {
-          data = await response.json();
-        } catch (parseError) {
-          console.error("Failed to parse response:", parseError);
-          const textResponse = await response.text();
-          console.error("Raw response:", textResponse);
-          setBookings([]);
-          return;
-        }
-
-        if (response.ok) {
-          console.log("API Response:", data);
-          console.log("Received bookings:", data.bookings?.length || 0);
-          console.log("Bookings data:", data.bookings);
-
-          // Log each booking's event data
-          data.bookings?.forEach((booking, index) => {
-            console.log(`Booking ${index + 1}:`, {
-              id: booking.id,
-              status: booking.status,
-              hasEvent: !!booking.event,
-              eventId: booking.eventId,
-              eventDate: booking.event?.date,
-              eventName: booking.event?.name,
-            });
-          });
-
-          setBookings(data.bookings || []);
-        } else {
-          console.error("Failed to fetch bookings:", response.status);
-          console.error("Error response:", data);
-          // Even on error, use bookings array if provided
-          setBookings(data.bookings || []);
-        }
-      } catch (error) {
-        console.error("Error fetching bookings:", error);
-        setBookings([]); // Set empty array on error
-      } finally {
-        setLoading(false);
-      }
-    };
-
     if (!authLoading) {
       fetchBookings();
     }
-  }, [user, authLoading]);
+  }, [authLoading, fetchBookings]);
 
-  // Refresh bookings when page becomes visible (e.g., returning from payment)
+  // Refresh bookings when page becomes visible
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (!document.hidden && user) {
-        console.log("Page became visible - refreshing bookings...");
-        const fetchBookings = async () => {
-          try {
-            const cacheBuster = Date.now();
-            const response = await fetch(
-              `/api/bookings?userId=${user.uid}&status=CONFIRMED&_=${cacheBuster}`,
-              {
-                cache: "no-store",
-                headers: {
-                  "Cache-Control": "no-cache",
-                },
-              }
-            );
-
-            if (response.ok) {
-              const data = await response.json();
-              console.log("Refreshed bookings:", data.bookings?.length || 0);
-              setBookings(data.bookings || []);
-            }
-          } catch (error) {
-            console.error("Error refreshing bookings:", error);
-          }
-        };
-
         fetchBookings();
       }
     };
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () =>
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-  }, [user]);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, [user, fetchBookings]);
 
-  // Filter bookings by upcoming/ongoing/past with precise date and time support
-  const filterBookings = (bookings, type) => {
-    // ✅ Use current time in IST for comparison
-    const now = new Date();
-    console.log(`Filtering ${bookings.length} bookings for ${type} events`);
-    console.log(`Current time (UTC): ${now.toISOString()}`);
-    console.log(`Current time (IST): ${now.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}`);
+  // Memoized filtered bookings - OPTIMIZED: Only filter once
+  const categorizedBookings = useMemo(() => {
+    const upcoming = [];
+    const ongoing = [];
+    const past = [];
 
-    const filtered = bookings.filter((booking) => {
-      // Safety check for event and date existence
+    bookings.forEach((booking) => {
+      // Safety check
       if (!booking.event || !booking.event.date) {
-        console.warn("Booking missing event or date - EXCLUDING:", {
-          bookingId: booking.id,
-          hasEvent: !!booking.event,
-          eventId: booking.eventId,
-          status: booking.status,
-        });
-        return false; // Skip bookings without valid event data
+        return;
       }
 
-      // Helper function to parse date/time as IST and convert to UTC for comparison
-      const parseAsIST = (dateStr, timeStr = null) => {
-        let dateTimeStr;
-        
-        // If we have a separate time string, use it (prioritize separate time field)
-        if (timeStr) {
-          // Extract just the date part from dateStr (in case it has time)
-          const datePart = dateStr.split('T')[0];
-          dateTimeStr = `${datePart}T${timeStr}`;
-        } else if (dateStr.includes("T")) {
-          // Date already includes time
-          dateTimeStr = dateStr;
-        } else {
-          // Just a date, no time
-          dateTimeStr = dateStr;
-        }
-        
-        // If no timezone info, treat as IST by appending +05:30
-        if (!dateTimeStr.includes('Z') && !dateTimeStr.includes('+') && !dateTimeStr.includes('-', 10)) {
-          dateTimeStr += '+05:30';
-        }
-        
-        return new Date(dateTimeStr);
-      };
-
-      // Calculate start and end date/time for the event (treating as IST)
-      const eventStartDate = parseAsIST(booking.event.date, booking.event.time);
-
-      // Validate start date
-      if (isNaN(eventStartDate.getTime())) {
-        console.error("Invalid start date for booking:", {
-          bookingId: booking?.id || "unknown",
-          eventDate: booking?.event?.date || "undefined",
-          eventTime: booking?.event?.time || "undefined",
-          eventTitle: booking?.event?.title || "undefined",
-          fullBooking: booking,
-        });
-        return false; // Skip bookings with invalid start dates
-      }
-
-      let eventEndDateTime;
-      if (booking.event.endDate || booking.event.enddate) {
-        // Event has an end date/time
-        const endDateValue = booking.event.endDate || booking.event.enddate;
-        const endTimeValue = booking.event.endtime;
-        
-        eventEndDateTime = parseAsIST(endDateValue, endTimeValue);
-
-        // Validate end date
-        if (isNaN(eventEndDateTime.getTime())) {
-          console.error("Invalid end date for booking:", {
-            bookingId: booking?.id || "unknown",
-            endDate: endDateValue,
-            endTime: endTimeValue,
-            eventTitle: booking?.event?.title || "undefined",
-            fullBooking: booking,
-          });
-          // Fall back to creating end time from start date
-          eventEndDateTime = new Date(eventStartDate);
-          eventEndDateTime.setHours(23, 59, 59, 999);
-        }
-      } else {
-        // No end date, use start date with time or end of day
-        if (booking.event.time) {
-          // If event has a specific time, use that as end time too
-          eventEndDateTime = parseAsIST(booking.event.date, booking.event.time);
-
-          // Validate combined date/time
-          if (isNaN(eventEndDateTime.getTime())) {
-            console.error("Invalid date/time combination for booking:", {
-              bookingId: booking?.id || "unknown",
-              eventDate: booking?.event?.date || "undefined",
-              eventTime: booking?.event?.time || "undefined",
-              eventTitle: booking?.event?.title || "undefined",
-              fullBooking: booking,
-            });
-            // Fall back to end of day
-            eventEndDateTime = new Date(eventStartDate);
-            eventEndDateTime.setHours(23, 59, 59, 999);
-          }
-        } else {
-          // If no specific time, assume event ends at end of day
-          eventEndDateTime = new Date(eventStartDate);
-          eventEndDateTime.setHours(23, 59, 59, 999);
-        }
-      }
-
-      // Determine event status (both dates are now in UTC, representing IST times)
-      const isUpcoming = now < eventStartDate;
-      const isOngoing = now >= eventStartDate && now <= eventEndDateTime;
-      const isPast = now > eventEndDateTime;
-
-      let result = false;
-      switch (type) {
-        case "upcoming":
-          result = isUpcoming;
+      const status = getEventStatus(booking.event);
+      
+      switch (status) {
+        case 'upcoming':
+          upcoming.push(booking);
           break;
-        case "ongoing":
-          result = isOngoing;
+        case 'ongoing':
+          ongoing.push(booking);
           break;
-        case "past":
-          result = isPast;
+        case 'past':
+          past.push(booking);
           break;
-        default:
-          result = false;
       }
-
-      console.log(`Booking ${booking?.id || "unknown"}:`, {
-        eventName: booking?.event?.title || "undefined",
-        eventStartDate: booking?.event?.date || "undefined",
-        eventEndDate:
-          booking?.event?.endDate || booking?.event?.enddate || "undefined",
-        eventTime: booking?.event?.time || "undefined",
-        eventEndTime: booking?.event?.endtime || "undefined",
-        calculatedStartDateTime: isNaN(eventStartDate.getTime())
-          ? "Invalid Date"
-          : eventStartDate.toISOString(),
-        calculatedEndDateTime: isNaN(eventEndDateTime.getTime())
-          ? "Invalid Date"
-          : eventEndDateTime.toISOString(),
-        currentTime: now.toISOString(),
-        isUpcoming,
-        isOngoing,
-        isPast,
-        typeFilter: type,
-        included: result,
-      });
-
-      return result;
     });
 
-    console.log(`Filtered result: ${filtered.length} ${type} bookings`);
-    return filtered;
-  };
+    return { upcoming, ongoing, past };
+  }, [bookings]);
 
-  const upcomingBookings = filterBookings(bookings, "upcoming");
-  const ongoingBookings = filterBookings(bookings, "ongoing");
-  const pastBookings = filterBookings(bookings, "past");
-
-  // Helper function to check if an event is expired (with precise date and time)
-  const isEventExpired = (event) => {
-    if (!event || !event.date) return false;
-
-    const now = new Date();
-
-    // Use endDate if available (includes both date and time), otherwise use start date
-    let eventEndDateTime;
-    if (event.endDate || event.enddate) {
-      // Event has an end date/time
-      eventEndDateTime = new Date(event.endDate || event.enddate);
-    } else {
-      // No end date, create end time from start date + time
-      const eventDate = new Date(event.date);
-      if (event.time) {
-        // If event has a specific time, use that date with time
-        eventEndDateTime = eventDate;
-      } else {
-        // If no specific time, assume event ends at end of day
-        eventEndDateTime = new Date(eventDate);
-        eventEndDateTime.setHours(23, 59, 59, 999);
-      }
-    }
-
-    return eventEndDateTime < now;
-  };
-
-  // Format date for display
-  const formatEventDate = (dateString, timeString) => {
-    const date = new Date(dateString);
-    const options = {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-      timeZone: "Asia/Kolkata",
-    };
-    return `${date.toLocaleDateString("en-IN", options)} at ${timeString}`;
-  };
+  // Handle view ticket
+  const handleViewTicket = useCallback((booking) => {
+    setSelectedTicket(booking);
+    setShowTicketModal(true);
+  }, []);
 
   // If user is not logged in, show login prompt
   if (!authLoading && !user) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 relative overflow-hidden">
-        {/* Animated Background Elements */}
-        <div className="absolute inset-0">
-          {/* Floating particles */}
-          {particles.map((particle) => (
-            <div
-              key={particle.id}
-              className="absolute w-1 h-1 bg-white rounded-full opacity-20 animate-pulse"
-              style={{
-                left: `${particle.left}%`,
-                top: `${particle.top}%`,
-                animationDelay: `${particle.animationDelay}s`,
-                animationDuration: `${particle.animationDuration}s`,
-              }}
-            />
-          ))}
-
-          {/* Moving gradient orbs */}
-          <div
-            className="absolute w-96 h-96 bg-gradient-to-r from-blue-400 to-purple-600 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob"
-            style={{
-              transform: `translate(${mousePosition.x * 0.02}px, ${
-                mousePosition.y * 0.02
-              }px)`,
-            }}
-          />
-          <div
-            className="absolute w-96 h-96 bg-gradient-to-r from-yellow-400 to-pink-600 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-2000 top-20 right-20"
-            style={{
-              transform: `translate(${mousePosition.x * -0.01}px, ${
-                mousePosition.y * -0.01
-              }px)`,
-            }}
-          />
-          <div
-            className="absolute w-96 h-96 bg-gradient-to-r from-green-400 to-blue-600 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-4000 bottom-20 left-20"
-            style={{
-              transform: `translate(${mousePosition.x * 0.015}px, ${
-                mousePosition.y * 0.015
-              }px)`,
-            }}
-          />
-        </div>
-
-        {/* Navigation */}
-        <nav className="relative z-10 bg-black/20 backdrop-blur-md border-b border-white/10">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between h-16 md:h-20">
-              <Link href="/" className="flex items-center space-x-2">
-                <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                  <span className="text-white font-bold text-sm">E</span>
-                </div>
-                <span className="text-white font-bold text-lg sm:text-xl">
-                  EventHub
-                </span>
-              </Link>
-
-              <div className="flex items-center space-x-4">
-                <Link
-                  href="/"
-                  className="text-white/80 hover:text-white transition-colors font-medium"
-                >
-                  ← Back to Home
-                </Link>
-
-                {/* Desktop Sign Out Icon - Always visible when logged in */}
-                {user && (
-                  <button
-                    onClick={async () => {
-                      try {
-                        const result = await signOut();
-                        if (!result.error) {
-                          window.location.reload();
-                        }
-                      } catch (error) {
-                        console.error("Error signing out:", error);
-                      }
-                    }}
-                    className="text-white/80 hover:text-white transition-colors p-2 hover:bg-white/10 rounded-lg"
-                    title="Sign Out"
-                  >
-                    <svg
-                      className="w-5 h-5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-                      />
-                    </svg>
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-        </nav>
-
-        {/* Login Required Content */}
-        <div className="relative z-10 flex items-center justify-center min-h-[calc(100vh-80px)] px-4">
-          <div className="text-center max-w-md mx-auto">
-            <div className="bg-white/10 backdrop-blur-md rounded-3xl p-8 border border-white/20 shadow-2xl">
-              {/* Logo */}
-              <div className="flex justify-center mb-6">
-                <EventHubLogo size={64} showText={false} />
-              </div>
-
-              <div className="w-20 h-20 mx-auto mb-6 bg-linear-to-br from-blue-600/20 to-purple-600/20 rounded-full flex items-center justify-center border border-blue-500/30">
-                <svg
-                  className="w-10 h-10 text-blue-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"
-                  />
-                </svg>
-              </div>
-
-              <h1 className="text-3xl font-bold bg-linear-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent mb-4">
-                Authentication Required
-              </h1>
-              <p className="text-gray-300 mb-2 leading-relaxed">
-                Sign in to access your booked events, manage your tickets, and
-                view your event history.
-              </p>
-              <p className="text-white/50 mb-6 text-sm">
-                Redirecting to home page in{" "}
-                <span className="text-blue-400 font-bold text-xl">
-                  {redirectCountdown}
-                </span>{" "}
-                seconds...
-              </p>
-
-              <div className="space-y-3">
-                <Link
-                  href="/"
-                  className="inline-flex items-center gap-2 w-full justify-center bg-linear-to-r from-blue-600 to-purple-600 text-white px-8 py-3 rounded-xl font-medium hover:from-blue-700 hover:to-purple-700 transition-all transform hover:scale-105 shadow-lg shadow-blue-500/25"
-                >
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
-                    />
-                  </svg>
-                  Go to Home & Sign In
-                </Link>
-                <button
-                  onClick={() => router.back()}
-                  className="w-full bg-white/10 hover:bg-white/20 text-white px-8 py-3 rounded-xl transition-colors border border-white/20"
-                >
-                  Go Back
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <LoginRequired
+        redirectCountdown={redirectCountdown}
+        particles={particles}
+        mousePosition={mousePosition}
+        user={user}
+        signOut={signOut}
+      />
     );
   }
 
+  // Get current bookings based on active tab
+  const currentBookings = categorizedBookings[activeTab] || [];
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 relative overflow-hidden">
-      {/* Animated Background Elements */}
-      <div className="absolute inset-0">
-        {/* Floating particles */}
-        {particles.map((particle) => (
-          <div
-            key={particle.id}
-            className="absolute w-1 h-1 bg-white rounded-full opacity-20 animate-pulse"
-            style={{
-              left: `${particle.left}%`,
-              top: `${particle.top}%`,
-              animationDelay: `${particle.animationDelay}s`,
-              animationDuration: `${particle.animationDuration}s`,
-            }}
-          />
-        ))}
-
-        {/* Moving gradient orbs */}
-        <div
-          className="absolute w-96 h-96 bg-gradient-to-r from-blue-400 to-purple-600 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob"
-          style={{
-            transform: `translate(${mousePosition.x * 0.02}px, ${
-              mousePosition.y * 0.02
-            }px)`,
-          }}
-        />
-        <div
-          className="absolute w-96 h-96 bg-gradient-to-r from-yellow-400 to-pink-600 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-2000 top-20 right-20"
-          style={{
-            transform: `translate(${mousePosition.x * -0.01}px, ${
-              mousePosition.y * -0.01
-            }px)`,
-          }}
-        />
-        <div
-          className="absolute w-96 h-96 bg-gradient-to-r from-green-400 to-blue-600 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-4000 bottom-20 left-20"
-          style={{
-            transform: `translate(${mousePosition.x * 0.015}px, ${
-              mousePosition.y * 0.015
-            }px)`,
-          }}
-        />
-      </div>
-
-      {/* Navigation */}
-      <nav className="relative z-10 bg-black/20 backdrop-blur-md border-b border-white/10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16 md:h-20">
-            <Link href="/" className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">E</span>
-              </div>
-              <span className="text-white font-bold text-lg sm:text-xl">
-                EventHub
-              </span>
-            </Link>
-
-            <div className="flex items-center space-x-4">
-              {/* Admin Panel Link - Only show for admins */}
-              {!authLoading &&
-                user &&
-                (user.role === "SUPER_ADMIN" ||
-                  user.role === "EVENT_ADMIN") && (
-                  <Link
-                    href="/admin"
-                    className="text-blue-400 hover:text-blue-300 transition-colors font-medium bg-blue-600/20 px-3 py-1 rounded-lg border border-blue-500/30"
-                  >
-                    🛡️ Admin Panel
-                  </Link>
-                )}
-
-              <Link
-                href="/"
-                className="text-white/80 hover:text-white transition-colors font-medium"
-              >
-                ← Back to Home
-              </Link>
-            </div>
-          </div>
-        </div>
-      </nav>
+      <AnimatedBackground particles={particles} mousePosition={mousePosition} />
+      <Navigation user={user} authLoading={authLoading} signOut={signOut} />
 
       {/* Main Content */}
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -657,7 +633,7 @@ export default function MyEventsPage() {
                   : "text-white/70 hover:text-white"
               }`}
             >
-              Upcoming ({upcomingBookings.length})
+              Upcoming ({categorizedBookings.upcoming.length})
             </button>
             <button
               onClick={() => setActiveTab("ongoing")}
@@ -667,7 +643,7 @@ export default function MyEventsPage() {
                   : "text-white/70 hover:text-white"
               }`}
             >
-              Ongoing ({ongoingBookings.length})
+              Ongoing ({categorizedBookings.ongoing.length})
             </button>
             <button
               onClick={() => setActiveTab("past")}
@@ -677,7 +653,7 @@ export default function MyEventsPage() {
                   : "text-white/70 hover:text-white"
               }`}
             >
-              Past Events ({pastBookings.length})
+              Past Events ({categorizedBookings.past.length})
             </button>
           </div>
         </div>
@@ -690,307 +666,18 @@ export default function MyEventsPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {(() => {
-              let currentBookings;
-              if (activeTab === "upcoming") {
-                currentBookings = upcomingBookings;
-              } else if (activeTab === "ongoing") {
-                currentBookings = ongoingBookings;
-              } else {
-                currentBookings = pastBookings;
-              }
-
-              return currentBookings.length === 0 ? (
-                <div className="col-span-full text-center py-12">
-                  <div className="bg-white/10 backdrop-blur-md rounded-3xl p-12 border border-white/20 max-w-md mx-auto">
-                    <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-blue-600/20 to-purple-600/20 rounded-full flex items-center justify-center border border-blue-500/30">
-                      <svg
-                        className="w-10 h-10 text-blue-400"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"
-                        />
-                      </svg>
-                    </div>
-                    <h3 className="text-2xl font-bold text-white mb-4">
-                      No {activeTab} events
-                    </h3>
-                    <p className="text-gray-300 mb-6">
-                      {activeTab === "upcoming"
-                        ? "You haven't booked any upcoming events yet. Discover amazing events happening near you!"
-                        : activeTab === "ongoing"
-                        ? "You don't have any ongoing events right now. Events that are currently happening will appear here."
-                        : "You don't have any past events yet. Your attended events will appear here."}
-                    </p>
-                    {activeTab === "upcoming" && (
-                      <Link
-                        href="/events"
-                        className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-xl font-medium hover:from-blue-700 hover:to-purple-700 transition-all transform hover:scale-105 shadow-lg shadow-blue-500/25"
-                      >
-                        <svg
-                          className="w-5 h-5"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                          />
-                        </svg>
-                        Browse Events
-                      </Link>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                currentBookings.map((booking) => (
-                  <div
-                    key={booking.id}
-                    className="bg-white/10 backdrop-blur-md rounded-xl border border-white/20 overflow-hidden hover:bg-white/15 transition-all duration-200 group"
-                  >
-                    {/* Event Image */}
-                    <div className="relative h-32 overflow-hidden">
-                      <img
-                        src={
-                          booking.event.imageUrl || "/api/placeholder/400/200"
-                        }
-                        alt={booking.event.title}
-                        className="w-full h-full object-cover"
-                      />
-                      <div className="absolute top-2 left-2">
-                        {(() => {
-                          // ✅ Use IST for status badge
-                          // ✅ Use current time for status badge
-                          const now = new Date();
-                          
-                          // Helper function to parse date/time as IST
-                          const parseAsIST = (dateStr, timeStr = null) => {
-                            let dateTimeStr;
-                            
-                            // If we have a separate time string, use it (prioritize separate time field)
-                            if (timeStr) {
-                              // Extract just the date part from dateStr (in case it has time)
-                              const datePart = dateStr.split('T')[0];
-                              dateTimeStr = `${datePart}T${timeStr}`;
-                            } else if (dateStr.includes("T")) {
-                              // Date already includes time
-                              dateTimeStr = dateStr;
-                            } else {
-                              // Just a date, no time
-                              dateTimeStr = dateStr;
-                            }
-                            
-                            if (!dateTimeStr.includes('Z') && !dateTimeStr.includes('+') && !dateTimeStr.includes('-', 10)) {
-                              dateTimeStr += '+05:30';
-                            }
-                            
-                            return new Date(dateTimeStr);
-                          };
-
-                          const eventStartDate = parseAsIST(booking.event.date, booking.event.time);
-
-                          let eventEndDateTime;
-                          if (booking.event.endDate || booking.event.enddate) {
-                            eventEndDateTime = parseAsIST(
-                              booking.event.endDate || booking.event.enddate,
-                              booking.event.endtime
-                            );
-                          } else if (booking.event.time) {
-                            eventEndDateTime = parseAsIST(booking.event.date, booking.event.time);
-                          } else {
-                            eventEndDateTime = new Date(eventStartDate);
-                            eventEndDateTime.setHours(23, 59, 59, 999);
-                          }
-
-                          const isUpcoming = now < eventStartDate;
-                          const isOngoing = now >= eventStartDate && now <= eventEndDateTime;
-                          const isPast = now > eventEndDateTime;
-
-                          if (isUpcoming) {
-                            return (
-                              <span className="px-2 py-1 rounded-md text-xs font-medium bg-blue-500/80 text-white">
-                                Upcoming
-                              </span>
-                            );
-                          } else if (isOngoing) {
-                            return (
-                              <span className="px-2 py-1 rounded-md text-xs font-medium bg-green-500/80 text-white animate-pulse">
-                                Live Now
-                              </span>
-                            );
-                          } else if (isPast) {
-                            return (
-                              <span className="px-2 py-1 rounded-md text-xs font-medium bg-gray-500/80 text-white">
-                                Finished
-                              </span>
-                            );
-                          } else {
-                            return (
-                              <span className="px-2 py-1 rounded-md text-xs font-medium bg-gray-500/80 text-white">
-                                Event
-                              </span>
-                            );
-                          }
-                        })()}
-                      </div>
-                    </div>
-
-                    {/* Event Details */}
-                    <div className="p-4">
-                      <h3 className="text-lg font-semibold text-white mb-2 line-clamp-1">
-                        {booking.event.title}
-                      </h3>
-
-                      <div className="space-y-2 mb-4">
-                        <div className="flex items-center gap-2 text-white/80">
-                          <span className="text-blue-400">📅</span>
-                          <span className="text-xs">
-                            {(() => {
-                              const startDate = new Date(booking.event.date);
-                              const endDate = booking.event.endDate
-                                ? new Date(booking.event.endDate)
-                                : null;
-
-                              if (
-                                endDate &&
-                                startDate.toDateString() !==
-                                  endDate.toDateString()
-                              ) {
-                                // Multi-day event
-                                return `${startDate.toLocaleDateString(
-                                  "en-IN",
-                                  {
-                                    month: "short",
-                                    day: "numeric",
-                                    timeZone: "Asia/Kolkata",
-                                  }
-                                )} - ${endDate.toLocaleDateString("en-IN", {
-                                  month: "short",
-                                  day: "numeric",
-                                  year: "numeric",
-                                  timeZone: "Asia/Kolkata",
-                                })}${
-                                  booking.event.time
-                                    ? ` • ${booking.event.time}`
-                                    : ""
-                                }`;
-                              } else {
-                                // Single day event
-                                return formatEventDate(
-                                  booking.event.date,
-                                  booking.event.time
-                                );
-                              }
-                            })()}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2 text-white/80">
-                          <span className="text-purple-400">📍</span>
-                          <span className="text-xs line-clamp-1">
-                            {booking.event.location}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Action Buttons or Completed Stamp */}
-                      {activeTab === "past" ? (
-                        // Show "Event Completed" circular stamp for past events
-                        <div className="relative flex items-center justify-center py-6 px-4">
-                          <div className="relative">
-                            {/* Outer Ring - Shadow Effect */}
-                            <div className="absolute inset-0 w-24 h-24 rounded-full bg-green-800/30 border-4 border-green-600/40 transform rotate-12"></div>
-
-                            {/* Main Stamp Circle */}
-                            <div className="relative w-24 h-24 rounded-full bg-gradient-to-br from-green-600/40 to-green-800/60 border-4 border-green-500/60 flex flex-col items-center justify-center transform -rotate-6 transition-transform hover:rotate-0 duration-300">
-                              {/* Inner Circle */}
-                              <div className="w-16 h-16 rounded-full border-2 border-green-400/50 border-dashed flex flex-col items-center justify-center">
-                                {/* Checkmark Icon */}
-                                <div className="w-8 h-8 rounded-full bg-green-500/80 flex items-center justify-center mb-1">
-                                  <svg
-                                    className="w-5 h-5 text-white"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                  >
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      strokeWidth={3}
-                                      d="M5 13l4 4L19 7"
-                                    />
-                                  </svg>
-                                </div>
-
-                                {/* Text */}
-                                <div className="text-center">
-                                  <div className="text-green-200 text-[8px] font-bold uppercase tracking-wider leading-none">
-                                    EVENT
-                                  </div>
-                                  <div className="text-green-100 text-[8px] font-bold uppercase tracking-wider leading-none">
-                                    COMPLETED
-                                  </div>
-                                </div>
-                              </div>
-
-                              {/* Decorative elements */}
-                              <div className="absolute top-1 left-3 w-1 h-1 rounded-full bg-green-300/60"></div>
-                              <div className="absolute top-3 right-1 w-1 h-1 rounded-full bg-green-300/60"></div>
-                              <div className="absolute bottom-1 right-3 w-1 h-1 rounded-full bg-green-300/60"></div>
-                              <div className="absolute bottom-3 left-1 w-1 h-1 rounded-full bg-green-300/60"></div>
-                            </div>
-
-                            {/* Date stamp effect */}
-                            <div className="absolute -bottom-2 -right-2 bg-green-700/80 text-green-100 text-[6px] font-mono px-1 py-0.5 rounded transform rotate-12">
-                              {new Date(
-                                booking.event.endDate ||
-                                  booking.event.enddate ||
-                                  booking.event.date
-                              ).toLocaleDateString("en-IN", {
-                                month: "2-digit",
-                                day: "2-digit",
-                                year: "2-digit",
-                                timeZone: "Asia/Kolkata",
-                              })}
-                            </div>
-                          </div>
-                        </div>
-                      ) : (
-                        // Show buttons for upcoming/active events
-                        <div className="space-y-2">
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => {
-                                console.log("View Ticket clicked:", booking);
-                                setSelectedTicket(booking);
-                                setShowTicketModal(true);
-                              }}
-                              className="flex-1 bg-blue-600/20 text-white px-3 py-2 rounded-lg text-xs font-medium border border-blue-500/30 hover:bg-blue-600/30 transition-all"
-                            >
-                              View Ticket
-                            </button>
-                            <Link
-                              href={`/events/${booking.event.id}`}
-                              className="flex-1 bg-white/10 text-white px-3 py-2 rounded-lg text-xs font-medium border border-white/20 hover:bg-white/20 transition-all text-center"
-                            >
-                              Details
-                            </Link>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))
-              );
-            })()}
+            {currentBookings.length === 0 ? (
+              <EmptyState activeTab={activeTab} />
+            ) : (
+              currentBookings.map((booking) => (
+                <EventCard
+                  key={booking.id}
+                  booking={booking}
+                  activeTab={activeTab}
+                  onViewTicket={handleViewTicket}
+                />
+              ))
+            )}
           </div>
         )}
       </div>
