@@ -1,17 +1,18 @@
 // Service Worker for Push Notifications
 self.addEventListener("install", (event) => {
-  console.log("Service Worker installing...");
+  console.log("🔧 Service Worker installing...");
   self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {
-  console.log("Service Worker activating...");
+  console.log("✅ Service Worker activated!");
   event.waitUntil(clients.claim());
 });
 
 // Handle push notifications
 self.addEventListener("push", (event) => {
-  console.log("Push notification received:", event);
+  console.log("🔔 Push notification received!", event);
+  console.log("📦 Push data:", event.data ? event.data.text() : "No data");
 
   let notificationData = {
     title: "EventHub Notification",
@@ -19,7 +20,7 @@ self.addEventListener("push", (event) => {
     icon: "/icon-192.png",
     badge: "/icon-192.png",
     tag: "eventhub-notification",
-    requireInteraction: true,
+    requireInteraction: false,
     data: {},
   };
 
@@ -35,7 +36,7 @@ self.addEventListener("push", (event) => {
         requireInteraction:
           data.requireInteraction !== undefined
             ? data.requireInteraction
-            : true,
+            : false,
         data: data.data || {},
         image: data.image,
         actions: data.actions || [],
@@ -46,18 +47,25 @@ self.addEventListener("push", (event) => {
   }
 
   event.waitUntil(
-    self.registration.showNotification(notificationData.title, {
-      body: notificationData.body,
-      icon: notificationData.icon,
-      badge: notificationData.badge,
-      tag: notificationData.tag,
-      requireInteraction: notificationData.requireInteraction,
-      data: notificationData.data,
-      image: notificationData.image,
-      actions: notificationData.actions,
-      vibrate: [200, 100, 200],
-      timestamp: Date.now(),
-    })
+    self.registration
+      .showNotification(notificationData.title, {
+        body: notificationData.body,
+        icon: notificationData.icon,
+        badge: notificationData.badge,
+        tag: notificationData.tag,
+        requireInteraction: notificationData.requireInteraction,
+        data: notificationData.data,
+        image: notificationData.image,
+        actions: notificationData.actions,
+        vibrate: [200, 100, 200],
+        timestamp: Date.now(),
+      })
+      .then(() => {
+        console.log("✅ Notification displayed successfully!");
+      })
+      .catch((error) => {
+        console.error("❌ Error showing notification:", error);
+      })
   );
 });
 
