@@ -15,11 +15,30 @@ const razorpay = new Razorpay({
 export async function POST(request) {
   try {
     const now = new Date();
-    const datePart = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
-    const timePart = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }).format(now);
+    const datePart = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Kolkata",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(now);
+    const timePart = new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Asia/Kolkata",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    }).format(now);
     const nowIstIso = `${datePart}T${timePart}+05:30`;
     const body = await request.json();
-    const { userId, eventId, tickets, totalAmount, userDetails, discountCode } = body;
+    const {
+      userId,
+      eventId,
+      tickets,
+      totalAmount,
+      finalAmount,
+      userDetails,
+      discountCode,
+    } = body;
     // Validate required fields
     if (!userId || !eventId || !tickets || !totalAmount) {
       return NextResponse.json(
@@ -29,7 +48,7 @@ export async function POST(request) {
     }
 
     // Check if event exists
-  const { data: event, error: eventError } = await supabase
+    const { data: event, error: eventError } = await supabase
       .from("events")
       .select("*")
       .eq("id", eventId)
@@ -65,7 +84,9 @@ export async function POST(request) {
         // Check expiry
         if (discount.validUntil) {
           const nowCheck = new Date();
-          const nowIST = new Date(nowCheck.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+          const nowIST = new Date(
+            nowCheck.toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
+          );
           const validUntil = new Date(discount.validUntil);
 
           if (nowIST > validUntil) {
@@ -117,13 +138,11 @@ export async function POST(request) {
     // 🔒 ATOMIC AVAILABILITY CHECK
     // Use database function to atomically check availability with row-level locking
     // This prevents race conditions when multiple users check availability simultaneously
-    const { data: availabilityResult, error: availabilityError } = await supabase.rpc(
-      "check_ticket_availability",
-      {
+    const { data: availabilityResult, error: availabilityError } =
+      await supabase.rpc("check_ticket_availability", {
         p_event_id: eventId,
         p_requested_tickets: parseInt(tickets),
-      }
-    );
+      });
 
     if (availabilityError) {
       console.error("Availability check error:", availabilityError);
@@ -164,14 +183,17 @@ export async function POST(request) {
       }
     }
 
-    // If totalAmount is 0 or less, confirm booking immediately without Razorpay
-    if (parseFloat(totalAmount) <= 0) {
+    // If finalAmount is 0 or less, confirm booking immediately without Razorpay
+    const amountToCharge =
+      finalAmount !== undefined ? finalAmount : totalAmount - discountAmount;
+    if (parseFloat(amountToCharge) <= 0) {
       const pendingBooking = {
         id: crypto.randomUUID(),
         userId,
         eventId,
         tickets: parseInt(tickets),
         totalAmount: 0,
+        discountId: discountId || null,
         status: "CONFIRMED",
         paymentMethod: "free",
         paymentId: "FREE",
@@ -189,6 +211,36 @@ export async function POST(request) {
 
       if (bookingError) {
         throw bookingError;
+      }
+
+      // ✅ INCREMENT DISCOUNT USAGE FOR FREE BOOKING
+      if (discountId) {
+        try {
+          const { error: discountError } = await supabase.rpc(
+            "increment_discount_usage",
+            {
+              p_discount_id: discountId,
+            }
+          );
+
+          if (discountError) {
+            console.error(
+              "❌ Error incrementing discount usage:",
+              discountError
+            );
+          } else {
+            console.log(
+              "✅ Discount usage incremented for free booking:",
+              discountId
+            );
+          }
+        } catch (discountError) {
+          console.error(
+            "❌ Exception incrementing discount usage:",
+            discountError
+          );
+          // Don't fail booking if discount increment fails
+        }
       }
 
       try {
@@ -238,7 +290,7 @@ export async function POST(request) {
       40
     );
     const razorpayOrder = await razorpay.orders.create({
-      amount: Math.round(finalAmount * 100), // ✅ Use finalAmount (discounted price) in paise
+      amount: Math.round(amountToCharge * 100), // ✅ Use amountToCharge (discounted price) in paise
       currency: "INR",
       receipt: shortReceipt,
       notes: {
@@ -259,8 +311,8 @@ export async function POST(request) {
       userId,
       eventId,
       tickets: parseInt(tickets),
-      totalAmount: parseFloat(finalAmount),
-      discountAmount: parseFloat(discountAmount),
+      totalAmount: parseFloat(amountToCharge),
+      discountAmount: parseFloat(discountAmount) || 0,
       originalAmount: parseFloat(originalAmount),
       status: "PENDING",
       paymentMethod: "razorpay",
@@ -279,11 +331,11 @@ export async function POST(request) {
     if (bookingError) {
       throw bookingError;
     }
-    
+
     // ✅ PENDING booking created - capacity NOT reduced yet
     // Capacity will only be reduced when payment succeeds (CONFIRMED status)
     // If user cancels payment, PENDING booking remains but doesn't affect capacity
-    
+
     // Send pending payment notification
     try {
       await sendNotificationToUser(userId, "payment-pending", {
@@ -291,7 +343,7 @@ export async function POST(request) {
         eventId: event.id,
       });
     } catch (_) {}
-    
+
     // Update user profile with any new details provided during booking
     if (
       userDetails &&

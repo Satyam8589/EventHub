@@ -5,7 +5,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
 import RazorpayPayment from "./RazorpayPayment";
 
-export default function BookingModal({ event, isOpen, onClose, onBookingSuccess }) {
+export default function BookingModal({
+  event,
+  isOpen,
+  onClose,
+  onBookingSuccess,
+}) {
   const { user } = useAuth();
   const router = useRouter();
   const [formData, setFormData] = useState({
@@ -41,14 +46,20 @@ export default function BookingModal({ event, isOpen, onClose, onBookingSuccess 
           const u = json.user || {};
           setFormData((prev) => ({
             ...prev,
-            fullName: u.name || user?.displayName || user?.email?.split("@")[0] || "",
+            fullName:
+              u.name || user?.displayName || user?.email?.split("@")[0] || "",
             email: u.email || user?.email || "",
-            phoneNumber: u.phone || prev.phoneNumber || user?.dbUser?.phone || "",
+            phoneNumber:
+              u.phone || prev.phoneNumber || user?.dbUser?.phone || "",
           }));
         } else {
           setFormData((prev) => ({
             ...prev,
-            fullName: user?.dbUser?.name || user?.displayName || user?.email?.split("@")[0] || "",
+            fullName:
+              user?.dbUser?.name ||
+              user?.displayName ||
+              user?.email?.split("@")[0] ||
+              "",
             email: user?.dbUser?.email || user?.email || "",
             phoneNumber: user?.dbUser?.phone || prev.phoneNumber || "",
           }));
@@ -56,7 +67,11 @@ export default function BookingModal({ event, isOpen, onClose, onBookingSuccess 
       } catch (error) {
         setFormData((prev) => ({
           ...prev,
-          fullName: user?.dbUser?.name || user?.displayName || user?.email?.split("@")[0] || "",
+          fullName:
+            user?.dbUser?.name ||
+            user?.displayName ||
+            user?.email?.split("@")[0] ||
+            "",
           email: user?.dbUser?.email || user?.email || "",
           phoneNumber: user?.dbUser?.phone || prev.phoneNumber || "",
         }));
@@ -81,10 +96,21 @@ export default function BookingModal({ event, isOpen, onClose, onBookingSuccess 
       if (!error && Array.isArray(data)) {
         const totalTickets = data.reduce((sum, b) => sum + (b.tickets || 0), 0);
         setUserTotalTickets(totalTickets);
-        const maxPerUser = event?.max_tickets_per_user && event.max_tickets_per_user > 0 ? event.max_tickets_per_user : null;
-        const remaining = maxPerUser ? Math.max(maxPerUser - totalTickets, 0) : null;
-        if (remaining !== null && formData.numberOfTickets > Math.max(1, remaining)) {
-          setFormData((prev) => ({ ...prev, numberOfTickets: Math.max(1, remaining) }));
+        const maxPerUser =
+          event?.max_tickets_per_user && event.max_tickets_per_user > 0
+            ? event.max_tickets_per_user
+            : null;
+        const remaining = maxPerUser
+          ? Math.max(maxPerUser - totalTickets, 0)
+          : null;
+        if (
+          remaining !== null &&
+          formData.numberOfTickets > Math.max(1, remaining)
+        ) {
+          setFormData((prev) => ({
+            ...prev,
+            numberOfTickets: Math.max(1, remaining),
+          }));
         }
       }
       setLoadingBookings(false);
@@ -97,9 +123,13 @@ export default function BookingModal({ event, isOpen, onClose, onBookingSuccess 
   const capacity = event?.capacity || 0;
   const spotsLeft = Math.max(capacity - registered, 0);
   const isSoldOut = capacity > 0 && spotsLeft === 0;
-  const hasBookingLimit = event?.max_tickets_per_user && event.max_tickets_per_user > 0;
-  const userReachedLimit = hasBookingLimit && userTotalTickets >= event.max_tickets_per_user;
-  const remainingUserLimit = hasBookingLimit ? Math.max(event.max_tickets_per_user - userTotalTickets, 0) : null;
+  const hasBookingLimit =
+    event?.max_tickets_per_user && event.max_tickets_per_user > 0;
+  const userReachedLimit =
+    hasBookingLimit && userTotalTickets >= event.max_tickets_per_user;
+  const remainingUserLimit = hasBookingLimit
+    ? Math.max(event.max_tickets_per_user - userTotalTickets, 0)
+    : null;
   const ticketOptionMax = Math.max(
     1,
     Math.min(
@@ -119,15 +149,15 @@ export default function BookingModal({ event, isOpen, onClose, onBookingSuccess 
   // Calculate discount amount
   const getDiscountAmount = () => {
     if (!appliedDiscount) return 0;
-    
+
     const baseTotal = (event?.price || 0) * formData.numberOfTickets;
-    
+
     if (appliedDiscount.type === "PERCENTAGE") {
       return (baseTotal * appliedDiscount.value) / 100;
     } else if (appliedDiscount.type === "FIXED") {
       return appliedDiscount.value;
     }
-    
+
     return 0;
   };
 
@@ -148,11 +178,14 @@ export default function BookingModal({ event, isOpen, onClose, onBookingSuccess 
     setDiscountError("");
 
     try {
-      const response = await fetch(`/api/events/${event.id}/validate-discount`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: discountCode.trim() }),
-      });
+      const response = await fetch(
+        `/api/events/${event.id}/validate-discount`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ code: discountCode.trim() }),
+        }
+      );
 
       const data = await response.json();
 
@@ -189,10 +222,14 @@ export default function BookingModal({ event, isOpen, onClose, onBookingSuccess 
     if (capacity > 0 && registered + formData.numberOfTickets > capacity) {
       const availableTickets = Math.max(capacity - registered, 0);
       if (availableTickets === 0) {
-        setErrorMessage("This event is sold out. No more tickets are available.");
+        setErrorMessage(
+          "This event is sold out. No more tickets are available."
+        );
       } else {
         setErrorMessage(
-          `Only ${availableTickets} ticket${availableTickets === 1 ? "" : "s"} available. Please reduce your ticket quantity.`
+          `Only ${availableTickets} ticket${
+            availableTickets === 1 ? "" : "s"
+          } available. Please reduce your ticket quantity.`
         );
       }
       return;
@@ -203,8 +240,16 @@ export default function BookingModal({ event, isOpen, onClose, onBookingSuccess 
       return;
     }
 
-    if (hasBookingLimit && remainingUserLimit !== null && formData.numberOfTickets > remainingUserLimit) {
-      setErrorMessage(`You can book up to ${remainingUserLimit} ticket${remainingUserLimit === 1 ? "" : "s"} for this event.`);
+    if (
+      hasBookingLimit &&
+      remainingUserLimit !== null &&
+      formData.numberOfTickets > remainingUserLimit
+    ) {
+      setErrorMessage(
+        `You can book up to ${remainingUserLimit} ticket${
+          remainingUserLimit === 1 ? "" : "s"
+        } for this event.`
+      );
       return;
     }
 
@@ -222,6 +267,7 @@ export default function BookingModal({ event, isOpen, onClose, onBookingSuccess 
           eventId: event.id,
           tickets: parseInt(formData.numberOfTickets),
           totalAmount: (event?.price || 0) * parseInt(formData.numberOfTickets),
+          finalAmount: calculateTotal(),
           discountCode: discountCode || null,
           userDetails: {
             fullName: formData.fullName,
@@ -252,7 +298,9 @@ export default function BookingModal({ event, isOpen, onClose, onBookingSuccess 
       }
     } catch (error) {
       console.error("Order creation error:", error);
-      setErrorMessage(error.message || "Failed to proceed to payment. Please try again.");
+      setErrorMessage(
+        error.message || "Failed to proceed to payment. Please try again."
+      );
       setPaymentStep("failed");
     } finally {
       setLoading(false);
@@ -266,7 +314,9 @@ export default function BookingModal({ event, isOpen, onClose, onBookingSuccess 
 
     // 🔥 CALL THE CALLBACK TO REFRESH PARENT DATA INSTANTLY
     if (onBookingSuccess) {
-      console.log("✅ Triggering onBookingSuccess callback to refresh availability");
+      console.log(
+        "✅ Triggering onBookingSuccess callback to refresh availability"
+      );
       onBookingSuccess();
     }
 
@@ -341,8 +391,18 @@ export default function BookingModal({ event, isOpen, onClose, onBookingSuccess 
           onClick={onClose}
           className="absolute top-4 right-4 text-gray-600 hover:text-gray-800 transition-colors z-20 bg-white/50 hover:bg-white/80 rounded-full p-1"
         >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          <svg
+            className="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M6 18L18 6M6 6l12 12"
+            />
           </svg>
         </button>
 
@@ -350,24 +410,57 @@ export default function BookingModal({ event, isOpen, onClose, onBookingSuccess 
           {paymentStep === "success" ? (
             <div className="text-center py-8">
               <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                <svg
+                  className="w-8 h-8 text-green-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M5 13l4 4L19 7"
+                  />
                 </svg>
               </div>
-              <h3 className="text-2xl font-bold text-green-600 mb-2">🎉 Booking Complete!</h3>
-              <p className="text-gray-700 mb-2">Your payment has been verified and your tickets are confirmed.</p>
-              <p className="text-sm text-gray-600 mb-1">📧 Ticket details have been sent to your email.</p>
-              <p className="text-sm text-blue-600 font-medium mt-4">Redirecting to My Events page...</p>
+              <h3 className="text-2xl font-bold text-green-600 mb-2">
+                🎉 Booking Complete!
+              </h3>
+              <p className="text-gray-700 mb-2">
+                Your payment has been verified and your tickets are confirmed.
+              </p>
+              <p className="text-sm text-gray-600 mb-1">
+                📧 Ticket details have been sent to your email.
+              </p>
+              <p className="text-sm text-blue-600 font-medium mt-4">
+                Redirecting to My Events page...
+              </p>
             </div>
           ) : paymentStep === "failed" ? (
             <div className="text-center py-8">
               <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                <svg
+                  className="w-8 h-8 text-red-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
                 </svg>
               </div>
-              <h3 className="text-2xl font-bold text-red-600 mb-2">❌ Booking Not Completed</h3>
-              <p className="text-gray-700 mb-4">{errorMessage || "Your payment could not be processed. Please try again."}</p>
+              <h3 className="text-2xl font-bold text-red-600 mb-2">
+                ❌ Booking Not Completed
+              </h3>
+              <p className="text-gray-700 mb-4">
+                {errorMessage ||
+                  "Your payment could not be processed. Please try again."}
+              </p>
               <div className="flex gap-3 justify-center">
                 <button
                   onClick={() => {
@@ -392,25 +485,45 @@ export default function BookingModal({ event, isOpen, onClose, onBookingSuccess 
           ) : (
             <>
               <div className="text-center mb-4">
-                <h2 className="text-xl font-bold text-gray-800 mb-2">Book Your Spot</h2>
+                <h2 className="text-xl font-bold text-gray-800 mb-2">
+                  Book Your Spot
+                </h2>
                 <p className="text-gray-600">
                   Complete the form below to reserve your tickets for{" "}
-                  <span className="font-medium text-gray-800">{event?.title}</span>
+                  <span className="font-medium text-gray-800">
+                    {event?.title}
+                  </span>
                 </p>
                 {isSoldOut && (
                   <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
                     <div className="flex items-center justify-center space-x-2">
-                      <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 18.5c-.77.833.192 2.5 1.732 2.5z" />
+                      <svg
+                        className="w-5 h-5 text-red-600"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 18.5c-.77.833.192 2.5 1.732 2.5z"
+                        />
                       </svg>
-                      <span className="text-red-800 font-semibold">Event Sold Out</span>
+                      <span className="text-red-800 font-semibold">
+                        Event Sold Out
+                      </span>
                     </div>
-                    <p className="text-red-700 text-sm mt-1">All tickets for this event have been booked. Capacity may be upgraded later.</p>
+                    <p className="text-red-700 text-sm mt-1">
+                      All tickets for this event have been booked. Capacity may
+                      be upgraded later.
+                    </p>
                   </div>
                 )}
                 {!isSoldOut && capacity > 0 && (
                   <div className="mt-2 text-sm text-gray-600">
-                    <span className="font-medium">{spotsLeft}</span> spot{spotsLeft === 1 ? "" : "s"} remaining out of {capacity}
+                    <span className="font-medium">{spotsLeft}</span> spot
+                    {spotsLeft === 1 ? "" : "s"} remaining out of {capacity}
                   </div>
                 )}
               </div>
@@ -418,7 +531,9 @@ export default function BookingModal({ event, isOpen, onClose, onBookingSuccess 
               <form onSubmit={handleSubmit} className="space-y-3">
                 {/* Full Name */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Full Name
+                  </label>
                   <div className="relative">
                     <input
                       type="text"
@@ -441,7 +556,9 @@ export default function BookingModal({ event, isOpen, onClose, onBookingSuccess 
 
                 {/* Email */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Email
+                  </label>
                   <div className="relative">
                     <input
                       type="email"
@@ -464,7 +581,9 @@ export default function BookingModal({ event, isOpen, onClose, onBookingSuccess 
 
                 {/* Phone Number */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Phone Number
+                  </label>
                   <input
                     type="tel"
                     name="phoneNumber"
@@ -478,7 +597,9 @@ export default function BookingModal({ event, isOpen, onClose, onBookingSuccess 
 
                 {/* Number of Tickets */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Number of Tickets</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Number of Tickets
+                  </label>
                   <select
                     name="numberOfTickets"
                     value={formData.numberOfTickets}
@@ -486,8 +607,13 @@ export default function BookingModal({ event, isOpen, onClose, onBookingSuccess 
                     disabled={userReachedLimit || isSoldOut || loadingBookings}
                     className="w-full px-3 py-2.5 rounded-lg bg-gray-100/80 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-gray-800 text-sm"
                   >
-                    {Array.from({ length: ticketOptionMax }, (_, i) => i + 1).map((num) => (
-                      <option key={num} value={num}>{num}</option>
+                    {Array.from(
+                      { length: ticketOptionMax },
+                      (_, i) => i + 1
+                    ).map((num) => (
+                      <option key={num} value={num}>
+                        {num}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -501,7 +627,9 @@ export default function BookingModal({ event, isOpen, onClose, onBookingSuccess 
                     <input
                       type="text"
                       value={discountCode}
-                      onChange={(e) => setDiscountCode(e.target.value.toUpperCase())}
+                      onChange={(e) =>
+                        setDiscountCode(e.target.value.toUpperCase())
+                      }
                       placeholder="Enter discount code"
                       disabled={validatingDiscount || !!appliedDiscount}
                       className="flex-1 px-3 py-2.5 rounded-lg bg-white border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-gray-800 placeholder-gray-400 text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
@@ -525,19 +653,30 @@ export default function BookingModal({ event, isOpen, onClose, onBookingSuccess 
                       </button>
                     )}
                   </div>
-                  
+
                   {/* Success Message */}
                   {appliedDiscount && (
                     <div className="mt-2 text-sm text-green-700 font-medium flex items-center gap-1.5">
-                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      <svg
+                        className="w-4 h-4"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                          clipRule="evenodd"
+                        />
                       </svg>
                       <span>
-                        {appliedDiscount.code} applied - {appliedDiscount.type === "PERCENTAGE" ? `${appliedDiscount.value}% off` : `₹${appliedDiscount.value} off`}
+                        {appliedDiscount.code} applied -{" "}
+                        {appliedDiscount.type === "PERCENTAGE"
+                          ? `${appliedDiscount.value}% off`
+                          : `₹${appliedDiscount.value} off`}
                       </span>
                     </div>
                   )}
-                  
+
                   {/* Error Message */}
                   {discountError && (
                     <p className="mt-2 text-sm text-red-600">{discountError}</p>
@@ -550,24 +689,37 @@ export default function BookingModal({ event, isOpen, onClose, onBookingSuccess 
                     <>
                       <div className="flex justify-between items-center text-sm text-gray-600 mb-1">
                         <span>Original Price:</span>
-                        <span className="line-through">₹{((event?.price || 0) * formData.numberOfTickets).toLocaleString("en-IN")}</span>
+                        <span className="line-through">
+                          ₹
+                          {(
+                            (event?.price || 0) * formData.numberOfTickets
+                          ).toLocaleString("en-IN")}
+                        </span>
                       </div>
                       <div className="flex justify-between items-center text-sm text-green-600 mb-2">
                         <span>Discount:</span>
-                        <span>-₹{getDiscountAmount().toLocaleString("en-IN")}</span>
+                        <span>
+                          -₹{getDiscountAmount().toLocaleString("en-IN")}
+                        </span>
                       </div>
                       <div className="border-t border-gray-300 my-2"></div>
                     </>
                   )}
                   <div className="flex justify-between items-center">
-                    <span className="font-medium text-gray-700 text-sm">Total Amount:</span>
-                    <span className="text-xl font-bold text-gray-800">₹{calculateTotal().toLocaleString("en-IN")}</span>
+                    <span className="font-medium text-gray-700 text-sm">
+                      Total Amount:
+                    </span>
+                    <span className="text-xl font-bold text-gray-800">
+                      ₹{calculateTotal().toLocaleString("en-IN")}
+                    </span>
                   </div>
                 </div>
 
                 {/* Special Requests */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Special Requests (Optional)</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Special Requests (Optional)
+                  </label>
                   <textarea
                     name="specialRequests"
                     value={formData.specialRequests}
