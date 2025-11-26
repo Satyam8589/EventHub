@@ -254,7 +254,7 @@ export default function AdminDashboard() {
           {loading ? (
             <p className="text-gray-300">Loading activity...</p>
           ) : recentActivity.length > 0 ? (
-            <div className="space-y-3">
+            <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
               {recentActivity.map((activity, index) => (
                 <div
                   key={activity.id || index}

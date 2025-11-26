@@ -43,7 +43,7 @@ export default function AdminLayout({ children, activeTab = "dashboard" }) {
   const tabs = isSuper ? superAdminTabs : eventAdminTabs;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 lg:flex">
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div
@@ -56,7 +56,7 @@ export default function AdminLayout({ children, activeTab = "dashboard" }) {
       <div
         className={`fixed inset-y-0 left-0 z-50 w-64 bg-slate-900/90 backdrop-blur-md border-r border-white/10 transform transition-transform lg:translate-x-0 ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
-        } lg:relative lg:z-auto`}
+        } lg:static lg:z-auto flex flex-col`}
       >
         {/* Logo */}
         <div className="flex items-center justify-between h-16 px-6 border-b border-white/10">
@@ -101,7 +101,7 @@ export default function AdminLayout({ children, activeTab = "dashboard" }) {
         </div>
 
         {/* Navigation */}
-        <nav className="px-4 py-4 space-y-2">
+        <nav className="px-4 py-4 space-y-2 flex-1 overflow-y-auto">
           {tabs.map((tab) => (
             <Link
               key={tab.id}
@@ -119,7 +119,7 @@ export default function AdminLayout({ children, activeTab = "dashboard" }) {
         </nav>
 
         {/* Sign out */}
-        <div className="absolute bottom-4 left-4 right-4">
+        <div className="p-4 border-t border-white/10">
           <button
             onClick={signOut}
             className="w-full flex items-center space-x-3 px-4 py-3 text-gray-300 hover:bg-red-500/20 hover:text-red-400 rounded-xl transition-all"
@@ -131,7 +131,7 @@ export default function AdminLayout({ children, activeTab = "dashboard" }) {
       </div>
 
       {/* Main content */}
-      <div className="flex-1 lg:ml-64">
+      <div className="flex-1 flex flex-col min-h-screen lg:min-h-0">
         {/* Header */}
         <header className="bg-black/20 backdrop-blur-md border-b border-white/10 px-6 py-4">
           <div className="flex items-center justify-between">
@@ -166,7 +166,7 @@ export default function AdminLayout({ children, activeTab = "dashboard" }) {
         </header>
 
         {/* Page content */}
-        <main className="p-6">{children}</main>
+        <main className="p-6 flex-1 overflow-y-auto">{children}</main>
       </div>
     </div>
   );

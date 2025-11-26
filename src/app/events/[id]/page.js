@@ -21,8 +21,6 @@ export default function Page({ params }) {
   const [announcements, setAnnouncements] = useState([]);
   const [canViewAnnouncements, setCanViewAnnouncements] = useState(false);
   const [isEventAdmin, setIsEventAdmin] = useState(false);
-  const [newAnnouncement, setNewAnnouncement] = useState("");
-  const [postingAnnouncement, setPostingAnnouncement] = useState(false);
   const [userTotalTickets, setUserTotalTickets] = useState(0);
   const [loadingBookings, setLoadingBookings] = useState(true);
 
@@ -62,21 +60,19 @@ export default function Page({ params }) {
 
   // Helper function to convert URLs in text to clickable links
   const linkifyText = (text) => {
-    if (!text) return '';
-    
+    if (!text) return "";
+
     // Regular expression to match URLs
     const urlRegex = /(https?:\/\/[^\s]+)/g;
-    
+
     // Replace URLs with anchor tags with word-break styles
     const linkedText = text.replace(urlRegex, (url) => {
       return `<a href="${url}" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:text-blue-300 underline transition-colors" style="word-break: break-all; overflow-wrap: anywhere;">${url}</a>`;
     });
-    
+
     // Also handle line breaks
-    return linkedText.replace(/\n/g, '<br />');
+    return linkedText.replace(/\n/g, "<br />");
   };
-
-
 
   useEffect(() => {
     if (user && event) {
@@ -156,9 +152,11 @@ export default function Page({ params }) {
     const fetchAnnouncements = async () => {
       try {
         const userId = user?.uid || "";
-        const res = await fetch(`/api/events/${p.id}/announcements?userId=${userId}`);
+        const res = await fetch(
+          `/api/events/${p.id}/announcements?userId=${userId}`
+        );
         const data = await res.json();
-        
+
         setAnnouncements(data.announcements || []);
         setCanViewAnnouncements(data.canView || false);
       } catch (err) {
@@ -185,8 +183,8 @@ export default function Page({ params }) {
         const { data } = await supabase
           .from("event_admins")
           .select("id")
-          .eq("event_id", event.id)  // Changed from eventId to event_id
-          .eq("user_id", user.uid)   // Changed from userId to user_id
+          .eq("event_id", event.id) // Changed from eventId to event_id
+          .eq("user_id", user.uid) // Changed from userId to user_id
           .single();
 
         setIsEventAdmin(!!data);
@@ -287,80 +285,96 @@ export default function Page({ params }) {
     try {
       // Get current time in IST
       const now = new Date();
-      
+
       // Parse event date (stored as UTC in database)
       const eventDateUTC = new Date(event.date);
-      
+
       // Convert to IST date string and parse back
-      const eventDateISTString = eventDateUTC.toLocaleString("en-US", { 
+      const eventDateISTString = eventDateUTC.toLocaleString("en-US", {
         timeZone: "Asia/Kolkata",
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit'
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
       });
-      
+
       // Parse the IST date string (format: MM/DD/YYYY)
-      const [month, day, year] = eventDateISTString.split('/').map(num => parseInt(num));
-      
+      const [month, day, year] = eventDateISTString
+        .split("/")
+        .map((num) => parseInt(num));
+
       // Parse event time
-      let hours = 0, minutes = 0;
+      let hours = 0,
+        minutes = 0;
       const timeStr = event.time;
-      
-      if (timeStr.includes('AM') || timeStr.includes('PM')) {
+
+      if (timeStr.includes("AM") || timeStr.includes("PM")) {
         // 12-hour format
         const match = timeStr.match(/(\d+):(\d+)\s*(AM|PM)/i);
         if (match) {
           hours = parseInt(match[1]);
           minutes = parseInt(match[2]);
           const period = match[3].toUpperCase();
-          if (period === 'PM' && hours !== 12) hours += 12;
-          if (period === 'AM' && hours === 12) hours = 0;
+          if (period === "PM" && hours !== 12) hours += 12;
+          if (period === "AM" && hours === 12) hours = 0;
         }
       } else {
         // 24-hour format
-        const parts = timeStr.split(':');
+        const parts = timeStr.split(":");
         if (parts.length >= 2) {
           hours = parseInt(parts[0]);
           minutes = parseInt(parts[1]);
         }
       }
-      
+
       // Create event start datetime in IST
       // Note: month is 0-indexed in JavaScript Date
       const eventStartIST = new Date(year, month - 1, day, hours, minutes, 0);
-      
+
       // Get current time in IST
-      const nowISTString = now.toLocaleString("en-US", { 
+      const nowISTString = now.toLocaleString("en-US", {
         timeZone: "Asia/Kolkata",
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: false
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false,
       });
-      
+
       // Parse current IST time
-      const [datePartNow, timePartNow] = nowISTString.split(', ');
-      const [monthNow, dayNow, yearNow] = datePartNow.split('/').map(num => parseInt(num));
-      const [hoursNow, minutesNow, secondsNow] = timePartNow.split(':').map(num => parseInt(num));
-      const nowIST = new Date(yearNow, monthNow - 1, dayNow, hoursNow, minutesNow, secondsNow);
-      
+      const [datePartNow, timePartNow] = nowISTString.split(", ");
+      const [monthNow, dayNow, yearNow] = datePartNow
+        .split("/")
+        .map((num) => parseInt(num));
+      const [hoursNow, minutesNow, secondsNow] = timePartNow
+        .split(":")
+        .map((num) => parseInt(num));
+      const nowIST = new Date(
+        yearNow,
+        monthNow - 1,
+        dayNow,
+        hoursNow,
+        minutesNow,
+        secondsNow
+      );
+
       // Check if event has started
       hasEventStarted = nowIST >= eventStartIST;
-      
+
       // Debug logging
-      console.log('🕐 Event Start Check (IST):', {
+      console.log("🕐 Event Start Check (IST):", {
         eventTitle: event.title,
         eventDateFromDB: event.date,
         eventTime: event.time,
-        eventStartIST: eventStartIST.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }),
-        nowIST: nowIST.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }),
-        hasEventStarted
+        eventStartIST: eventStartIST.toLocaleString("en-IN", {
+          timeZone: "Asia/Kolkata",
+        }),
+        nowIST: nowIST.toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }),
+        hasEventStarted,
       });
     } catch (error) {
-      console.error('Error calculating event start time:', error);
+      console.error("Error calculating event start time:", error);
       hasEventStarted = false;
     }
   }
@@ -513,7 +527,7 @@ export default function Page({ params }) {
               />
               <div className="absolute bottom-0 left-0 right-0 p-6 z-20">
                 <div className="flex flex-wrap gap-2">
-                  {([event.category].filter(Boolean)).map((tag, i) => (
+                  {[event.category].filter(Boolean).map((tag, i) => (
                     <span
                       key={i}
                       className="px-3 py-1.5 rounded-lg bg-white/10 backdrop-blur-md text-white text-sm font-medium border border-white/20"
@@ -565,16 +579,23 @@ export default function Page({ params }) {
                     <h3 className="text-2xl font-bold text-white mb-4">
                       About This Event
                     </h3>
-                    <div 
+                    <div
                       className="text-gray-300 leading-relaxed mb-4 break-words"
-                      style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}
+                      style={{
+                        wordBreak: "break-word",
+                        overflowWrap: "anywhere",
+                      }}
                       dangerouslySetInnerHTML={{
-                        __html: linkifyText(event.description ||
-                          "A premier gathering of tech leaders, innovators and entrepreneurs. Experience keynote speeches from industry giants, hands-on workshops, networking opportunities, and product launches.")
+                        __html: linkifyText(
+                          event.description ||
+                            "A premier gathering of tech leaders, innovators and entrepreneurs. Experience keynote speeches from industry giants, hands-on workshops, networking opportunities, and product launches."
+                        ),
                       }}
                     />
                     <p className="text-gray-300 leading-relaxed font-bold">
-                      🎤 Join us for a unique experience that brings people together, inspires new energy, and creates unforgettable moments—no matter the vibe.
+                      🎤 Join us for a unique experience that brings people
+                      together, inspires new energy, and creates unforgettable
+                      moments—no matter the vibe.
                     </p>
                   </div>
 
@@ -583,19 +604,37 @@ export default function Page({ params }) {
                       What You'll Experience
                     </h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {(
-                        (() => {
-                          const highlights = event.experienceHighlights || event.experience_highlights || event.experiencehighlights;
-                          return Array.isArray(highlights) && highlights.length > 0
-                            ? highlights
-                            : [
-                                { icon: "🎤", title: "Keynote Speeches", desc: "Industry leaders sharing insights" },
-                                { icon: "🛠️", title: "Workshops", desc: "Hands-on learning sessions" },
-                                { icon: "🤝", title: "Networking", desc: "Connect with professionals" },
-                                { icon: "🚀", title: "Product Launches", desc: "Latest tech innovations" },
-                              ];
-                        })()
-                      ).map((item, i) => (
+                      {(() => {
+                        const highlights =
+                          event.experienceHighlights ||
+                          event.experience_highlights ||
+                          event.experiencehighlights;
+                        return Array.isArray(highlights) &&
+                          highlights.length > 0
+                          ? highlights
+                          : [
+                              {
+                                icon: "🎤",
+                                title: "Keynote Speeches",
+                                desc: "Industry leaders sharing insights",
+                              },
+                              {
+                                icon: "🛠️",
+                                title: "Workshops",
+                                desc: "Hands-on learning sessions",
+                              },
+                              {
+                                icon: "🤝",
+                                title: "Networking",
+                                desc: "Connect with professionals",
+                              },
+                              {
+                                icon: "🚀",
+                                title: "Product Launches",
+                                desc: "Latest tech innovations",
+                              },
+                            ];
+                      })().map((item, i) => (
                         <div
                           key={i}
                           className="flex items-start gap-4 p-5 rounded-xl bg-white/5 border border-white/10 hover:border-blue-500/30 hover:bg-white/10 transition-all group"
@@ -607,11 +646,14 @@ export default function Page({ params }) {
                             <div className="font-semibold text-white mb-1">
                               {item.title}
                             </div>
-                            <div 
+                            <div
                               className="text-sm text-gray-400 break-words overflow-wrap-anywhere"
-                              style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}
+                              style={{
+                                wordBreak: "break-word",
+                                overflowWrap: "anywhere",
+                              }}
                               dangerouslySetInnerHTML={{
-                                __html: linkifyText(item.desc || '')
+                                __html: linkifyText(item.desc || ""),
                               }}
                             />
                           </div>
@@ -704,149 +746,139 @@ export default function Page({ params }) {
 
               {activeTab === "announcements" && (
                 <div>
-                  <div className="text-center mb-8">
-                    <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-gradient-to-br from-blue-600/20 to-purple-600/20 border-2 border-blue-500/30 mb-6">
-                      <span className="text-5xl">📢</span>
+                  <div className="text-center mb-6 md:mb-8">
+                    <div className="inline-flex items-center justify-center w-16 h-16 md:w-24 md:h-24 rounded-full bg-gradient-to-br from-blue-600/20 to-purple-600/20 border-2 border-blue-500/30 mb-4 md:mb-6">
+                      <span className="text-3xl md:text-5xl">📢</span>
                     </div>
-                    <h3 className="text-3xl font-bold text-white mb-2">
+                    <h3 className="text-xl md:text-3xl font-bold text-white mb-2 px-4">
                       Event Announcements
                     </h3>
-                    <p className="text-gray-400">
+                    <p className="text-sm md:text-base text-gray-400 px-4">
                       {canViewAnnouncements
                         ? "Important updates from the organizer"
                         : "Purchase a ticket to view announcements"}
                     </p>
                   </div>
 
-                  {/* Admin Post Announcement Form */}
+                  {/* Admin Notice - Direct to Admin Dashboard */}
                   {isEventAdmin && (
-                    <div className="mb-8 p-6 rounded-2xl bg-gradient-to-br from-blue-600/10 via-purple-600/10 to-pink-600/5 border border-blue-500/20 shadow-lg backdrop-blur-sm">
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center shadow-lg">
-                          <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    <div className="mb-6 md:mb-8 p-4 md:p-6 rounded-2xl bg-gradient-to-br from-purple-600/10 via-blue-600/10 to-indigo-600/5 border border-purple-500/20 shadow-lg backdrop-blur-sm">
+                      <div className="flex items-start gap-3 md:gap-4">
+                        <div className="flex-shrink-0 w-10 h-10 md:w-12 md:h-12 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center shadow-lg">
+                          <svg
+                            className="w-5 h-5 md:w-6 md:h-6 text-white"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                            />
                           </svg>
                         </div>
-                        <div>
-                          <h4 className="text-lg font-bold text-white">Post New Announcement</h4>
-                          <p className="text-xs text-gray-400">Share important updates with your ticket holders</p>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="text-base md:text-lg font-bold text-white mb-2">
+                            Event Administrator
+                          </h4>
+                          <p className="text-xs md:text-sm text-gray-300 mb-4">
+                            To post announcements and manage this event, please
+                            use the Admin Dashboard.
+                          </p>
+                          <Link
+                            href="/admin/events"
+                            className="inline-flex items-center gap-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white px-4 md:px-5 py-2 md:py-2.5 rounded-lg text-sm md:text-base font-semibold hover:from-purple-700 hover:to-blue-700 transition-all shadow-lg hover:shadow-xl"
+                          >
+                            <svg
+                              className="w-4 h-4 md:w-5 md:h-5"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+                              />
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                              />
+                            </svg>
+                            <span>Go to Admin Dashboard</span>
+                          </Link>
                         </div>
                       </div>
-                      
-                      <div className="relative">
-                        <textarea
-                          value={newAnnouncement}
-                          onChange={(e) => setNewAnnouncement(e.target.value)}
-                          placeholder="Type your announcement here... (e.g., Important venue change, schedule update, special instructions)"
-                          maxLength={1000}
-                          className="w-full bg-slate-900/50 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/50 transition-all mb-2 min-h-[120px] resize-y shadow-inner"
-                        />
-                        
-                        {/* Character Counter */}
-                        <div className="flex items-center justify-between mb-4">
-                          <div className="text-xs text-gray-400 flex items-center gap-2">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            All ticket holders will receive a push notification
-                          </div>
-                          <span className={`text-xs font-medium ${newAnnouncement.length > 900 ? 'text-orange-400' : 'text-gray-400'}`}>
-                            {newAnnouncement.length}/1000
-                          </span>
-                        </div>
-                      </div>
-                      
-                      <button
-                        onClick={async () => {
-                          if (!newAnnouncement.trim()) return;
-                          setPostingAnnouncement(true);
-                          try {
-                            const res = await fetch(`/api/events/${event.id}/announcements`, {
-                              method: "POST",
-                              headers: { "Content-Type": "application/json" },
-                              body: JSON.stringify({
-                                message: newAnnouncement,
-                                userId: user.uid,
-                              }),
-                            });
-                            const data = await res.json();
-                            if (data.success) {
-                              setAnnouncements(data.announcements);
-                              setNewAnnouncement("");
-                            }
-                          } catch (err) {
-                            console.error("Error posting announcement:", err);
-                          }
-                          setPostingAnnouncement(false);
-                        }}
-                        disabled={!newAnnouncement.trim() || postingAnnouncement}
-                        className="w-full bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 text-white py-3.5 px-6 rounded-xl font-semibold hover:from-blue-700 hover:via-purple-700 hover:to-pink-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl flex items-center justify-center gap-2 group"
-                      >
-                        {postingAnnouncement ? (
-                          <>
-                            <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
-                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                            Posting...
-                          </>
-                        ) : (
-                          <>
-                            <svg className="w-5 h-5 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                            </svg>
-                            Post Announcement & Notify Ticket Holders
-                          </>
-                        )}
-                      </button>
                     </div>
                   )}
 
                   {/* Announcements List */}
                   {canViewAnnouncements ? (
                     announcements && announcements.length > 0 ? (
-                      <div className="space-y-6">
+                      <div className="space-y-4 md:space-y-6">
                         {announcements.map((announcement, index) => (
                           <div
                             key={announcement.id || index}
                             className="group relative"
                           >
                             {/* Message Card */}
-                            <div className="relative p-6 rounded-2xl bg-gradient-to-br from-slate-800/80 to-slate-900/80 backdrop-blur-sm border border-white/10 shadow-xl hover:shadow-2xl hover:border-blue-500/30 transition-all duration-300">
+                            <div className="relative p-4 md:p-6 rounded-xl md:rounded-2xl bg-gradient-to-br from-slate-800/80 to-slate-900/80 backdrop-blur-sm border border-white/10 shadow-xl hover:shadow-2xl hover:border-blue-500/30 transition-all duration-300">
                               {/* Header */}
-                              <div className="flex items-start justify-between mb-4">
-                                <div className="flex items-center gap-3">
+                              <div className="flex items-start justify-between mb-3 md:mb-4 gap-2">
+                                <div className="flex items-start md:items-center gap-2 md:gap-3 flex-1 min-w-0">
                                   {/* Icon */}
-                                  <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center shadow-lg">
-                                    <span className="text-xl">📢</span>
+                                  <div className="flex-shrink-0 w-8 h-8 md:w-10 md:h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center shadow-lg">
+                                    <span className="text-base md:text-xl">
+                                      📢
+                                    </span>
                                   </div>
-                                  
+
                                   {/* Timestamp */}
-                                  <div>
-                                    <div className="text-sm font-semibold text-white">
+                                  <div className="flex-1 min-w-0">
+                                    <div className="text-xs md:text-sm font-semibold text-white">
                                       Event Organizer
                                     </div>
-                                    <div className="text-xs text-gray-400 flex items-center gap-1">
-                                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    <div className="text-[10px] md:text-xs text-gray-400 flex items-center gap-1">
+                                      <svg
+                                        className="w-2.5 h-2.5 md:w-3 md:h-3 flex-shrink-0"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                      >
+                                        <path
+                                          strokeLinecap="round"
+                                          strokeLinejoin="round"
+                                          strokeWidth={2}
+                                          d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                                        />
                                       </svg>
-                                      {new Date(announcement.createdAt).toLocaleDateString("en-IN", {
-                                        year: "numeric",
-                                        month: "short",
-                                        day: "numeric",
-                                        hour: "2-digit",
-                                        minute: "2-digit",
-                                        timeZone: "Asia/Kolkata",
-                                      })}
+                                      <span className="truncate">
+                                        {new Date(
+                                          announcement.createdAt
+                                        ).toLocaleDateString("en-IN", {
+                                          year: "numeric",
+                                          month: "short",
+                                          day: "numeric",
+                                          hour: "2-digit",
+                                          minute: "2-digit",
+                                          timeZone: "Asia/Kolkata",
+                                        })}
+                                      </span>
                                     </div>
                                   </div>
                                 </div>
-                                
+
                                 {/* Delete Button */}
                                 {isEventAdmin && (
                                   <button
                                     onClick={async () => {
-                                      if (!confirm("Delete this announcement?")) return;
+                                      if (!confirm("Delete this announcement?"))
+                                        return;
                                       try {
                                         const res = await fetch(
                                           `/api/events/${event.id}/announcements?announcementId=${announcement.id}&userId=${user.uid}`,
@@ -857,29 +889,44 @@ export default function Page({ params }) {
                                           setAnnouncements(data.announcements);
                                         }
                                       } catch (err) {
-                                        console.error("Error deleting announcement:", err);
+                                        console.error(
+                                          "Error deleting announcement:",
+                                          err
+                                        );
                                       }
                                     }}
-                                    className="opacity-0 group-hover:opacity-100 transition-opacity px-3 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 text-sm font-medium border border-red-500/20 hover:border-red-500/40 flex items-center gap-1.5"
+                                    className="md:opacity-0 md:group-hover:opacity-100 transition-opacity px-2 md:px-3 py-1 md:py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 text-xs md:text-sm font-medium border border-red-500/20 hover:border-red-500/40 flex items-center gap-1 md:gap-1.5 flex-shrink-0"
                                   >
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    <svg
+                                      className="w-3 h-3 md:w-4 md:h-4"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      viewBox="0 0 24 24"
+                                    >
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                      />
                                     </svg>
-                                    Delete
+                                    <span className="hidden md:inline">
+                                      Delete
+                                    </span>
                                   </button>
                                 )}
                               </div>
-                              
+
                               {/* Message Content */}
-                              <div className="pl-13">
+                              <div className="md:pl-13">
                                 <div className="relative">
                                   {/* Message Text */}
-                                  <p className="text-white/90 leading-relaxed whitespace-pre-wrap text-[15px] font-normal">
+                                  <p className="text-white/90 leading-relaxed whitespace-pre-wrap text-sm md:text-[15px] font-normal break-words">
                                     {announcement.message}
                                   </p>
-                                  
-                                  {/* Decorative gradient line */}
-                                  <div className="absolute -left-13 top-0 bottom-0 w-0.5 bg-gradient-to-b from-blue-500 via-purple-500 to-transparent opacity-50"></div>
+
+                                  {/* Decorative gradient line - hidden on mobile */}
+                                  <div className="hidden md:block absolute -left-13 top-0 bottom-0 w-0.5 bg-gradient-to-b from-blue-500 via-purple-500 to-transparent opacity-50"></div>
                                 </div>
                               </div>
                             </div>
@@ -887,44 +934,30 @@ export default function Page({ params }) {
                         ))}
                       </div>
                     ) : (
-                      <div className="text-center py-12">
-                        <div className="text-5xl mb-4">📭</div>
-                        <h4 className="text-xl font-semibold text-white mb-2">
+                      <div className="text-center py-8 md:py-12 px-4">
+                        <div className="text-4xl md:text-5xl mb-3 md:mb-4">
+                          📭
+                        </div>
+                        <h4 className="text-lg md:text-xl font-semibold text-white mb-2">
                           No Announcements Yet
                         </h4>
-                        <p className="text-gray-400">
+                        <p className="text-sm md:text-base text-gray-400">
                           The organizer hasn't posted any announcements.
                         </p>
                       </div>
                     )
                   ) : (
-                    <div className="text-center py-12">
-                      <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-yellow-600/20 border-2 border-yellow-500/30 mb-6">
-                        <span className="text-4xl">🔒</span>
+                    <div className="text-center py-8 md:py-12 px-4">
+                      <div className="inline-flex items-center justify-center w-16 h-16 md:w-20 md:h-20 rounded-full bg-yellow-600/20 border-2 border-yellow-500/30 mb-4 md:mb-6">
+                        <span className="text-3xl md:text-4xl">🔒</span>
                       </div>
-                      <h4 className="text-2xl font-bold text-white mb-3">
+                      <h4 className="text-xl md:text-2xl font-bold text-white mb-2 md:mb-3">
                         Announcements Locked
                       </h4>
-                      <p className="text-gray-400 mb-6 max-w-md mx-auto">
-                        Purchase a ticket to view event announcements and important updates from the organizer.
+                      <p className="text-sm md:text-base text-gray-400 max-w-md mx-auto">
+                        Purchase a ticket to view event announcements and
+                        important updates from the organizer.
                       </p>
-                      {user ? (
-                        <button
-                          onClick={() => setShowBookingModal(true)}
-                          className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-xl font-semibold hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg"
-                        >
-                          <span>🎫</span>
-                          Book Ticket to Unlock
-                        </button>
-                      ) : (
-                        <Link
-                          href="/?login=true"
-                          className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-xl font-semibold hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg"
-                        >
-                          <span>🔐</span>
-                          Sign In to Book
-                        </Link>
-                      )}
                     </div>
                   )}
                 </div>
@@ -960,7 +993,7 @@ export default function Page({ params }) {
                       Availability
                     </span>
                     <span className="font-bold text-white bg-white/10 px-3 py-1 rounded-full">
-                      {(event._count?.bookings || 0)} / {event.capacity || 1000}
+                      {event._count?.bookings || 0} / {event.capacity || 1000}
                     </span>
                   </div>
                   <div className="relative w-full h-3 bg-white/10 rounded-full overflow-hidden shadow-inner">
@@ -994,12 +1027,16 @@ export default function Page({ params }) {
                   hasEventStarted ? (
                     <div className="w-full bg-orange-600 text-white py-4 px-6 rounded-2xl font-bold text-lg text-center">
                       <div>Event Started</div>
-                      <div className="text-sm font-normal mt-1">Registration Closed</div>
+                      <div className="text-sm font-normal mt-1">
+                        Registration Closed
+                      </div>
                     </div>
                   ) : event.booking_closed ? (
                     <div className="w-full bg-red-600 text-white py-4 px-6 rounded-2xl font-bold text-lg text-center">
                       <div>Booking Closed</div>
-                      <div className="text-sm font-normal mt-1">By Organizer</div>
+                      <div className="text-sm font-normal mt-1">
+                        By Organizer
+                      </div>
                     </div>
                   ) : userReachedLimit ? (
                     <>
@@ -1007,7 +1044,9 @@ export default function Page({ params }) {
                         Booked
                       </div>
                       {hasBookingLimit && event.max_tickets_per_user === 1 && (
-                        <div className="mt-2 text-xs text-gray-300 text-center">1 user can book only 1 ticket</div>
+                        <div className="mt-2 text-xs text-gray-300 text-center">
+                          1 user can book only 1 ticket
+                        </div>
                       )}
                     </>
                   ) : (
@@ -1186,22 +1225,37 @@ export default function Page({ params }) {
                     👥
                   </div>
                   <div className="flex-1">
-                    <div className="font-semibold text-white mb-1">Availability</div>
+                    <div className="font-semibold text-white mb-1">
+                      Availability
+                    </div>
                     <div className="flex items-center justify-between">
                       <div className="text-sm text-gray-300">
-                        {(event.capacity || 1000) - availableSpots}/{event.capacity || 1000} registered
+                        {(event.capacity || 1000) - availableSpots}/
+                        {event.capacity || 1000} registered
                       </div>
-                      <div className={`text-sm font-medium ${availableSpots > 0 ? "text-green-400" : "text-red-400"}`}>
-                        {availableSpots > 0 ? `${availableSpots} spots remaining` : "Sold Out"}
+                      <div
+                        className={`text-sm font-medium ${
+                          availableSpots > 0 ? "text-green-400" : "text-red-400"
+                        }`}
+                      >
+                        {availableSpots > 0
+                          ? `${availableSpots} spots remaining`
+                          : "Sold Out"}
                       </div>
                     </div>
                     <div className="mt-2 text-sm text-gray-500">
                       <div>
                         {event.date
-                          ? new Date(event.date).toLocaleDateString("en-IN", { month: "short", day: "numeric", timeZone: "Asia/Kolkata" })
+                          ? new Date(event.date).toLocaleDateString("en-IN", {
+                              month: "short",
+                              day: "numeric",
+                              timeZone: "Asia/Kolkata",
+                            })
                           : "Date TBD"}
                         {event.time ? ` • ${event.time}` : ""}
-                        {event.endTime || event.endtime ? ` - ${event.endTime || event.endtime}` : ""}
+                        {event.endTime || event.endtime
+                          ? ` - ${event.endTime || event.endtime}`
+                          : ""}
                       </div>
                       <div>{event.location}</div>
                     </div>
@@ -1252,8 +1306,6 @@ export default function Page({ params }) {
           </div>
         </div>
       </div>
-
-
 
       {/* Gallery Popup */}
       {selectedGalleryItem && (
