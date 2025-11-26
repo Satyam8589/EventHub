@@ -151,6 +151,14 @@ function getNotificationContent(event, data) {
       data: { url: `/my-events` },
       requireInteraction: true,
     },
+    "event-announcement": {
+      title: "📢 New Announcement!",
+      message: `${eventTitle}: ${data.announcementPreview || "New announcement posted"}`,
+      icon: "/icon-192.png",
+      tag: "event-announcement",
+      data: { url: `/events/${data.eventId}` },
+      requireInteraction: false,
+    },
   };
 
   return (

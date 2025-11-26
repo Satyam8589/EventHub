@@ -18,8 +18,11 @@ export default function Page({ params }) {
   const [scrollY, setScrollY] = useState(0);
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [selectedGalleryItem, setSelectedGalleryItem] = useState(null);
-  const [attendees, setAttendees] = useState([]);
-  const [totalAttendees, setTotalAttendees] = useState(0);
+  const [announcements, setAnnouncements] = useState([]);
+  const [canViewAnnouncements, setCanViewAnnouncements] = useState(false);
+  const [isEventAdmin, setIsEventAdmin] = useState(false);
+  const [newAnnouncement, setNewAnnouncement] = useState("");
+  const [postingAnnouncement, setPostingAnnouncement] = useState(false);
   const [userTotalTickets, setUserTotalTickets] = useState(0);
   const [loadingBookings, setLoadingBookings] = useState(true);
 
@@ -146,28 +149,54 @@ export default function Page({ params }) {
       });
   }, [p?.id]);
 
-  // Fetch attendees separately
+  // Fetch announcements separately
   useEffect(() => {
     if (!p?.id) return;
 
-    console.log(">>> Fetching attendees for event ID:", p.id);
+    const fetchAnnouncements = async () => {
+      try {
+        const userId = user?.uid || "";
+        const res = await fetch(`/api/events/${p.id}/announcements?userId=${userId}`);
+        const data = await res.json();
+        
+        setAnnouncements(data.announcements || []);
+        setCanViewAnnouncements(data.canView || false);
+      } catch (err) {
+        console.error("Error fetching announcements:", err);
+      }
+    };
 
-    fetch(`/api/events/${p.id}/attendees`)
-      .then((res) => {
-        console.log(">>> Attendees fetch response status:", res.status);
-        return res.json();
-      })
-      .then((data) => {
-        console.log(">>> Attendees API response:", data);
-        console.log(">>> Setting attendees:", data.attendees);
-        console.log(">>> Setting total:", data.total);
-        setAttendees(data.attendees || []);
-        setTotalAttendees(data.total || 0);
-      })
-      .catch((err) => {
-        console.error(">>> Error fetching attendees:", err);
-      });
-  }, [p?.id]);
+    fetchAnnouncements();
+  }, [p?.id, user]);
+
+  // Check if user is admin of this event
+  useEffect(() => {
+    if (!user || !event) return;
+
+    const checkAdminStatus = async () => {
+      try {
+        // Check if user is event creator
+        if (event.userId === user.uid) {
+          setIsEventAdmin(true);
+          return;
+        }
+
+        // Check if user is assigned admin
+        const { data } = await supabase
+          .from("event_admins")
+          .select("id")
+          .eq("event_id", event.id)  // Changed from eventId to event_id
+          .eq("user_id", user.uid)   // Changed from userId to user_id
+          .single();
+
+        setIsEventAdmin(!!data);
+      } catch (err) {
+        console.error("Error checking admin status:", err);
+      }
+    };
+
+    checkAdminStatus();
+  }, [user, event]);
 
   useEffect(() => {
     const handleMouseMove = (e) => {
@@ -509,7 +538,7 @@ export default function Page({ params }) {
             {/* Professional Tabs */}
             <div className="border-b border-white/10">
               <nav className="flex gap-1">
-                {["Overview", "Gallery", "Attendees"].map((tab) => (
+                {["Overview", "Gallery", "Announcements"].map((tab) => (
                   <button
                     key={tab}
                     onClick={() => setActiveTab(tab.toLowerCase())}
@@ -673,100 +702,231 @@ export default function Page({ params }) {
                 </div>
               )}
 
-              {activeTab === "attendees" && (
+              {activeTab === "announcements" && (
                 <div>
                   <div className="text-center mb-8">
                     <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-gradient-to-br from-blue-600/20 to-purple-600/20 border-2 border-blue-500/30 mb-6">
-                      <span className="text-5xl">👥</span>
+                      <span className="text-5xl">📢</span>
                     </div>
                     <h3 className="text-3xl font-bold text-white mb-2">
-                      {totalAttendees} Attendees
+                      Event Announcements
                     </h3>
-                    <p className="text-gray-400">Registered for this event</p>
+                    <p className="text-gray-400">
+                      {canViewAnnouncements
+                        ? "Important updates from the organizer"
+                        : "Purchase a ticket to view announcements"}
+                    </p>
                   </div>
 
-                  {/* Top 5 Attendees */}
-                  {attendees && attendees.length > 0 && (
-                    <div className="mt-8">
-                      <h4 className="text-xl font-bold text-white mb-6">
-                        Latest Registrations
-                      </h4>
-                      <div className="space-y-3">
-                        {attendees.map((attendee, index) => {
-                          // Generate color based on index
-                          const colors = [
-                            "from-blue-600 to-blue-400",
-                            "from-purple-600 to-purple-400",
-                            "from-pink-600 to-pink-400",
-                            "from-green-600 to-green-400",
-                            "from-orange-600 to-orange-400",
-                          ];
-                          const color = colors[index % colors.length];
-
-                          // Get initials from name
-                          const getInitials = (name) => {
-                            if (!name) return "?";
-                            const parts = name.trim().split(" ");
-                            if (parts.length >= 2) {
-                              return (
-                                parts[0][0] + parts[parts.length - 1][0]
-                              ).toUpperCase();
-                            }
-                            return name.substring(0, 2).toUpperCase();
-                          };
-
-                          return (
-                            <div
-                              key={attendee.userId || index}
-                              className="flex items-center gap-4 p-4 rounded-xl bg-white/5 border border-white/10 hover:border-blue-500/30 hover:bg-white/10 transition-all"
-                            >
-                              {/* Avatar */}
-                              <div
-                                className={`w-12 h-12 rounded-full bg-gradient-to-br ${color} flex items-center justify-center text-white font-bold shadow-lg`}
-                              >
-                                {getInitials(attendee.name)}
-                              </div>
-
-                              {/* User Info */}
-                              <div className="flex-1 min-w-0">
-                                <div className="font-semibold text-white truncate">
-                                  {attendee.name}
-                                </div>
-                              </div>
-
-                              {/* Badge */}
-                              <div className="flex-shrink-0">
-                                <span className="px-3 py-1 rounded-full bg-blue-600/20 text-blue-400 text-xs font-medium border border-blue-500/30">
-                                  #{index + 1}
-                                </span>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-
-                      {/* Show remaining count if more than 5 */}
-                      {totalAttendees > 5 && (
-                        <div className="mt-6 text-center">
-                          <div className="inline-flex items-center gap-2 px-4 py-3 rounded-xl bg-white/5 border border-white/10">
-                            <span className="text-gray-300">
-                              +{totalAttendees - 5} more attendees
-                            </span>
-                          </div>
+                  {/* Admin Post Announcement Form */}
+                  {isEventAdmin && (
+                    <div className="mb-8 p-6 rounded-2xl bg-gradient-to-br from-blue-600/10 via-purple-600/10 to-pink-600/5 border border-blue-500/20 shadow-lg backdrop-blur-sm">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center shadow-lg">
+                          <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
                         </div>
-                      )}
+                        <div>
+                          <h4 className="text-lg font-bold text-white">Post New Announcement</h4>
+                          <p className="text-xs text-gray-400">Share important updates with your ticket holders</p>
+                        </div>
+                      </div>
+                      
+                      <div className="relative">
+                        <textarea
+                          value={newAnnouncement}
+                          onChange={(e) => setNewAnnouncement(e.target.value)}
+                          placeholder="Type your announcement here... (e.g., Important venue change, schedule update, special instructions)"
+                          maxLength={1000}
+                          className="w-full bg-slate-900/50 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/50 transition-all mb-2 min-h-[120px] resize-y shadow-inner"
+                        />
+                        
+                        {/* Character Counter */}
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="text-xs text-gray-400 flex items-center gap-2">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            All ticket holders will receive a push notification
+                          </div>
+                          <span className={`text-xs font-medium ${newAnnouncement.length > 900 ? 'text-orange-400' : 'text-gray-400'}`}>
+                            {newAnnouncement.length}/1000
+                          </span>
+                        </div>
+                      </div>
+                      
+                      <button
+                        onClick={async () => {
+                          if (!newAnnouncement.trim()) return;
+                          setPostingAnnouncement(true);
+                          try {
+                            const res = await fetch(`/api/events/${event.id}/announcements`, {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({
+                                message: newAnnouncement,
+                                userId: user.uid,
+                              }),
+                            });
+                            const data = await res.json();
+                            if (data.success) {
+                              setAnnouncements(data.announcements);
+                              setNewAnnouncement("");
+                            }
+                          } catch (err) {
+                            console.error("Error posting announcement:", err);
+                          }
+                          setPostingAnnouncement(false);
+                        }}
+                        disabled={!newAnnouncement.trim() || postingAnnouncement}
+                        className="w-full bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 text-white py-3.5 px-6 rounded-xl font-semibold hover:from-blue-700 hover:via-purple-700 hover:to-pink-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl flex items-center justify-center gap-2 group"
+                      >
+                        {postingAnnouncement ? (
+                          <>
+                            <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Posting...
+                          </>
+                        ) : (
+                          <>
+                            <svg className="w-5 h-5 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                            </svg>
+                            Post Announcement & Notify Ticket Holders
+                          </>
+                        )}
+                      </button>
                     </div>
                   )}
 
-                  {/* No attendees message */}
-                  {(!attendees || attendees.length === 0) &&
-                    totalAttendees === 0 && (
-                      <div className="text-center py-8">
+                  {/* Announcements List */}
+                  {canViewAnnouncements ? (
+                    announcements && announcements.length > 0 ? (
+                      <div className="space-y-6">
+                        {announcements.map((announcement, index) => (
+                          <div
+                            key={announcement.id || index}
+                            className="group relative"
+                          >
+                            {/* Message Card */}
+                            <div className="relative p-6 rounded-2xl bg-gradient-to-br from-slate-800/80 to-slate-900/80 backdrop-blur-sm border border-white/10 shadow-xl hover:shadow-2xl hover:border-blue-500/30 transition-all duration-300">
+                              {/* Header */}
+                              <div className="flex items-start justify-between mb-4">
+                                <div className="flex items-center gap-3">
+                                  {/* Icon */}
+                                  <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center shadow-lg">
+                                    <span className="text-xl">📢</span>
+                                  </div>
+                                  
+                                  {/* Timestamp */}
+                                  <div>
+                                    <div className="text-sm font-semibold text-white">
+                                      Event Organizer
+                                    </div>
+                                    <div className="text-xs text-gray-400 flex items-center gap-1">
+                                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                      </svg>
+                                      {new Date(announcement.createdAt).toLocaleDateString("en-IN", {
+                                        year: "numeric",
+                                        month: "short",
+                                        day: "numeric",
+                                        hour: "2-digit",
+                                        minute: "2-digit",
+                                        timeZone: "Asia/Kolkata",
+                                      })}
+                                    </div>
+                                  </div>
+                                </div>
+                                
+                                {/* Delete Button */}
+                                {isEventAdmin && (
+                                  <button
+                                    onClick={async () => {
+                                      if (!confirm("Delete this announcement?")) return;
+                                      try {
+                                        const res = await fetch(
+                                          `/api/events/${event.id}/announcements?announcementId=${announcement.id}&userId=${user.uid}`,
+                                          { method: "DELETE" }
+                                        );
+                                        const data = await res.json();
+                                        if (data.success) {
+                                          setAnnouncements(data.announcements);
+                                        }
+                                      } catch (err) {
+                                        console.error("Error deleting announcement:", err);
+                                      }
+                                    }}
+                                    className="opacity-0 group-hover:opacity-100 transition-opacity px-3 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 text-sm font-medium border border-red-500/20 hover:border-red-500/40 flex items-center gap-1.5"
+                                  >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                    Delete
+                                  </button>
+                                )}
+                              </div>
+                              
+                              {/* Message Content */}
+                              <div className="pl-13">
+                                <div className="relative">
+                                  {/* Message Text */}
+                                  <p className="text-white/90 leading-relaxed whitespace-pre-wrap text-[15px] font-normal">
+                                    {announcement.message}
+                                  </p>
+                                  
+                                  {/* Decorative gradient line */}
+                                  <div className="absolute -left-13 top-0 bottom-0 w-0.5 bg-gradient-to-b from-blue-500 via-purple-500 to-transparent opacity-50"></div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-12">
+                        <div className="text-5xl mb-4">📭</div>
+                        <h4 className="text-xl font-semibold text-white mb-2">
+                          No Announcements Yet
+                        </h4>
                         <p className="text-gray-400">
-                          No attendees registered yet. Be the first to book!
+                          The organizer hasn't posted any announcements.
                         </p>
                       </div>
-                    )}
+                    )
+                  ) : (
+                    <div className="text-center py-12">
+                      <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-yellow-600/20 border-2 border-yellow-500/30 mb-6">
+                        <span className="text-4xl">🔒</span>
+                      </div>
+                      <h4 className="text-2xl font-bold text-white mb-3">
+                        Announcements Locked
+                      </h4>
+                      <p className="text-gray-400 mb-6 max-w-md mx-auto">
+                        Purchase a ticket to view event announcements and important updates from the organizer.
+                      </p>
+                      {user ? (
+                        <button
+                          onClick={() => setShowBookingModal(true)}
+                          className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-xl font-semibold hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg"
+                        >
+                          <span>🎫</span>
+                          Book Ticket to Unlock
+                        </button>
+                      ) : (
+                        <Link
+                          href="/?login=true"
+                          className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-xl font-semibold hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg"
+                        >
+                          <span>🔐</span>
+                          Sign In to Book
+                        </Link>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -1093,79 +1253,7 @@ export default function Page({ params }) {
         </div>
       </div>
 
-      {/* Mobile Attendees Section - Compact at Bottom */}
-      <div className="md:hidden bg-linear-to-r from-slate-800/90 to-slate-900/90 backdrop-blur-md border-t border-white/10 p-4">
-        <div className="max-w-lg mx-auto">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-bold text-white">👥 Attendees</h3>
-            <span className="text-sm text-gray-300 bg-white/10 px-3 py-1 rounded-full">
-              {totalAttendees}
-            </span>
-          </div>
 
-          {/* Compact Attendees List */}
-          {attendees && attendees.length > 0 ? (
-            <div className="space-y-2">
-              {/* Top 5 in compact horizontal scroll */}
-              <div className="flex items-center gap-3 overflow-x-auto pb-2">
-                {attendees.slice(0, 5).map((attendee, index) => {
-                  const colors = [
-                    "from-blue-600 to-blue-400",
-                    "from-purple-600 to-purple-400",
-                    "from-pink-600 to-pink-400",
-                    "from-green-600 to-green-400",
-                    "from-orange-600 to-orange-400",
-                  ];
-                  const color = colors[index % colors.length];
-
-                  const getInitials = (name) => {
-                    if (!name) return "?";
-                    const parts = name.trim().split(" ");
-                    if (parts.length >= 2) {
-                      return (
-                        parts[0][0] + parts[parts.length - 1][0]
-                      ).toUpperCase();
-                    }
-                    return name.substring(0, 2).toUpperCase();
-                  };
-
-                  return (
-                    <div
-                      key={attendee.userId || index}
-                      className="shrink-0 text-center"
-                    >
-                      <div
-                        className={`w-12 h-12 rounded-full bg-linear-to-br ${color} flex items-center justify-center text-white text-sm font-bold mb-1 border-2 border-white/20`}
-                      >
-                        {getInitials(attendee.name)}
-                      </div>
-                      <div className="text-xs text-gray-300 max-w-[60px] truncate">
-                        {attendee.name?.split(" ")[0] || "User"}
-                      </div>
-                    </div>
-                  );
-                })}
-
-                {/* Show +more indicator */}
-                {totalAttendees > 5 && (
-                  <div className="shrink-0 text-center">
-                    <div className="w-12 h-12 rounded-full bg-white/10 border-2 border-white/20 flex items-center justify-center text-white text-xs font-bold mb-1">
-                      +{totalAttendees - 5}
-                    </div>
-                    <div className="text-xs text-gray-400">more</div>
-                  </div>
-                )}
-              </div>
-            </div>
-          ) : (
-            <div className="text-center py-4">
-              <p className="text-gray-400 text-sm">
-                No attendees yet. Be the first!
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
 
       {/* Gallery Popup */}
       {selectedGalleryItem && (
