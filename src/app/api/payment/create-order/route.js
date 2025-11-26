@@ -62,7 +62,7 @@ export async function POST(request) {
     let discountId = null;
     let discountAmount = 0;
     let originalAmount = totalAmount;
-    let finalAmount = totalAmount;
+    let calculatedFinalAmount = totalAmount;
 
     if (discountCode && discountCode.trim()) {
       try {
@@ -115,7 +115,7 @@ export async function POST(request) {
 
         discountId = discount.id;
         originalAmount = totalAmount;
-        finalAmount = Math.max(0, totalAmount - discountAmount);
+        calculatedFinalAmount = Math.max(0, totalAmount - discountAmount);
 
         console.log("✅ Discount applied:", {
           code: discountCode,
@@ -124,7 +124,7 @@ export async function POST(request) {
           value: discount.value,
           discountAmount,
           originalAmount,
-          finalAmount,
+          calculatedFinalAmount,
         });
       } catch (error) {
         console.error("Error validating discount:", error);
@@ -185,7 +185,7 @@ export async function POST(request) {
 
     // If finalAmount is 0 or less, confirm booking immediately without Razorpay
     const amountToCharge =
-      finalAmount !== undefined ? finalAmount : totalAmount - discountAmount;
+      finalAmount !== undefined ? finalAmount : calculatedFinalAmount;
     if (parseFloat(amountToCharge) <= 0) {
       const pendingBooking = {
         id: crypto.randomUUID(),

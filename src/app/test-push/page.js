@@ -325,7 +325,9 @@ export default function TestPushPage() {
 
       if (response.ok) {
         addLog(`✅ Deleted ${data.deletedCount} subscription(s)`);
-        addLog("💡 Now click 'Subscribe' to create new subscription with current VAPID keys");
+        addLog(
+          "💡 Now click 'Subscribe' to create new subscription with current VAPID keys"
+        );
         setTestResult(
           `✅ Deleted ${data.deletedCount} subscription(s)\n\nNow click "🔔 Subscribe" to re-subscribe with production VAPID keys.`
         );
@@ -511,7 +513,8 @@ export default function TestPushPage() {
                 subscriptions
               </li>
               <li className="text-red-300 font-semibold">
-                <strong>Delete All & Reset</strong> - ⚠️ Nuclear option: Use when VAPID keys changed
+                <strong>Delete All & Reset</strong> - ⚠️ Nuclear option: Use
+                when VAPID keys changed
               </li>
             </ol>
             <div className="mt-3 p-2 bg-red-500/20 border border-red-400/30 rounded">
@@ -519,7 +522,9 @@ export default function TestPushPage() {
                 ⚠️ Production Issue Fix:
               </p>
               <p className="text-white/80 text-xs mt-1">
-                If ALL subscriptions fail (0/3 successful), your production VAPID keys don't match the subscriptions. Click "Delete All & Reset" then re-subscribe.
+                If ALL subscriptions fail (0/3 successful), your production
+                VAPID keys don't match the subscriptions. Click "Delete All &
+                Reset" then re-subscribe.
               </p>
             </div>
             <div className="mt-3 text-xs text-yellow-300">
