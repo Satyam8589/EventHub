@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
+import { sendPushNotificationToMultiple } from "@/lib/pushNotification";
 
 // GET - Fetch announcements for an event
 export async function GET(request, { params }) {
@@ -16,10 +17,7 @@ export async function GET(request, { params }) {
       .single();
 
     if (eventError) {
-      return NextResponse.json(
-        { error: "Event not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Event not found" }, { status: 404 });
     }
 
     // Check if user has purchased tickets for this event
@@ -73,10 +71,7 @@ export async function POST(request, { params }) {
       .single();
 
     if (eventError || !event) {
-      return NextResponse.json(
-        { error: "Event not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Event not found" }, { status: 404 });
     }
 
     // Check if user is the event creator
@@ -127,6 +122,65 @@ export async function POST(request, { params }) {
       );
     }
 
+    // Send push notifications to all users who purchased tickets for this event
+    try {
+      // Get all users who purchased tickets
+      const { data: bookings, error: bookingsError } = await supabase
+        .from("bookings")
+        .select("userId")
+        .eq("eventId", id)
+        .eq("status", "CONFIRMED");
+
+      if (!bookingsError && bookings && bookings.length > 0) {
+        // Get unique user IDs
+        const userIds = [...new Set(bookings.map((b) => b.userId))];
+
+        // Get push subscriptions for these users
+        const { data: subscriptions, error: subsError } = await supabase
+          .from("push_subscriptions")
+          .select("*")
+          .in("user_id", userIds);
+
+        if (!subsError && subscriptions && subscriptions.length > 0) {
+          // Convert to push subscription format
+          const pushSubscriptions = subscriptions.map((sub) => ({
+            endpoint: sub.endpoint,
+            keys: {
+              p256dh: sub.p256dh,
+              auth: sub.auth,
+            },
+          }));
+
+          // Get event details for notification
+          const { data: eventDetails } = await supabase
+            .from("events")
+            .select("name")
+            .eq("id", id)
+            .single();
+
+          // Send push notifications
+          await sendPushNotificationToMultiple(pushSubscriptions, {
+            title: `📢 ${eventDetails?.name || "Event"} Announcement`,
+            message: message.trim(),
+            icon: "/icon-192.png",
+            data: {
+              url: `/events/${id}`,
+              eventId: id,
+              type: "announcement",
+            },
+            tag: `announcement-${id}-${newAnnouncement.id}`,
+          });
+
+          console.log(
+            `✅ Sent push notifications to ${subscriptions.length} subscribers`
+          );
+        }
+      }
+    } catch (notifError) {
+      // Don't fail the request if push notifications fail
+      console.error("Error sending push notifications:", notifError);
+    }
+
     return NextResponse.json({
       success: true,
       announcement: newAnnouncement,
@@ -164,10 +218,7 @@ export async function DELETE(request, { params }) {
       .single();
 
     if (eventError || !event) {
-      return NextResponse.json(
-        { error: "Event not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Event not found" }, { status: 404 });
     }
 
     // Check if user is the event creator
