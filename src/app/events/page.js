@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import EventCard from "../../components/EventCard";
 import LoginForm from "../../components/auth/LoginForm";
@@ -7,11 +7,36 @@ import SignupForm from "../../components/auth/SignupForm";
 import Navbar from "../../components/Navbar";
 import EventHubLogo from "../../components/EventHubLogo";
 
+// Constants
+const EVENTS_PER_PAGE = 12;
+const PARTICLE_COUNT = 30; // Reduced from 50
+const CATEGORIES = [
+  "All Categories",
+  "Music",
+  "Technology",
+  "Food & Drink",
+  "Art & Culture",
+  "Sports",
+  "Business",
+  "Gaming",
+  "Education",
+  "Entertainment",
+  "Health & Wellness",
+  "TESTING",
+  "CONFERENCE",
+  "WORKSHOP",
+  "SEMINAR",
+  "NETWORKING",
+  "CULTURAL",
+  "EDUCATIONAL",
+  "CHARITY",
+  "OTHER",
+];
+
 export default function EventsPage() {
+  // State management
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All Categories");
-  const [selectedDate, setSelectedDate] = useState("");
-  const [showFilters, setShowFilters] = useState(false);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -19,7 +44,7 @@ export default function EventsPage() {
   const [showLogin, setShowLogin] = useState(false);
   const [showSignup, setShowSignup] = useState(false);
   const [particles, setParticles] = useState([]);
-  const [refreshToken, setRefreshToken] = useState(0);
+  const [displayCount, setDisplayCount] = useState(EVENTS_PER_PAGE);
 
   const { user, loading: authLoading } = useAuth();
 
@@ -31,216 +56,124 @@ export default function EventsPage() {
     }
   }, [user, authLoading]);
 
+  // Mouse tracking with throttling for better performance
   useEffect(() => {
+    let rafId;
     const handleMouseMove = (e) => {
-      setMousePosition({ x: e.clientX, y: e.clientY });
+      if (rafId) return;
+      rafId = requestAnimationFrame(() => {
+        setMousePosition({ x: e.clientX, y: e.clientY });
+        rafId = null;
+      });
     };
 
     window.addEventListener("mousemove", handleMouseMove);
-    return () => window.removeEventListener("mousemove", handleMouseMove);
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      if (rafId) cancelAnimationFrame(rafId);
+    };
   }, []);
 
-  // Generate particles on client side only to avoid hydration issues
+  // Generate particles once on mount
   useEffect(() => {
-    const generateParticles = () => {
-      const newParticles = [...Array(50)].map((_, i) => ({
-        id: i,
-        left: Math.random() * 100,
-        top: Math.random() * 100,
-        animationDelay: Math.random() * 2,
-        animationDuration: 2 + Math.random() * 3,
-      }));
-      setParticles(newParticles);
-    };
-
-    generateParticles();
+    const newParticles = Array.from({ length: PARTICLE_COUNT }, (_, i) => ({
+      id: i,
+      left: Math.random() * 100,
+      top: Math.random() * 100,
+      animationDelay: Math.random() * 2,
+      animationDuration: 2 + Math.random() * 3,
+    }));
+    setParticles(newParticles);
   }, []);
 
   // Fetch events from API
-  useEffect(() => {
-    const fetchEvents = async () => {
-      try {
-        setLoading(true);
-        console.log("Events page: Fetching events from /api/events...");
-        const response = await fetch("/api/events");
-        console.log("Events page: Response status:", response.status);
+  const fetchEvents = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await fetch("/api/events", {
+        headers: {
+          'Cache-Control': 'no-cache',
+        },
+      });
 
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error("Events page: API Error Response:", errorText);
-          throw new Error(`Failed to fetch events: ${response.status}`);
-        }
-
-        const data = await response.json();
-        console.log("Events page: Events data received:", data);
-        console.log(
-          "Events page: Total events fetched:",
-          data.events?.length || 0
-        );
-        console.log(
-          "Events page: Event details:",
-          data.events?.map((e) => ({
-            id: e.id,
-            title: e.title,
-            category: e.category,
-            status: e.status,
-            featured: e.featured,
-            hasDescription: !!e.description,
-            hasLocation: !!e.location,
-          }))
-        );
-
-        setEvents(data.events || []);
-      } catch (err) {
-        console.error("Events page: Error fetching events:", err);
-        setError(err.message);
-      } finally {
-        setLoading(false);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch events: ${response.status}`);
       }
-    };
 
+      const data = await response.json();
+      setEvents(data.events || []);
+    } catch (err) {
+      console.error("Error fetching events:", err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
     fetchEvents();
-  }, [refreshToken]);
+  }, [fetchEvents]);
 
-  // Helper function to check if an event is still active (not expired)
-  const isEventActive = (event) => {
-    const now = new Date();
-
-    // Check if event is cancelled
-    if (event.status === "CANCELLED") {
-      return false;
-    }
-
-    // Helper to ensure UTC format
-    const ensureUTCString = (dateStr) => {
-      if (!dateStr) return null;
-      if (dateStr.includes('T') && dateStr.endsWith('Z')) return dateStr;
-      if (dateStr.includes('T')) return dateStr + 'Z';
-      return dateStr.replace(' ', 'T') + 'Z';
-    };
-
-    // If event has endDate, use it to determine if event is still active
-    const endDateValue = event.enddate || event.endDate;
-    if (endDateValue) {
-      const utcEndDate = ensureUTCString(endDateValue);
-      const endDate = new Date(utcEndDate);
-      // Only show if end date is clearly in the future
-      return endDate > now;
-    }
-
-    // If no endDate, consider it a single-day event
-    const eventDate = new Date(ensureUTCString(event.date));
-    // Only show if event date is today or future
-    const eventDateOnly = new Date(
-      eventDate.getFullYear(),
-      eventDate.getMonth(),
-      eventDate.getDate()
-    );
-    const nowDateOnly = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate()
-    );
-
-    return eventDateOnly >= nowDateOnly;
-  };
-
-  const categories = [
-    "All Categories",
-    "Music",
-    "Technology",
-    "Food & Drink",
-    "Art & Culture",
-    "Sports",
-    "Business",
-    "Gaming",
-    "Education",
-    "Entertainment",
-    "Health & Wellness",
-    "TESTING", // Added for test events
-    "CONFERENCE",
-    "WORKSHOP",
-    "SEMINAR",
-    "NETWORKING",
-    "CULTURAL",
-    "EDUCATIONAL",
-    "CHARITY",
-    "OTHER",
-  ];
-
-  // Filter events based on search and category
-  const filteredEvents = events
-    .filter((event) => {
-      try {
+  // Memoized filtered and sorted events
+  const filteredEvents = useMemo(() => {
+    return events
+      .filter((event) => {
+        // Search filter
+        const searchLower = searchTerm.toLowerCase();
         const matchesSearch =
-          event.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          event.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          event.location?.toLowerCase().includes(searchTerm.toLowerCase());
+          !searchTerm ||
+          event.title?.toLowerCase().includes(searchLower) ||
+          event.description?.toLowerCase().includes(searchLower) ||
+          event.location?.toLowerCase().includes(searchLower);
 
+        // Category filter
         const matchesCategory =
           selectedCategory === "All Categories" ||
           event.category === selectedCategory;
 
-        // Check if event is still active (not expired) using consistent logic
-        const isActive = isEventActive(event);
+        return matchesSearch && matchesCategory;
+      })
+      .sort((a, b) => {
+        // Featured events first
+        if (a.featured && !b.featured) return -1;
+        if (!a.featured && b.featured) return 1;
+        
+        // Then by date (upcoming first)
+        const dateA = new Date(a.date);
+        const dateB = new Date(b.date);
+        return dateA - dateB;
+      });
+  }, [events, searchTerm, selectedCategory]);
 
-        const result = matchesSearch && matchesCategory && isActive;
+  // Paginated events
+  const displayedEvents = useMemo(() => {
+    return filteredEvents.slice(0, displayCount);
+  }, [filteredEvents, displayCount]);
 
-        if (process.env.NODE_ENV === "development") {
-          console.log("Event filter:", {
-            title: event.title,
-            matchesSearch,
-            matchesCategory,
-            isActive,
-            eventDate: event.date,
-            endDate: event.endDate,
-            result,
-          });
-        }
+  // Load more handler
+  const handleLoadMore = useCallback(() => {
+    setDisplayCount((prev) => prev + EVENTS_PER_PAGE);
+  }, []);
 
-        return result;
-      } catch (err) {
-        console.error("Error filtering event:", event, err);
-        return false; // Exclude events that cause errors
-      }
-    })
-    .sort((a, b) => {
-      // Sort featured events first
-      if (a.featured && !b.featured) return -1;
-      if (!a.featured && b.featured) return 1;
-      // If both are featured or both are not featured, maintain original order
-      return 0;
-    });
+  // Clear filters handler
+  const handleClearFilters = useCallback(() => {
+    setSearchTerm("");
+    setSelectedCategory("All Categories");
+    setDisplayCount(EVENTS_PER_PAGE);
+  }, []);
 
-  console.log("Events page - Total events:", events.length);
-  console.log("Events page - Filtered events:", filteredEvents.length);
-  console.log("Events page - Loading state:", loading);
-  console.log("Events page - Error state:", error);
-  console.log(
-    "Events page - Events data:",
-    events.map((e) => ({ id: e.id, title: e.title }))
-  );
-  console.log(
-    "Events page - Filtered data:",
-    filteredEvents.map((e) => ({ id: e.id, title: e.title }))
-  );
-
-  // Format date for display
-  const formatEventDate = (dateString, timeString) => {
-    const date = new Date(dateString);
-    const options = {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-      timeZone: "Asia/Kolkata",
-    };
-    return `${date.toLocaleDateString("en-IN", options)} at ${timeString}`;
-  };
+  // Refresh handler
+  const handleRefresh = useCallback(() => {
+    setDisplayCount(EVENTS_PER_PAGE);
+    fetchEvents();
+  }, [fetchEvents]);
 
   return (
     <div className="min-h-screen bg-linear-to-br from-gray-900 via-blue-900 to-purple-900 relative overflow-hidden">
       {/* Animated Background Elements */}
-      <div className="absolute inset-0">
+      <div className="absolute inset-0 pointer-events-none">
         {/* Floating particles */}
         {particles.map((particle) => (
           <div
@@ -255,13 +188,14 @@ export default function EventsPage() {
           />
         ))}
 
-        {/* Moving gradient orbs */}
+        {/* Moving gradient orbs - optimized with will-change */}
         <div
           className="absolute w-96 h-96 bg-linear-to-r from-blue-400 to-purple-600 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob"
           style={{
             transform: `translate(${mousePosition.x * 0.02}px, ${
               mousePosition.y * 0.02
             }px)`,
+            willChange: 'transform',
           }}
         />
         <div
@@ -270,6 +204,7 @@ export default function EventsPage() {
             transform: `translate(${mousePosition.x * -0.01}px, ${
               mousePosition.y * -0.01
             }px)`,
+            willChange: 'transform',
           }}
         />
         <div
@@ -278,6 +213,7 @@ export default function EventsPage() {
             transform: `translate(${mousePosition.x * 0.015}px, ${
               mousePosition.y * 0.015
             }px)`,
+            willChange: 'transform',
           }}
         />
       </div>
@@ -299,9 +235,9 @@ export default function EventsPage() {
 
           {/* Search and Filters */}
           <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 sm:p-6 border border-white/20">
-            <div className="flex flex-row flex-wrap gap-2 sm:gap-4">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
               {/* Search Bar */}
-              <div className="relative">
+              <div className="relative flex-1">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <span className="text-gray-300 text-lg">🔍</span>
                 </div>
@@ -314,42 +250,22 @@ export default function EventsPage() {
                 />
               </div>
 
-              {/* Filters Row */}
-              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-                {/* Category Filter */}
-                <select
-                  value={selectedCategory}
-                  onChange={(e) => setSelectedCategory(e.target.value)}
-                  className="w-1/2 sm:flex-1 px-3 sm:px-4 py-2 sm:py-3 border border-white/20 rounded-lg bg-white/10 backdrop-blur-md text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-xs sm:text-base"
-                >
-                  {categories.map((category) => (
-                    <option
-                      key={category}
-                      value={category}
-                      className="text-gray-900 bg-white"
-                    >
-                      {category}
-                    </option>
-                  ))}
-                </select>
-
-                {/* Date Filter */}
-                <input
-                  type="date"
-                  value={selectedDate}
-                  onChange={(e) => setSelectedDate(e.target.value)}
-                  className="w-1/2 sm:flex-1 px-3 sm:px-4 py-2 sm:py-3 border border-white/20 rounded-lg bg-white/10 backdrop-blur-md text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-xs sm:text-base"
-                />
-              </div>
-
-              {/* More Filters Button - Mobile Optimized */}
-              <button
-                onClick={() => setShowFilters(!showFilters)}
-                className="flex items-center gap-2 px-4 py-3 border border-white/20 rounded-lg bg-white/10 backdrop-blur-md text-white hover:bg-white/20 transition-colors"
+              {/* Category Filter */}
+              <select
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className="px-3 sm:px-4 py-2 sm:py-3 border border-white/20 rounded-lg bg-white/10 backdrop-blur-md text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-xs sm:text-base min-w-[180px]"
               >
-                <span>⚙️</span>
-                <span>More Filters</span>
-              </button>
+                {CATEGORIES.map((category) => (
+                  <option
+                    key={category}
+                    value={category}
+                    className="text-gray-900 bg-white"
+                  >
+                    {category}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
         </div>
@@ -361,12 +277,17 @@ export default function EventsPage() {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 md:mb-8 gap-3 sm:gap-0">
           <p className="text-gray-300 text-sm sm:text-base">
             <span className="font-medium text-white text-base sm:text-lg">
-              {filteredEvents.length} Events Found
+              {filteredEvents.length} Event{filteredEvents.length !== 1 ? 's' : ''} Found
             </span>
+            {displayedEvents.length < filteredEvents.length && (
+              <span className="ml-2 text-gray-400">
+                (Showing {displayedEvents.length})
+              </span>
+            )}
           </p>
           <button
-            onClick={() => setRefreshToken(Date.now())}
-            className="flex items-center gap-2 px-3 py-2 bg-white/10 text-white rounded-lg border border-white/20 hover:bg-white/20 transition-colors text-sm sm:text-base"
+            onClick={handleRefresh}
+            className="flex items-center gap-2 px-3 py-2 bg-white/10 text-white rounded-lg border border-white/20 hover:bg-white/20 transition-colors text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed"
             disabled={loading}
           >
             <span className="text-lg">⟳</span>
@@ -393,30 +314,44 @@ export default function EventsPage() {
             </h3>
             <p className="text-gray-300 mb-4 text-sm sm:text-base">{error}</p>
             <button
-              onClick={() => window.location.reload()}
+              onClick={handleRefresh}
               className="px-6 py-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors text-sm sm:text-base"
             >
               Try Again
             </button>
           </div>
-        ) : filteredEvents.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 md:gap-8">
-            {filteredEvents.map((event, index) => (
-              <div
-                key={event.id}
-                className="animate-fade-in-up"
-                style={{ animationDelay: `${index * 100}ms` }}
-              >
-                <EventCard
-                  event={{
-                    ...event,
-                    registered: event._count?.bookings || 0,
-                    isExpired: false, // Events page only shows active events
-                  }}
-                />
+        ) : displayedEvents.length > 0 ? (
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 md:gap-8">
+              {displayedEvents.map((event, index) => (
+                <div
+                  key={event.id}
+                  className="animate-fade-in-up"
+                  style={{ animationDelay: `${(index % EVENTS_PER_PAGE) * 50}ms` }}
+                >
+                  <EventCard
+                    event={{
+                      ...event,
+                      registered: event._count?.bookings || 0,
+                      isExpired: false,
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
+
+            {/* Load More Button */}
+            {displayedEvents.length < filteredEvents.length && (
+              <div className="text-center mt-8 md:mt-12">
+                <button
+                  onClick={handleLoadMore}
+                  className="bg-white/10 backdrop-blur-md border border-white/20 text-white px-6 sm:px-8 py-3 rounded-lg hover:bg-white/20 transition-colors font-medium text-sm sm:text-base"
+                >
+                  Load More Events ({filteredEvents.length - displayedEvents.length} remaining)
+                </button>
               </div>
-            ))}
-          </div>
+            )}
+          </>
         ) : (
           <div className="text-center py-12 px-4">
             <div className="text-5xl sm:text-6xl mb-4">🔍</div>
@@ -427,23 +362,10 @@ export default function EventsPage() {
               Try adjusting your search criteria or browse all categories
             </p>
             <button
-              onClick={() => {
-                setSearchTerm("");
-                setSelectedCategory("All Categories");
-                setSelectedDate("");
-              }}
+              onClick={handleClearFilters}
               className="bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-6 py-3 rounded-lg transition-colors text-sm sm:text-base"
             >
               Clear Filters
-            </button>
-          </div>
-        )}
-
-        {/* Load More Button */}
-        {filteredEvents.length > 0 && (
-          <div className="text-center mt-8 md:mt-12">
-            <button className="bg-white/10 backdrop-blur-md border border-white/20 text-white px-6 sm:px-8 py-3 rounded-lg hover:bg-white/20 transition-colors font-medium text-sm sm:text-base">
-              Load More Events
             </button>
           </div>
         )}
@@ -469,22 +391,22 @@ export default function EventsPage() {
               </h4>
               <ul className="space-y-2 text-sm text-gray-400">
                 <li>
-                  <a href="#" className="hover:text-white transition-colors">
+                  <a href="/events" className="hover:text-white transition-colors">
                     Browse Events
                   </a>
                 </li>
                 <li>
-                  <a href="#" className="hover:text-white transition-colors">
+                  <a href="/my-events" className="hover:text-white transition-colors">
                     My Events
                   </a>
                 </li>
                 <li>
-                  <a href="#" className="hover:text-white transition-colors">
+                  <a href="/about" className="hover:text-white transition-colors">
                     About Us
                   </a>
                 </li>
                 <li>
-                  <a href="#" className="hover:text-white transition-colors">
+                  <a href="/contact" className="hover:text-white transition-colors">
                     Contact
                   </a>
                 </li>

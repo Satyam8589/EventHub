@@ -1,15 +1,174 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import AdminLayout from "@/components/AdminLayout";
 import Link from "next/link";
 import EventAnalyticsModal from "@/components/EventAnalyticsModal";
 
+// Event Card Component - Extracted to reduce duplication
+const EventCard = ({ event, isSuper, onAnalytics, onGenerateReport, reportGenerating }) => (
+  <div className="bg-white/10 backdrop-blur-md rounded-xl border border-white/20 overflow-hidden hover:bg-white/15 transition-all group">
+    {/* Event Image */}
+    <div className="relative h-48 overflow-hidden">
+      <img
+        src={event.imageUrl || "/api/placeholder/400/300"}
+        alt={event.title}
+        className="w-full h-full object-cover"
+      />
+      <div className="absolute top-3 left-3 flex flex-col gap-2">
+        <span
+          className={`px-3 py-1 rounded-full text-xs font-medium ${
+            event.calculatedStatus === "upcoming"
+              ? "bg-green-500/80 text-white"
+              : event.calculatedStatus === "ongoing"
+              ? "bg-blue-500/80 text-white"
+              : "bg-gray-500/80 text-white"
+          }`}
+        >
+          {event.calculatedStatus.toUpperCase()}
+        </span>
+        {event.featured && (
+          <span className="px-3 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-yellow-400 to-yellow-600 text-white flex items-center gap-1">
+            <span>⭐</span>
+            Featured
+          </span>
+        )}
+      </div>
+    </div>
+
+    {/* Event Details */}
+    <div className="p-6">
+      <h3 className="text-lg font-semibold text-white mb-2 line-clamp-1">
+        {event.title}
+      </h3>
+      <p className="text-gray-300 text-sm mb-4 line-clamp-2">
+        {event.description}
+      </p>
+
+      <div className="space-y-2 mb-4">
+        <div className="flex items-center gap-2 text-white/80">
+          <span className="text-blue-400">📅</span>
+          <span className="text-xs">
+            {new Date(event.date).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })} at{" "}
+            {event.time}
+          </span>
+        </div>
+        <div className="flex items-center gap-2 text-white/80">
+          <span className="text-purple-400">📍</span>
+          <span className="text-xs line-clamp-1">
+            {event.location}
+          </span>
+        </div>
+        <div className="flex items-center gap-2 text-white/80">
+          <span className="text-green-400">🎫</span>
+          <span className="text-xs">
+            {event._count?.bookings || 0} bookings
+          </span>
+        </div>
+      </div>
+
+      <div className="flex gap-2">
+        {isSuper ? (
+          <>
+            <Link
+              href={`/admin/events/${event.id}/edit`}
+              className="flex-1 bg-blue-600/20 text-white px-3 py-2 rounded-lg text-xs font-medium border border-blue-500/30 hover:bg-blue-600/30 transition-all text-center"
+            >
+              Edit
+            </Link>
+            <button
+              onClick={() => onAnalytics(event.id)}
+              className="flex-1 bg-green-600/20 text-white px-3 py-2 rounded-lg text-xs font-medium border border-green-500/30 hover:bg-green-600/30 transition-all text-center"
+            >
+              Details
+            </button>
+            <Link
+              href={`/admin/events/${event.id}/admins`}
+              className="flex-1 bg-purple-600/20 text-white px-3 py-2 rounded-lg text-xs font-medium border border-purple-500/30 hover:bg-purple-600/30 transition-all text-center"
+            >
+              Admins
+            </Link>
+            <button
+              onClick={() => onGenerateReport(event.id, event.title)}
+              disabled={reportGenerating[event.id]}
+              className="flex-1 bg-orange-600/20 text-white px-3 py-2 rounded-lg text-xs font-medium border border-orange-500/30 hover:bg-orange-600/30 transition-all text-center disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {reportGenerating[event.id] ? "Sending..." : "📊 Report"}
+            </button>
+          </>
+        ) : (
+          <>
+            <Link
+              href={`/admin/scanner?eventId=${event.id}`}
+              className="flex-1 bg-blue-600/20 text-white px-3 py-2 rounded-lg text-xs font-medium border border-blue-500/30 hover:bg-blue-600/30 transition-all text-center"
+            >
+              Scan Tickets
+            </Link>
+            <Link
+              href={`/events/${event.id}`}
+              className="flex-1 bg-white/10 text-white px-3 py-2 rounded-lg text-xs font-medium border border-white/20 hover:bg-white/20 transition-all text-center"
+            >
+              View Event
+            </Link>
+          </>
+        )}
+      </div>
+    </div>
+  </div>
+);
+
+// Helper function to ensure UTC format
+const ensureUTCString = (dateStr) => {
+  if (!dateStr) return null;
+  if (dateStr.includes('T') && dateStr.endsWith('Z')) return dateStr;
+  if (dateStr.includes('T')) return dateStr + 'Z';
+  return dateStr.replace(' ', 'T') + 'Z';
+};
+
+// Calculate event status based on dates
+const calculateEventStatus = (event) => {
+  const now = new Date();
+  const eventStartDate = new Date(ensureUTCString(event.date));
+
+  let eventEndDateTime;
+  const endDateValue = event.endDate || event.enddate;
+  
+  if (endDateValue) {
+    const utcEndDate = ensureUTCString(endDateValue);
+    eventEndDateTime = new Date(utcEndDate);
+    
+    if (event.endTime && !endDateValue.includes("T") && !endDateValue.includes(":")) {
+      const combinedDateTime = `${endDateValue}T${event.endTime}Z`;
+      eventEndDateTime = new Date(combinedDateTime);
+    }
+  } else {
+    if (event.time) {
+      const combinedDateTime = `${event.date.split("T")[0]}T${event.time}`;
+      eventEndDateTime = new Date(ensureUTCString(combinedDateTime));
+      if (isNaN(eventEndDateTime.getTime())) {
+        eventEndDateTime = new Date(eventStartDate);
+        eventEndDateTime.setHours(23, 59, 59, 999);
+      }
+    } else {
+      eventEndDateTime = new Date(eventStartDate);
+      eventEndDateTime.setHours(23, 59, 59, 999);
+    }
+  }
+
+  if (now < eventStartDate) {
+    return "upcoming";
+  } else if (now >= eventStartDate && now <= eventEndDateTime) {
+    return "ongoing";
+  } else {
+    return "completed";
+  }
+};
+
 export default function AdminEvents() {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState("all"); // all, upcoming, ongoing, completed
+  const [filter, setFilter] = useState("all");
   const [analyticsModal, setAnalyticsModal] = useState({
     isOpen: false,
     eventId: null,
@@ -31,48 +190,39 @@ export default function AdminEvents() {
   }, [user, authLoading, router]);
 
   // Fetch events
-  useEffect(() => {
-    const fetchEvents = async () => {
-      if (!user) return;
+  const fetchEvents = useCallback(async () => {
+    if (!user) return;
 
-      try {
-        // Use user.id (from database) for EVENT_ADMIN, not user.uid (firebase)
-        const adminUserId =
-          user.role === "EVENT_ADMIN"
-            ? user.dbUser?.id || user.id || user.uid
-            : undefined;
-        const endpoint =
-          user.role === "SUPER_ADMIN"
-            ? "/api/admin/events"
-            : `/api/admin/events?adminUserId=${adminUserId}`;
+    try {
+      const adminUserId =
+        user.role === "EVENT_ADMIN"
+          ? user.dbUser?.id || user.id || user.uid
+          : undefined;
+      const endpoint =
+        user.role === "SUPER_ADMIN"
+          ? "/api/admin/events"
+          : `/api/admin/events?adminUserId=${adminUserId}`;
 
-        // Debug: print adminUserId and endpoint
-        if (user.role === "EVENT_ADMIN") {
-          console.log("[DEBUG] EVENT_ADMIN adminUserId:", adminUserId);
-          console.log("[DEBUG] Fetching events from endpoint:", endpoint);
-        }
-
-        const response = await fetch(endpoint);
-        if (response.ok) {
-          const data = await response.json();
-          // Debug: always print events received from API
-          console.log("[DEBUG] Events received from API:", data.events);
-          setEvents(data.events || []);
-        }
-      } catch (error) {
-        console.error("Error fetching events:", error);
-      } finally {
-        setLoading(false);
+      const response = await fetch(endpoint);
+      if (response.ok) {
+        const data = await response.json();
+        setEvents(data.events || []);
       }
-    };
-
-    if (user && (user.role === "SUPER_ADMIN" || user.role === "EVENT_ADMIN")) {
-      fetchEvents();
+    } catch (error) {
+      console.error("Error fetching events:", error);
+    } finally {
+      setLoading(false);
     }
   }, [user]);
 
-  // Function to handle report generation
-  const handleGenerateReport = async (eventId, eventTitle) => {
+  useEffect(() => {
+    if (user && (user.role === "SUPER_ADMIN" || user.role === "EVENT_ADMIN")) {
+      fetchEvents();
+    }
+  }, [user, fetchEvents]);
+
+  // Handle report generation
+  const handleGenerateReport = useCallback(async (eventId, eventTitle) => {
     if (!confirm(`Generate and send report for "${eventTitle}" to the organizer's email?`)) {
       return;
     }
@@ -101,128 +251,47 @@ export default function AdminEvents() {
     } finally {
       setReportGenerating((prev) => ({ ...prev, [eventId]: false }));
     }
-  };
+  }, []);
 
-  // Function to calculate event status based on dates
-  const calculateEventStatus = (event) => {
-    // Get current time in UTC for comparison with database UTC timestamps
-    const now = new Date();
-    
-    // Helper function to ensure we have a proper UTC ISO string
-    const ensureUTCString = (dateStr) => {
-      if (!dateStr) return null;
-      // If it's already in ISO format with Z, return as is
-      if (dateStr.includes('T') && dateStr.endsWith('Z')) return dateStr;
-      // If it has T but no Z, add Z
-      if (dateStr.includes('T')) return dateStr + 'Z';
-      // If it's in format "2025-11-22 17:30:00", convert to ISO
-      return dateStr.replace(' ', 'T') + 'Z';
+  // Handle analytics modal
+  const handleAnalytics = useCallback((eventId) => {
+    setAnalyticsModal({
+      isOpen: true,
+      eventId: eventId,
+    });
+  }, []);
+
+  // Memoized event grouping by status
+  const eventsByStatus = useMemo(() => {
+    const grouped = {
+      upcoming: [],
+      ongoing: [],
+      completed: [],
     };
-    
-    // Event dates from database are in UTC
-    const eventStartDate = new Date(ensureUTCString(event.date));
 
-    // Calculate end date/time
-    let eventEndDateTime;
-    const endDateValue = event.endDate || event.enddate;
-    
-    console.log(`🔍 Calculating status for: ${event.title}`, {
-      hasEndDate: !!endDateValue,
-      endDateValue,
-      endDateValueConverted: ensureUTCString(endDateValue),
-      hasEndTime: !!event.endTime,
-      endTime: event.endTime
-    });
-    
-    if (endDateValue) {
-      // Event has an end date (UTC timestamp)
-      // Ensure it's properly formatted as UTC
-      const utcEndDate = ensureUTCString(endDateValue);
-      eventEndDateTime = new Date(utcEndDate);
-      
-      console.log(`✅ Using endDate: ${utcEndDate} → ${eventEndDateTime.toISOString()}`);
-      
-      // If we have endTime and endDate doesn't include time, combine them
-      // Note: This shouldn't happen since we store full UTC timestamps
-      if (event.endTime && !endDateValue.includes("T") && !endDateValue.includes(":")) {
-        const combinedDateTime = `${endDateValue}T${event.endTime}Z`;
-        eventEndDateTime = new Date(combinedDateTime);
-        console.log(`⚠️ Combined endDate with endTime: ${combinedDateTime}`);
-      }
-    } else {
-      // No end date, use start date + time or end of day
-      if (event.time) {
-        const combinedDateTime = `${event.date.split("T")[0]}T${event.time}`;
-        eventEndDateTime = new Date(ensureUTCString(combinedDateTime));
-        if (isNaN(eventEndDateTime.getTime())) {
-          eventEndDateTime = new Date(eventStartDate);
-          eventEndDateTime.setHours(23, 59, 59, 999);
-        }
-      } else {
-        eventEndDateTime = new Date(eventStartDate);
-        eventEndDateTime.setHours(23, 59, 59, 999);
-      }
-      console.log(`⚠️ No endDate found, using: ${eventEndDateTime.toISOString()}`);
-    }
-
-    // ✅ Determine status by comparing UTC times
-    let status;
-    if (now < eventStartDate) {
-      status = "upcoming";
-    } else if (now >= eventStartDate && now <= eventEndDateTime) {
-      status = "ongoing";
-    } else {
-      status = "completed";
-    }
-
-    // 🔍 Debug logging
-    console.log(`📊 Event: ${event.title}`, {
-      nowUTC: now.toISOString(),
-      nowTime: now.getTime(),
-      eventStartDate: eventStartDate.toISOString(),
-      eventStartTime: eventStartDate.getTime(),
-      eventEndDateTime: eventEndDateTime.toISOString(),
-      eventEndTime: eventEndDateTime.getTime(),
-      comparison: {
-        'now < start': now < eventStartDate,
-        'now >= start': now >= eventStartDate,
-        'now <= end': now <= eventEndDateTime,
-      },
-      status,
-      rawData: {
-        eventDateFromDB: event.date,
-        eventEndDateFromDB: event.endDate || event.enddate,
-        eventTime: event.time,
-        eventEndTime: event.endTime
-      }
+    events.forEach((event) => {
+      const status = calculateEventStatus(event);
+      event.calculatedStatus = status;
+      grouped[status].push(event);
     });
 
-    return status;
-  };
+    return grouped;
+  }, [events]);
 
-  // Group events by status
-  const eventsByStatus = {
-    upcoming: [],
-    ongoing: [],
-    completed: [],
-  };
+  // Memoized filtered events
+  const filteredEventsByStatus = useMemo(() => {
+    if (filter === "all") {
+      return eventsByStatus;
+    }
+    
+    return {
+      upcoming: filter === "upcoming" ? eventsByStatus.upcoming : [],
+      ongoing: filter === "ongoing" ? eventsByStatus.ongoing : [],
+      completed: filter === "completed" ? eventsByStatus.completed : [],
+    };
+  }, [filter, eventsByStatus]);
 
-  events.forEach((event) => {
-    const status = calculateEventStatus(event);
-    // Add the calculated status to the event object for display
-    event.calculatedStatus = status;
-    eventsByStatus[status].push(event);
-  });
-
-  // Filter events if filter is not "all"
-  const filteredEventsByStatus = filter === "all" 
-    ? eventsByStatus 
-    : {
-        [filter]: eventsByStatus[filter] || [],
-        upcoming: filter !== "upcoming" ? [] : eventsByStatus.upcoming || [],
-        ongoing: filter !== "ongoing" ? [] : eventsByStatus.ongoing || [],
-        completed: filter !== "completed" ? [] : eventsByStatus.completed || [],
-      };
+  const isSuper = user?.role === "SUPER_ADMIN";
 
   if (authLoading || !user) {
     return (
@@ -251,8 +320,6 @@ export default function AdminEvents() {
     );
   }
 
-  const isSuper = user.role === "SUPER_ADMIN";
-
   return (
     <AdminLayout activeTab="events">
       <div className="space-y-6">
@@ -271,7 +338,7 @@ export default function AdminEvents() {
 
           {isSuper && (
             <Link
-              href="/admin/events/create"
+              href="/admin/create-event"
               className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg"
             >
               + Create Event
@@ -279,7 +346,7 @@ export default function AdminEvents() {
           )}
         </div>
 
-        {/* Filter Tabs - Optional filter to show/hide sections */}
+        {/* Filter Tabs */}
         <div className="bg-white/10 backdrop-blur-md rounded-xl border border-white/20 p-2">
           <div className="flex space-x-2">
             {["all", "upcoming", "ongoing", "completed"].map((status) => (
@@ -293,12 +360,17 @@ export default function AdminEvents() {
                 }`}
               >
                 {status.charAt(0).toUpperCase() + status.slice(1)}
+                {status !== "all" && (
+                  <span className="ml-2 text-xs opacity-75">
+                    ({eventsByStatus[status]?.length || 0})
+                  </span>
+                )}
               </button>
             ))}
           </div>
         </div>
 
-        {/* Events List - Organized by Status Sections */}
+        {/* Events List */}
         {loading ? (
           <div className="text-center py-12">
             <div className="text-white">Loading events...</div>
@@ -319,7 +391,7 @@ export default function AdminEvents() {
               </p>
               {isSuper && (
                 <Link
-                  href="/admin/events/create"
+                  href="/admin/create-event"
                   className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all"
                 >
                   + Create Event
@@ -342,122 +414,14 @@ export default function AdminEvents() {
                 {filteredEventsByStatus.upcoming.length > 0 ? (
                   <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
                     {filteredEventsByStatus.upcoming.map((event) => (
-                      <div
+                      <EventCard
                         key={event.id}
-                        className="bg-white/10 backdrop-blur-md rounded-xl border border-white/20 overflow-hidden hover:bg-white/15 transition-all group"
-                      >
-                {/* Event Image */}
-                <div className="relative h-48 overflow-hidden">
-                  <img
-                    src={event.imageUrl || "/api/placeholder/400/300"}
-                    alt={event.title}
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute top-3 left-3 flex flex-col gap-2">
-                    <span
-                      className={`px-3 py-1 rounded-full text-xs font-medium ${
-                        event.calculatedStatus === "upcoming"
-                          ? "bg-green-500/80 text-white"
-                          : event.calculatedStatus === "ongoing"
-                          ? "bg-blue-500/80 text-white"
-                          : "bg-gray-500/80 text-white"
-                      }`}
-                    >
-                      {event.calculatedStatus.toUpperCase()}
-                    </span>
-                    {event.featured && (
-                      <span className="px-3 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-yellow-400 to-yellow-600 text-white flex items-center gap-1">
-                        <span>⭐</span>
-                        Featured
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Event Details */}
-                <div className="p-6">
-                  <h3 className="text-lg font-semibold text-white mb-2 line-clamp-1">
-                    {event.title}
-                  </h3>
-                  <p className="text-gray-300 text-sm mb-4 line-clamp-2">
-                    {event.description}
-                  </p>
-
-                  <div className="space-y-2 mb-4">
-                    <div className="flex items-center gap-2 text-white/80">
-                      <span className="text-blue-400">📅</span>
-                      <span className="text-xs">
-                        {new Date(event.date).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })} at{" "}
-                        {event.time}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 text-white/80">
-                      <span className="text-purple-400">📍</span>
-                      <span className="text-xs line-clamp-1">
-                        {event.location}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 text-white/80">
-                      <span className="text-green-400">🎫</span>
-                      <span className="text-xs">
-                        {event._count?.bookings || 0} bookings
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-2">
-                    {isSuper ? (
-                      <>
-                        <Link
-                          href={`/admin/events/${event.id}/edit`}
-                          className="flex-1 bg-blue-600/20 text-white px-3 py-2 rounded-lg text-xs font-medium border border-blue-500/30 hover:bg-blue-600/30 transition-all text-center"
-                        >
-                          Edit
-                        </Link>
-                        <button
-                          onClick={() =>
-                            setAnalyticsModal({
-                              isOpen: true,
-                              eventId: event.id,
-                            })
-                          }
-                          className="flex-1 bg-green-600/20 text-white px-3 py-2 rounded-lg text-xs font-medium border border-green-500/30 hover:bg-green-600/30 transition-all text-center"
-                        >
-                          Details
-                        </button>
-                        <Link
-                          href={`/admin/events/${event.id}/admins`}
-                          className="flex-1 bg-purple-600/20 text-white px-3 py-2 rounded-lg text-xs font-medium border border-purple-500/30 hover:bg-purple-600/30 transition-all text-center"
-                        >
-                          Admins
-                        </Link>
-                        <button
-                          onClick={() => handleGenerateReport(event.id, event.title)}
-                          disabled={reportGenerating[event.id]}
-                          className="flex-1 bg-orange-600/20 text-white px-3 py-2 rounded-lg text-xs font-medium border border-orange-500/30 hover:bg-orange-600/30 transition-all text-center disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          {reportGenerating[event.id] ? "Sending..." : "📊 Report"}
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <Link
-                          href={`/admin/scanner?eventId=${event.id}`}
-                          className="flex-1 bg-blue-600/20 text-white px-3 py-2 rounded-lg text-xs font-medium border border-blue-500/30 hover:bg-blue-600/30 transition-all text-center"
-                        >
-                          Scan Tickets
-                        </Link>
-                        <Link
-                          href={`/events/${event.id}`}
-                          className="flex-1 bg-white/10 text-white px-3 py-2 rounded-lg text-xs font-medium border border-white/20 hover:bg-white/20 transition-all text-center"
-                        >
-                          View Event
-                        </Link>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </div>
+                        event={event}
+                        isSuper={isSuper}
+                        onAnalytics={handleAnalytics}
+                        onGenerateReport={handleGenerateReport}
+                        reportGenerating={reportGenerating}
+                      />
                     ))}
                   </div>
                 ) : (
@@ -481,114 +445,14 @@ export default function AdminEvents() {
                 {filteredEventsByStatus.ongoing.length > 0 ? (
                   <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
                     {filteredEventsByStatus.ongoing.map((event) => (
-                      <div
+                      <EventCard
                         key={event.id}
-                        className="bg-white/10 backdrop-blur-md rounded-xl border border-white/20 overflow-hidden hover:bg-white/15 transition-all group"
-                      >
-                      {/* Event Image */}
-                      <div className="relative h-48 overflow-hidden">
-                        <img
-                          src={event.imageUrl || "/api/placeholder/400/300"}
-                          alt={event.title}
-                          className="w-full h-full object-cover"
-                        />
-                        <div className="absolute top-3 left-3 flex flex-col gap-2">
-                          <span className="px-3 py-1 rounded-full text-xs font-medium bg-blue-500/80 text-white">
-                            ONGOING
-                          </span>
-                          {event.featured && (
-                            <span className="px-3 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-yellow-400 to-yellow-600 text-white flex items-center gap-1">
-                              <span>⭐</span>
-                              Featured
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Event Details */}
-                      <div className="p-6">
-                        <h3 className="text-lg font-semibold text-white mb-2 line-clamp-1">
-                          {event.title}
-                        </h3>
-                        <p className="text-gray-300 text-sm mb-4 line-clamp-2">
-                          {event.description}
-                        </p>
-
-                        <div className="space-y-2 mb-4">
-                          <div className="flex items-center gap-2 text-white/80">
-                            <span className="text-blue-400">📅</span>
-                            <span className="text-xs">
-                              {new Date(event.date).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })} at{" "}
-                              {event.time}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2 text-white/80">
-                            <span className="text-purple-400">📍</span>
-                            <span className="text-xs line-clamp-1">
-                              {event.location}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2 text-white/80">
-                            <span className="text-green-400">🎫</span>
-                            <span className="text-xs">
-                              {event._count?.bookings || 0} bookings
-                            </span>
-                          </div>
-                        </div>
-
-                        <div className="flex gap-2">
-                          {isSuper ? (
-                            <>
-                              <Link
-                                href={`/admin/events/${event.id}/edit`}
-                                className="flex-1 bg-blue-600/20 text-white px-3 py-2 rounded-lg text-xs font-medium border border-blue-500/30 hover:bg-blue-600/30 transition-all text-center"
-                              >
-                                Edit
-                              </Link>
-                              <button
-                                onClick={() =>
-                                  setAnalyticsModal({
-                                    isOpen: true,
-                                    eventId: event.id,
-                                  })
-                                }
-                                className="flex-1 bg-green-600/20 text-white px-3 py-2 rounded-lg text-xs font-medium border border-green-500/30 hover:bg-green-600/30 transition-all text-center"
-                              >
-                                Details
-                              </button>
-                              <Link
-                                href={`/admin/events/${event.id}/admins`}
-                                className="flex-1 bg-purple-600/20 text-white px-3 py-2 rounded-lg text-xs font-medium border border-purple-500/30 hover:bg-purple-600/30 transition-all text-center"
-                              >
-                                Admins
-                              </Link>
-                              <button
-                                onClick={() => handleGenerateReport(event.id, event.title)}
-                                disabled={reportGenerating[event.id]}
-                                className="flex-1 bg-orange-600/20 text-white px-3 py-2 rounded-lg text-xs font-medium border border-orange-500/30 hover:bg-orange-600/30 transition-all text-center disabled:opacity-50 disabled:cursor-not-allowed"
-                              >
-                                {reportGenerating[event.id] ? "Sending..." : "📊 Report"}
-                              </button>
-                            </>
-                          ) : (
-                            <>
-                              <Link
-                                href={`/admin/scanner?eventId=${event.id}`}
-                                className="flex-1 bg-blue-600/20 text-white px-3 py-2 rounded-lg text-xs font-medium border border-blue-500/30 hover:bg-blue-600/30 transition-all text-center"
-                              >
-                                Scan Tickets
-                              </Link>
-                              <Link
-                                href={`/events/${event.id}`}
-                                className="flex-1 bg-white/10 text-white px-3 py-2 rounded-lg text-xs font-medium border border-white/20 hover:bg-white/20 transition-all text-center"
-                              >
-                                View Event
-                              </Link>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    </div>
+                        event={event}
+                        isSuper={isSuper}
+                        onAnalytics={handleAnalytics}
+                        onGenerateReport={handleGenerateReport}
+                        reportGenerating={reportGenerating}
+                      />
                     ))}
                   </div>
                 ) : (
@@ -612,114 +476,14 @@ export default function AdminEvents() {
                 {filteredEventsByStatus.completed.length > 0 ? (
                   <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
                     {filteredEventsByStatus.completed.map((event) => (
-                      <div
+                      <EventCard
                         key={event.id}
-                        className="bg-white/10 backdrop-blur-md rounded-xl border border-white/20 overflow-hidden hover:bg-white/15 transition-all group opacity-75"
-                      >
-                      {/* Event Image */}
-                      <div className="relative h-48 overflow-hidden">
-                        <img
-                          src={event.imageUrl || "/api/placeholder/400/300"}
-                          alt={event.title}
-                          className="w-full h-full object-cover"
-                        />
-                        <div className="absolute top-3 left-3 flex flex-col gap-2">
-                          <span className="px-3 py-1 rounded-full text-xs font-medium bg-gray-500/80 text-white">
-                            COMPLETED
-                          </span>
-                          {event.featured && (
-                            <span className="px-3 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-yellow-400 to-yellow-600 text-white flex items-center gap-1">
-                              <span>⭐</span>
-                              Featured
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Event Details */}
-                      <div className="p-6">
-                        <h3 className="text-lg font-semibold text-white mb-2 line-clamp-1">
-                          {event.title}
-                        </h3>
-                        <p className="text-gray-300 text-sm mb-4 line-clamp-2">
-                          {event.description}
-                        </p>
-
-                        <div className="space-y-2 mb-4">
-                          <div className="flex items-center gap-2 text-white/80">
-                            <span className="text-blue-400">📅</span>
-                            <span className="text-xs">
-                              {new Date(event.date).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })} at{" "}
-                              {event.time}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2 text-white/80">
-                            <span className="text-purple-400">📍</span>
-                            <span className="text-xs line-clamp-1">
-                              {event.location}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2 text-white/80">
-                            <span className="text-green-400">🎫</span>
-                            <span className="text-xs">
-                              {event._count?.bookings || 0} bookings
-                            </span>
-                          </div>
-                        </div>
-
-                        <div className="flex gap-2">
-                          {isSuper ? (
-                            <>
-                              <Link
-                                href={`/admin/events/${event.id}/edit`}
-                                className="flex-1 bg-blue-600/20 text-white px-3 py-2 rounded-lg text-xs font-medium border border-blue-500/30 hover:bg-blue-600/30 transition-all text-center"
-                              >
-                                Edit
-                              </Link>
-                              <button
-                                onClick={() =>
-                                  setAnalyticsModal({
-                                    isOpen: true,
-                                    eventId: event.id,
-                                  })
-                                }
-                                className="flex-1 bg-green-600/20 text-white px-3 py-2 rounded-lg text-xs font-medium border border-green-500/30 hover:bg-green-600/30 transition-all text-center"
-                              >
-                                Details
-                              </button>
-                              <Link
-                                href={`/admin/events/${event.id}/admins`}
-                                className="flex-1 bg-purple-600/20 text-white px-3 py-2 rounded-lg text-xs font-medium border border-purple-500/30 hover:bg-purple-600/30 transition-all text-center"
-                              >
-                                Admins
-                              </Link>
-                              <button
-                                onClick={() => handleGenerateReport(event.id, event.title)}
-                                disabled={reportGenerating[event.id]}
-                                className="flex-1 bg-orange-600/20 text-white px-3 py-2 rounded-lg text-xs font-medium border border-orange-500/30 hover:bg-orange-600/30 transition-all text-center disabled:opacity-50 disabled:cursor-not-allowed"
-                              >
-                                {reportGenerating[event.id] ? "Sending..." : "📊 Report"}
-                              </button>
-                            </>
-                          ) : (
-                            <>
-                              <Link
-                                href={`/admin/scanner?eventId=${event.id}`}
-                                className="flex-1 bg-blue-600/20 text-white px-3 py-2 rounded-lg text-xs font-medium border border-blue-500/30 hover:bg-blue-600/30 transition-all text-center"
-                              >
-                                Scan Tickets
-                              </Link>
-                              <Link
-                                href={`/events/${event.id}`}
-                                className="flex-1 bg-white/10 text-white px-3 py-2 rounded-lg text-xs font-medium border border-white/20 hover:bg-white/20 transition-all text-center"
-                              >
-                                View Event
-                              </Link>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    </div>
+                        event={event}
+                        isSuper={isSuper}
+                        onAnalytics={handleAnalytics}
+                        onGenerateReport={handleGenerateReport}
+                        reportGenerating={reportGenerating}
+                      />
                     ))}
                   </div>
                 ) : (

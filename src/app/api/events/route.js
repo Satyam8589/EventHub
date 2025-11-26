@@ -18,27 +18,14 @@ export async function GET() {
     if (error) {
       throw error;
     }
-    console.log(
-      "Events details:",
-      events?.map((e) => ({
-        id: e.id,
-        title: e.title,
-        status: e.status,
-        featured: e.featured,
-        date: e.date,
-        endDate: e.endDate,
-      }))
-    );
 
     // Filter out expired events - show only upcoming and currently running events
     // ✅ Use UTC for comparison with database UTC timestamps
     const now = new Date();
-    console.log('🕐 Current time (UTC):', now.toISOString());
 
     const activeEvents = events.filter((event) => {
       // Skip events with CANCELLED status
       if (event.status === "CANCELLED") {
-        console.log(`❌ Skipping cancelled event: ${event.title}`);
         return false;
       }
 
@@ -54,19 +41,9 @@ export async function GET() {
           if (!utcEndDate.endsWith('Z')) utcEndDate += 'Z';
         }
         const endDate = new Date(utcEndDate);
-        const isActive = endDate > now;
-        
-        console.log(`📅 Event: ${event.title}`, {
-          endDateValue,
-          utcEndDate,
-          endDate: endDate.toISOString(),
-          now: now.toISOString(),
-          isActive,
-          comparison: `${endDate.toISOString()} > ${now.toISOString()} = ${isActive}`
-        });
         
         // ✅ Compare UTC with UTC - only show if end date is in the future
-        return isActive;
+        return endDate > now;
       }
 
       // If no endDate, consider the event as a single-day event
@@ -83,25 +60,9 @@ export async function GET() {
         now.getDate()
       );
 
-      const isActive = eventDateOnly >= nowDateOnly;
-      console.log(`📅 Event (no enddate): ${event.title}`, {
-        eventDate: eventDate.toISOString(),
-        isActive
-      });
-
       // Show events that are today or in the future
-      return isActive;
+      return eventDateOnly >= nowDateOnly;
     });
-    console.log(
-      "Active events:",
-      activeEvents.map((e) => ({
-        id: e.id,
-        title: e.title,
-        featured: e.featured,
-        date: e.date,
-        endDate: e.endDate,
-      }))
-    );
 
     // Get booking counts for each event
     // ⚠️ IMPORTANT: Only count CONFIRMED bookings (not PENDING)
@@ -150,15 +111,6 @@ export async function GET() {
           };
         }
       })
-    );
-    console.log(
-      "Events data:",
-      eventsWithCounts.map((e) => ({
-        id: e.id,
-        title: e.title,
-        date: e.date,
-        status: e.status,
-      }))
     );
 
     // Check for low ticket events and trigger notifications

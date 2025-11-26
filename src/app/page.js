@@ -126,11 +126,11 @@ const AnimatedBackground = ({ particles, mousePosition }) => (
 // Hero Section Component
 const HeroSection = ({ router }) => (
   <section className="relative z-10 text-center py-12 sm:py-16 md:py-20 lg:py-24 px-4 sm:px-6 lg:px-8">
-    <div className="max-w-4xl mx-auto">
-      <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-bold text-white mb-4 sm:mb-6 animate-fade-in-up leading-tight">
+    <div className="max-w-4xl mx-auto relative z-10">
+      <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-bold text-white mb-4 sm:mb-6 animate-fade-in-up leading-tight drop-shadow-2xl">
         Discover Amazing Events Near You
       </h1>
-      <p className="text-base sm:text-lg md:text-xl text-gray-300 mb-6 sm:mb-8 max-w-2xl mx-auto animate-fade-in-up animation-delay-300 px-4">
+      <p className="text-base sm:text-lg md:text-xl text-gray-100 mb-6 sm:mb-8 max-w-2xl mx-auto animate-fade-in-up animation-delay-300 px-4 drop-shadow-lg">
         Join thousands of people experiencing the best events in music,
         food, technology, and community. Book your next adventure today!
       </p>
@@ -147,7 +147,7 @@ const HeroSection = ({ router }) => (
             🔍
           </div>
         </div>
-        <button className="bg-linear-to-r from-blue-600 to-purple-600 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-full hover:from-blue-700 hover:to-purple-700 transition-all duration-300 transform hover:scale-105 shadow-xl font-semibold text-sm sm:text-base w-full sm:w-auto">
+        <button className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-full hover:from-blue-700 hover:to-purple-700 transition-all duration-300 transform hover:scale-105 shadow-xl font-semibold text-sm sm:text-base w-full sm:w-auto">
           Search
         </button>
       </div>
@@ -162,7 +162,7 @@ const HeroSection = ({ router }) => (
         </button>
         <button
           onClick={() => router.push("/about")}
-          className="border-2 border-white text-white px-6 sm:px-8 py-3 sm:py-4 rounded-full font-semibold hover:bg-white hover:text-gray-900 transition-all duration-300 transform hover:scale-105 text-sm sm:text-base"
+          className="border-2 border-white text-white px-6 sm:px-8 py-3 sm:py-4 rounded-full font-semibold hover:bg-white hover:text-gray-900 transition-all duration-300 transform hover:scale-105 text-sm sm:text-base backdrop-blur-sm"
         >
           Learn More
         </button>
@@ -170,6 +170,7 @@ const HeroSection = ({ router }) => (
     </div>
   </section>
 );
+
 
 // Stats Section Component
 const StatsSection = () => {
@@ -560,8 +561,30 @@ export default function Home() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-gray-900 via-blue-900 to-purple-900 relative overflow-hidden">
-      <AnimatedBackground particles={particles} mousePosition={mousePosition} />
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900 relative overflow-hidden">
+      {/* Hero Background Image - Covers entire page */}
+      <div className="fixed inset-0 z-0">
+        <div 
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat bg-fixed"
+          style={{
+            backgroundImage: 'url(/hero-background.png)',
+            backgroundPosition: 'center center',
+            backgroundSize: 'cover',
+          }}
+        />
+        {/* Stronger dark overlay for better text readability across entire page */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/60 to-black/50" />
+        {/* Color overlay for depth */}
+        <div className="absolute inset-0 bg-gradient-to-br from-purple-900/30 via-blue-900/20 to-transparent" />
+        
+        {/* Soft bottom gradient for footer area */}
+        <div className="absolute bottom-0 left-0 right-0 h-[300px] bg-gradient-to-b from-transparent via-gray-900/30 to-gray-900/70" />
+      </div>
+
+      <div className="relative z-5">
+        <AnimatedBackground particles={particles} mousePosition={mousePosition} />
+      </div>
+
       
       {/* Navigation */}
       <Navbar setShowLogin={setShowLogin} setShowSignup={setShowSignup} />
