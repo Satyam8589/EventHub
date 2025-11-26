@@ -187,6 +187,33 @@ export async function POST(request) {
     const amountToCharge =
       finalAmount !== undefined ? finalAmount : calculatedFinalAmount;
     if (parseFloat(amountToCharge) <= 0) {
+      // ✅ Check ticket availability even for free bookings
+      const { data: availabilityCheck, error: availError } = await supabase.rpc(
+        "check_ticket_availability",
+        {
+          p_event_id: eventId,
+          p_requested_tickets: parseInt(tickets),
+        }
+      );
+
+      if (availError) {
+        console.error("Availability check error for free booking:", availError);
+        return NextResponse.json(
+          { error: "Failed to check ticket availability" },
+          { status: 500 }
+        );
+      }
+
+      if (!availabilityCheck.success) {
+        return NextResponse.json(
+          {
+            error: availabilityCheck.error || "Not enough tickets available",
+            available_tickets: availabilityCheck.available_tickets || 0,
+          },
+          { status: 400 }
+        );
+      }
+
       const pendingBooking = {
         id: crypto.randomUUID(),
         userId,
@@ -211,8 +238,11 @@ export async function POST(request) {
         .single();
 
       if (bookingError) {
+        console.error("Free booking creation error:", bookingError);
         throw bookingError;
       }
+
+      console.log("✅ Free booking created successfully:", booking.id);
 
       // ✅ INCREMENT DISCOUNT USAGE FOR FREE BOOKING
       if (discountId) {
@@ -262,6 +292,21 @@ export async function POST(request) {
         if (userDetails.phoneNumber) updateData.phone = userDetails.phoneNumber;
         updateData.updatedAt = nowIstIso;
         await supabase.from("users").update(updateData).eq("id", userId);
+      }
+
+      // 📧 SEND TICKET EMAIL FOR FREE BOOKING
+      try {
+        console.log("📧 Sending ticket email for free booking...");
+        const ticketResult = await sendTicketToUser(booking.id, event);
+
+        if (ticketResult.success) {
+          console.log("✅ Ticket email sent successfully for free booking");
+        } else {
+          console.error("❌ Ticket email failed:", ticketResult.error);
+        }
+      } catch (emailError) {
+        console.error("❌ Exception sending ticket email:", emailError);
+        // Don't fail the booking if email fails
       }
 
       return NextResponse.json({
