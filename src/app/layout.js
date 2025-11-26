@@ -2,6 +2,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { Toaster } from "react-hot-toast";
 import BottomNavWrapper from "@/components/BottomNavWrapper";
+import AutoPushSubscription from "@/components/AutoPushSubscription";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
@@ -51,7 +52,8 @@ export const metadata = {
   twitter: {
     card: "summary_large_image",
     title: "EventHub - Discover Amazing Events Near You",
-    description: "Discover and book amazing events near you. Join thousands experiencing the best events in music, food, technology, and community.",
+    description:
+      "Discover and book amazing events near you. Join thousands experiencing the best events in music, food, technology, and community.",
     images: ["https://www.eventhubx.site/icon-512.png"],
     creator: "@eventhub",
     site: "@eventhub",
@@ -62,9 +64,9 @@ export const metadata = {
     googleBot: {
       index: true,
       follow: true,
-      'max-video-preview': -1,
-      'max-image-preview': 'large',
-      'max-snippet': -1,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
     },
   },
   icons: {
@@ -74,9 +76,7 @@ export const metadata = {
       { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
       { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
     ],
-    apple: [
-      { url: "/icon-192.png", sizes: "192x192", type: "image/png" }
-    ],
+    apple: [{ url: "/icon-192.png", sizes: "192x192", type: "image/png" }],
     shortcut: [{ url: "/favicon-new.png" }],
   },
 };
@@ -99,7 +99,6 @@ export default function RootLayout({ children }) {
         />
         <link rel="manifest" href="/manifest.json" />
 
-
         {/* Icons */}
         <link rel="icon" href="/favicon-new.png" sizes="any" />
         <link rel="icon" href="/eventhub-logo.svg" type="image/svg+xml" />
@@ -121,10 +120,9 @@ export default function RootLayout({ children }) {
               height: 512,
             },
             image: "https://www.eventhubx.site/icon-512.png",
-            description: "Your ultimate destination for discovering and booking amazing events. Join thousands of people experiencing the best events in music, food, technology, and community.",
-            sameAs: [
-              "https://www.eventhubx.site",
-            ],
+            description:
+              "Your ultimate destination for discovering and booking amazing events. Join thousands of people experiencing the best events in music, food, technology, and community.",
+            sameAs: ["https://www.eventhubx.site"],
           })}
         </script>
       </head>
@@ -133,6 +131,7 @@ export default function RootLayout({ children }) {
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <AuthProvider>
+          <AutoPushSubscription />
           {children}
           <Toaster
             position="top-right"
