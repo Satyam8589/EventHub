@@ -18,157 +18,147 @@ function urlBase64ToUint8Array(base64String) {
 
 export default function AutoPushSubscription() {
   const { user, loading } = useAuth();
-  const hasAttemptedSubscription = useRef(false);
-  const previousUserId = useRef(null);
+  const subscriptionAttempted = useRef(new Set());
 
   useEffect(() => {
-    // Only proceed if user is authenticated and we haven't attempted subscription for this user
-    if (loading || !user || hasAttemptedSubscription.current === user.uid) {
+    // Wait for auth to complete
+    if (loading) {
       return;
     }
 
-    // Check if this is a new user session (different from previous)
-    if (previousUserId.current !== user.uid) {
-      previousUserId.current = user.uid;
-      hasAttemptedSubscription.current = user.uid;
+    // Only proceed if user is authenticated
+    if (!user || !user.uid) {
+      return;
+    }
 
-      // Auto-enable push notifications
-      const autoEnablePushNotifications = async () => {
+    // Check if we've already attempted for this user
+    if (subscriptionAttempted.current.has(user.uid)) {
+      return;
+    }
+
+    // Mark this user as attempted
+    subscriptionAttempted.current.add(user.uid);
+
+    console.log("🔔 AutoPush: Starting for user:", user.email);
+
+    // Delay to ensure page is fully loaded
+    const timer = setTimeout(async () => {
+      try {
+        // Check browser support
+        if (
+          typeof window === "undefined" ||
+          !("serviceWorker" in navigator) ||
+          !("PushManager" in window) ||
+          !("Notification" in window)
+        ) {
+          console.log(
+            "❌ AutoPush: Browser doesn't support push notifications"
+          );
+          return;
+        }
+
+        console.log("✅ AutoPush: Browser supports push notifications");
+
+        // Check current permission
+        if (Notification.permission === "denied") {
+          console.log("❌ AutoPush: Notifications denied");
+          return;
+        }
+
+        // Register service worker first
+        let registration;
         try {
-          console.log(
-            "🔔 Attempting to auto-enable push notifications for:",
-            user.email
-          );
-
-          // Check if push notifications are supported
-          if (
-            typeof window === "undefined" ||
-            !("serviceWorker" in navigator) ||
-            !("PushManager" in window)
-          ) {
-            console.log("❌ Push notifications not supported in this browser");
-            return;
+          const existing = await navigator.serviceWorker.getRegistration("/");
+          if (existing) {
+            registration = existing;
+            console.log("✅ AutoPush: Using existing service worker");
+          } else {
+            registration = await navigator.serviceWorker.register("/sw.js");
+            console.log("✅ AutoPush: Service worker registered");
           }
+        } catch (swError) {
+          console.error("❌ AutoPush: Service worker error:", swError);
+          return;
+        }
 
-          // Check if permission is already denied
-          if (Notification.permission === "denied") {
-            console.log("❌ Push notifications denied by user previously");
-            return;
-          }
+        // Wait for it to be ready
+        await navigator.serviceWorker.ready;
+        console.log("✅ AutoPush: Service worker ready");
 
-          // Check if already subscribed
-          const registration = await navigator.serviceWorker.ready;
-          const existingSubscription =
-            await registration.pushManager.getSubscription();
-
-          if (existingSubscription) {
-            console.log("✅ Already subscribed to push notifications");
-            // Still save to server in case it's not synced
-            try {
-              await fetch("/api/push/subscribe", {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                  subscription: existingSubscription,
-                  userId: user.uid,
-                }),
-              });
-              console.log("✅ Synced existing subscription with server");
-            } catch (syncError) {
-              console.error("Error syncing subscription:", syncError);
-            }
-            return;
-          }
-
-          // Request permission if not already granted
-          let permission = Notification.permission;
-          if (permission === "default") {
-            console.log("📋 Requesting notification permission...");
-            permission = await Notification.requestPermission();
-            console.log("📋 Permission result:", permission);
-          }
-
-          if (permission !== "granted") {
-            console.log("❌ Notification permission not granted:", permission);
-            return;
-          }
-
-          // Register service worker if not already registered
-          let serviceWorkerRegistration;
-          try {
-            serviceWorkerRegistration = await navigator.serviceWorker.register(
-              "/sw.js"
-            );
-            console.log("✅ Service Worker registered");
-          } catch (swError) {
-            console.error("❌ Service Worker registration failed:", swError);
-            return;
-          }
-
-          // Wait for service worker to be ready
-          await navigator.serviceWorker.ready;
-          console.log("✅ Service Worker ready");
-
-          // Get VAPID public key
-          const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-          if (!vapidPublicKey) {
-            console.error("❌ VAPID public key not configured");
-            return;
-          }
-
-          // Subscribe to push notifications
-          console.log("📡 Subscribing to push notifications...");
-          const pushSubscription =
-            await serviceWorkerRegistration.pushManager.subscribe({
-              userVisibleOnly: true,
-              applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
-            });
-
-          console.log(
-            "✅ Push subscription created:",
-            pushSubscription.endpoint
-          );
-
-          // Save subscription to server
-          const response = await fetch("/api/push/subscribe", {
+        // Check for existing subscription
+        const existing = await registration.pushManager.getSubscription();
+        if (existing) {
+          console.log("✅ AutoPush: Already subscribed, syncing...");
+          await fetch("/api/push/subscribe", {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              subscription: pushSubscription,
+              subscription: existing,
               userId: user.uid,
             }),
           });
-
-          if (response.ok) {
-            console.log(
-              "✅ Push notifications successfully enabled and saved for:",
-              user.email
-            );
-          } else {
-            const errorData = await response.json();
-            console.error(
-              "❌ Failed to save subscription to server:",
-              errorData
-            );
-          }
-        } catch (error) {
-          console.error("❌ Error auto-enabling push notifications:", error);
+          console.log("✅ AutoPush: Synced with server");
+          return;
         }
-      };
 
-      // Delay the subscription attempt to ensure everything is loaded
-      const timer = setTimeout(() => {
-        autoEnablePushNotifications();
-      }, 2000);
+        // Request permission
+        let permission = Notification.permission;
+        if (permission === "default") {
+          console.log("📋 AutoPush: Requesting permission...");
+          permission = await Notification.requestPermission();
+        }
 
-      return () => clearTimeout(timer);
-    }
+        if (permission !== "granted") {
+          console.log("❌ AutoPush: Permission not granted");
+          return;
+        }
+
+        console.log("✅ AutoPush: Permission granted");
+
+        // Get VAPID key
+        const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+        if (!vapidKey) {
+          console.error("❌ AutoPush: VAPID key missing");
+          return;
+        }
+
+        // Subscribe
+        console.log("📡 AutoPush: Creating subscription...");
+        const subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(vapidKey),
+        });
+
+        console.log("✅ AutoPush: Subscription created");
+
+        // Save to server
+        const response = await fetch("/api/push/subscribe", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            subscription,
+            userId: user.uid,
+          }),
+        });
+
+        if (response.ok) {
+          console.log(
+            "✅ AutoPush: SUCCESS! Notifications enabled for",
+            user.email
+          );
+        } else {
+          console.error(
+            "❌ AutoPush: Server save failed:",
+            await response.text()
+          );
+        }
+      } catch (error) {
+        console.error("❌ AutoPush: Error:", error);
+      }
+    }, 3000);
+
+    return () => clearTimeout(timer);
   }, [user, loading]);
 
-  // This component doesn't render anything
   return null;
 }
