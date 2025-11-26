@@ -115,12 +115,39 @@ export default function AutoPushSubscription() {
 
         console.log("✅ AutoPush: Permission granted");
 
-        // Get VAPID key
-        const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+        // Get VAPID key - try client-side first, then fallback to API
+        let vapidKey = process.env.NEXT_PUBLIC_VAPID_KEY;
+
         if (!vapidKey) {
-          console.error("❌ AutoPush: VAPID key missing");
+          console.log(
+            "⚠️ AutoPush: VAPID key not in client env, fetching from server..."
+          );
+          try {
+            const keyResponse = await fetch("/api/push/vapid-key");
+            if (keyResponse.ok) {
+              const keyData = await keyResponse.json();
+              vapidKey = keyData.publicKey;
+              console.log("✅ AutoPush: VAPID key fetched from server");
+            } else {
+              console.error(
+                "❌ AutoPush: Failed to fetch VAPID key from server"
+              );
+              return;
+            }
+          } catch (fetchError) {
+            console.error("❌ AutoPush: Error fetching VAPID key:", fetchError);
+            return;
+          }
+        }
+
+        if (!vapidKey) {
+          console.error(
+            "❌ AutoPush: VAPID key missing from both client and server"
+          );
           return;
         }
+
+        console.log("✅ AutoPush: VAPID key available");
 
         // Subscribe
         console.log("📡 AutoPush: Creating subscription...");
@@ -142,18 +169,37 @@ export default function AutoPushSubscription() {
         });
 
         if (response.ok) {
+          const data = await response.json();
           console.log(
             "✅ AutoPush: SUCCESS! Notifications enabled for",
             user.email
           );
+          console.log("✅ AutoPush: Server response:", data);
         } else {
+          const errorText = await response.text();
           console.error(
             "❌ AutoPush: Server save failed:",
-            await response.text()
+            response.status,
+            errorText
           );
         }
       } catch (error) {
         console.error("❌ AutoPush: Error:", error);
+        console.error("❌ AutoPush: Error name:", error.name);
+        console.error("❌ AutoPush: Error message:", error.message);
+        console.error("❌ AutoPush: Error stack:", error.stack);
+
+        // Log environment info for debugging
+        console.log("🔍 AutoPush Debug Info:");
+        console.log("- User:", user?.email);
+        console.log("- User ID:", user?.uid);
+        console.log("- Browser:", navigator.userAgent);
+        console.log("- Protocol:", window.location.protocol);
+        console.log("- Host:", window.location.host);
+        console.log("- SW Support:", "serviceWorker" in navigator);
+        console.log("- Push Support:", "PushManager" in window);
+        console.log("- Notification Support:", "Notification" in window);
+        console.log("- Permission:", Notification.permission);
       }
     }, 3000);
 

@@ -11,7 +11,11 @@ export const usePushNotifications = () => {
 
   useEffect(() => {
     // Check if push notifications are supported
-    if (typeof window !== "undefined" && "serviceWorker" in navigator && "PushManager" in window) {
+    if (
+      typeof window !== "undefined" &&
+      "serviceWorker" in navigator &&
+      "PushManager" in window
+    ) {
       setIsSupported(true);
       setPermission(Notification.permission);
     }
@@ -63,7 +67,7 @@ export const usePushNotifications = () => {
       await navigator.serviceWorker.ready;
 
       // Get VAPID public key from environment
-      const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+      const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_KEY;
       if (!vapidPublicKey) {
         throw new Error("VAPID public key not configured");
       }
@@ -107,18 +111,18 @@ export const usePushNotifications = () => {
 
       // Then unsubscribe from push manager
       await subscription.unsubscribe();
-      
+
       setSubscription(null);
       setIsSubscribed(false);
 
       console.log("Unsubscribed from push notifications");
     } catch (error) {
       console.error("Error unsubscribing from push notifications:", error);
-      
+
       // Even if there's an error, try to clean up local state
       setSubscription(null);
       setIsSubscribed(false);
-      
+
       throw error;
     }
   };
@@ -180,7 +184,8 @@ export const usePushNotifications = () => {
 
       try {
         const registration = await navigator.serviceWorker.ready;
-        const existingSubscription = await registration.pushManager.getSubscription();
+        const existingSubscription =
+          await registration.pushManager.getSubscription();
 
         if (existingSubscription) {
           setSubscription(existingSubscription);
