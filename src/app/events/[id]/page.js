@@ -499,7 +499,7 @@ export default function Page({ params }) {
       </nav>
 
       {/* Main Content */}
-      <div className="relative z-10 max-w-7xl mx-auto px-6 pt-28 pb-16">
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 pt-28 pb-16">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Left Column - Main Content */}
           <div className="lg:col-span-2 space-y-6">
@@ -572,7 +572,7 @@ export default function Page({ params }) {
             </div>
 
             {/* Content Card */}
-            <div className="backdrop-blur-xl bg-white/5 rounded-2xl p-8 border border-black/40 shadow-2xl">
+            <div className="backdrop-blur-xl bg-white/5 rounded-2xl p-4 sm:p-6 md:p-8 border border-black/40 shadow-2xl">
               {activeTab === "overview" && (
                 <div className="space-y-6">
                   <div>
@@ -966,9 +966,15 @@ export default function Page({ params }) {
           </div>
 
           {/* Right Column - Sidebar */}
-          <div className="lg:col-span-1 space-y-6">
+          <div
+            className={`lg:col-span-1 space-y-6 ${
+              activeTab === "gallery" || activeTab === "announcements"
+                ? "hidden lg:block"
+                : ""
+            }`}
+          >
             {/* Pricing Card */}
-            <div className="sticky top-28 backdrop-blur-xl bg-gradient-to-br from-white/10 to-white/5 rounded-3xl p-8 border border-white/20 shadow-2xl relative overflow-hidden">
+            <div className="sticky top-28 backdrop-blur-xl bg-gradient-to-br from-white/10 to-white/5 rounded-3xl p-4 sm:p-6 md:p-8 border border-white/20 shadow-2xl relative overflow-hidden">
               {/* Decorative background elements */}
               <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-full blur-2xl"></div>
               <div className="absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-tr from-purple-500/20 to-pink-500/20 rounded-full blur-xl"></div>
@@ -1025,22 +1031,22 @@ export default function Page({ params }) {
                 {/* CTA Button */}
                 {user ? (
                   hasEventStarted ? (
-                    <div className="w-full bg-orange-600 text-white py-4 px-6 rounded-2xl font-bold text-lg text-center">
+                    <div className="w-full bg-orange-600 text-white py-3 px-6 rounded-2xl font-bold text-base sm:text-lg text-center">
                       <div>Event Started</div>
-                      <div className="text-sm font-normal mt-1">
+                      <div className="text-xs sm:text-sm font-normal mt-1">
                         Registration Closed
                       </div>
                     </div>
                   ) : event.booking_closed ? (
-                    <div className="w-full bg-red-600 text-white py-4 px-6 rounded-2xl font-bold text-lg text-center">
+                    <div className="w-full bg-red-600 text-white py-3 px-6 rounded-2xl font-bold text-base sm:text-lg text-center">
                       <div>Booking Closed</div>
-                      <div className="text-sm font-normal mt-1">
+                      <div className="text-xs sm:text-sm font-normal mt-1">
                         By Organizer
                       </div>
                     </div>
                   ) : userReachedLimit ? (
                     <>
-                      <div className="w-full bg-green-600 text-white py-4 px-6 rounded-2xl font-bold text-lg text-center">
+                      <div className="w-full bg-green-600 text-white py-3 px-6 rounded-2xl font-bold text-base sm:text-lg text-center">
                         Booked
                       </div>
                       {hasBookingLimit && event.max_tickets_per_user === 1 && (
@@ -1052,7 +1058,7 @@ export default function Page({ params }) {
                   ) : (
                     <button
                       onClick={() => setShowBookingModal(true)}
-                      className="w-full bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 text-white py-4 px-6 rounded-2xl font-bold text-lg hover:from-blue-700 hover:via-purple-700 hover:to-pink-700 transition-all duration-300 shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 hover:shadow-2xl hover:scale-[1.02] transform relative overflow-hidden group"
+                      className="w-full bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 text-white py-3 px-6 rounded-2xl font-bold text-base sm:text-lg hover:from-blue-700 hover:via-purple-700 hover:to-pink-700 transition-all duration-300 shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 hover:shadow-2xl hover:scale-[1.02] transform relative overflow-hidden group"
                     >
                       <span className="relative z-10 flex items-center justify-center gap-2">
                         <span>🚀</span>
@@ -1064,7 +1070,7 @@ export default function Page({ params }) {
                 ) : (
                   <Link
                     href="/?login=true"
-                    className="w-full inline-block text-center bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 text-white py-4 px-6 rounded-2xl font-bold text-lg hover:from-blue-700 hover:via-purple-700 hover:to-pink-700 transition-all duration-300 shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 hover:shadow-2xl hover:scale-[1.02] transform relative overflow-hidden group"
+                    className="w-full inline-block text-center bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 text-white py-3 px-6 rounded-2xl font-bold text-base sm:text-lg hover:from-blue-700 hover:via-purple-700 hover:to-pink-700 transition-all duration-300 shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 hover:shadow-2xl hover:scale-[1.02] transform relative overflow-hidden group"
                   >
                     <span className="relative z-10 flex items-center justify-center gap-2">
                       <span>🔐</span>
@@ -1100,8 +1106,8 @@ export default function Page({ params }) {
                 Event Details
               </h3>
               <div className="space-y-5">
-                <div className="flex gap-4 p-4 rounded-xl bg-white/5 border border-white/10">
-                  <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-blue-600/20 flex items-center justify-center text-2xl">
+                <div className="flex gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl bg-white/5 border border-white/10">
+                  <div className="flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-blue-600/20 flex items-center justify-center text-xl sm:text-2xl">
                     📅
                   </div>
                   <div>
@@ -1148,8 +1154,8 @@ export default function Page({ params }) {
                   event.enddate ||
                   event.endTime ||
                   event.endtime) && (
-                  <div className="flex gap-4 p-4 rounded-xl bg-white/5 border border-white/10">
-                    <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-red-600/20 flex items-center justify-center text-2xl">
+                  <div className="flex gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl bg-white/5 border border-white/10">
+                    <div className="flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-red-600/20 flex items-center justify-center text-xl sm:text-2xl">
                       🏁
                     </div>
                     <div>
@@ -1206,8 +1212,8 @@ export default function Page({ params }) {
                   </div>
                 )}
 
-                <div className="flex gap-4 p-4 rounded-xl bg-white/5 border border-white/10">
-                  <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-purple-600/20 flex items-center justify-center text-2xl">
+                <div className="flex gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl bg-white/5 border border-white/10">
+                  <div className="flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-purple-600/20 flex items-center justify-center text-xl sm:text-2xl">
                     📍
                   </div>
                   <div>
@@ -1220,8 +1226,8 @@ export default function Page({ params }) {
                   </div>
                 </div>
 
-                <div className="flex gap-4 p-4 rounded-xl bg-white/5 border border-white/10">
-                  <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-blue-600/20 flex items-center justify-center text-2xl">
+                <div className="flex gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl bg-white/5 border border-white/10">
+                  <div className="flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-blue-600/20 flex items-center justify-center text-xl sm:text-2xl">
                     👥
                   </div>
                   <div className="flex-1">
@@ -1265,7 +1271,7 @@ export default function Page({ params }) {
             </div>
 
             {/* Organizer Card */}
-            <div className="backdrop-blur-xl bg-white/5 rounded-2xl p-6 border border-black/40 shadow-2xl">
+            <div className="backdrop-blur-xl bg-white/5 rounded-2xl p-4 sm:p-6 border border-black/40 shadow-2xl">
               <h3 className="text-xl font-bold text-white mb-6">Organizer</h3>
               <div className="flex items-center gap-4 mb-6 pb-6 border-b border-white/10">
                 <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center shadow-lg shadow-blue-500/25">
@@ -1344,6 +1350,43 @@ export default function Page({ params }) {
               </p>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Floating Purchase Button - Mobile Only */}
+      {!showBookingModal && (
+        <div className="fixed top-20 right-4 z-50 lg:hidden">
+          {user ? (
+            !hasEventStarted && !event.booking_closed && !userReachedLimit ? (
+              <button
+                onClick={() => setShowBookingModal(true)}
+                className="group relative bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600 text-white w-12 h-12 rounded-full font-bold shadow-2xl hover:shadow-blue-500/50 hover:scale-110 transition-all duration-300 flex items-center justify-center animate-pulse hover:animate-none"
+                aria-label="Buy Ticket"
+              >
+                <span className="text-xl relative z-10">🎫</span>
+
+                {/* Glow effect */}
+                <div className="absolute inset-0 rounded-full bg-gradient-to-br from-blue-400 via-purple-400 to-pink-400 opacity-0 group-hover:opacity-30 blur-xl transition-opacity duration-300"></div>
+
+                {/* Ripple effect */}
+                <span className="absolute inset-0 rounded-full border-2 border-white/30 animate-ping"></span>
+              </button>
+            ) : null
+          ) : (
+            <Link
+              href="/?login=true"
+              className="group relative bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600 text-white w-12 h-12 rounded-full font-bold shadow-2xl hover:shadow-blue-500/50 hover:scale-110 transition-all duration-300 flex items-center justify-center animate-pulse hover:animate-none"
+              aria-label="Sign In"
+            >
+              <span className="text-xl relative z-10">🔐</span>
+
+              {/* Glow effect */}
+              <div className="absolute inset-0 rounded-full bg-gradient-to-br from-blue-400 via-purple-400 to-pink-400 opacity-0 group-hover:opacity-30 blur-xl transition-opacity duration-300"></div>
+
+              {/* Ripple effect */}
+              <span className="absolute inset-0 rounded-full border-2 border-white/30 animate-ping"></span>
+            </Link>
+          )}
         </div>
       )}
 
