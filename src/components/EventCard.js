@@ -103,109 +103,135 @@ export default function EventCard({ event }) {
 
   // Check if event is sold out
   const isSoldOut = capacity > 0 && spotsLeft === 0;
-  
-  
+
   // ✅ Event status calculation with IST timezone handling
   // Helper to ensure proper UTC format
   const ensureUTCString = (dateStr) => {
     if (!dateStr) return null;
-    if (dateStr.includes('T') && dateStr.endsWith('Z')) return dateStr;
-    if (dateStr.includes('T')) return dateStr + 'Z';
-    return dateStr.replace(' ', 'T') + 'Z';
+    if (dateStr.includes("T") && dateStr.endsWith("Z")) return dateStr;
+    if (dateStr.includes("T")) return dateStr + "Z";
+    return dateStr.replace(" ", "T") + "Z";
   };
-  
+
   const startDate = event?.date ? new Date(ensureUTCString(event.date)) : null;
   const rawEnd = event?.endDate || event?.enddate || null;
-  const endDate = rawEnd ? new Date(ensureUTCString(rawEnd)) : startDate ? new Date(startDate.getTime() + 24 * 60 * 60 * 1000) : null;
-  
+  const endDate = rawEnd
+    ? new Date(ensureUTCString(rawEnd))
+    : startDate
+    ? new Date(startDate.getTime() + 24 * 60 * 60 * 1000)
+    : null;
+
   // Get current time in IST
-  const nowIST = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
-  
+  const nowIST = new Date(
+    new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
+  );
+
   // Create event start datetime in IST
   let eventStartIST = null;
   let hasEventStarted = false;
-  
+
   if (startDate && event.time) {
     try {
       // Get current time
       const now = new Date();
-      
+
       // Parse event date (stored as UTC in database)
       const eventDateUTC = new Date(event.date);
-      
+
       // Convert to IST date string and parse back
-      const eventDateISTString = eventDateUTC.toLocaleString("en-US", { 
+      const eventDateISTString = eventDateUTC.toLocaleString("en-US", {
         timeZone: "Asia/Kolkata",
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit'
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
       });
-      
+
       // Parse the IST date string (format: MM/DD/YYYY)
-      const [month, day, year] = eventDateISTString.split('/').map(num => parseInt(num));
-      
+      const [month, day, year] = eventDateISTString
+        .split("/")
+        .map((num) => parseInt(num));
+
       // Parse event time
-      let hours = 0, minutes = 0;
+      let hours = 0,
+        minutes = 0;
       const timeStr = event.time;
-      
-      if (timeStr.includes('AM') || timeStr.includes('PM')) {
+
+      if (timeStr.includes("AM") || timeStr.includes("PM")) {
         // 12-hour format
         const match = timeStr.match(/(\d+):(\d+)\s*(AM|PM)/i);
         if (match) {
           hours = parseInt(match[1]);
           minutes = parseInt(match[2]);
           const period = match[3].toUpperCase();
-          if (period === 'PM' && hours !== 12) hours += 12;
-          if (period === 'AM' && hours === 12) hours = 0;
+          if (period === "PM" && hours !== 12) hours += 12;
+          if (period === "AM" && hours === 12) hours = 0;
         }
       } else {
         // 24-hour format
-        const parts = timeStr.split(':');
+        const parts = timeStr.split(":");
         if (parts.length >= 2) {
           hours = parseInt(parts[0]);
           minutes = parseInt(parts[1]);
         }
       }
-      
+
       // Create event start datetime in IST (month is 0-indexed)
       eventStartIST = new Date(year, month - 1, day, hours, minutes, 0);
-      
+
       // Get current time in IST
-      const nowISTString = now.toLocaleString("en-US", { 
+      const nowISTString = now.toLocaleString("en-US", {
         timeZone: "Asia/Kolkata",
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: false
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false,
       });
-      
+
       // Parse current IST time
-      const [datePartNow, timePartNow] = nowISTString.split(', ');
-      const [monthNow, dayNow, yearNow] = datePartNow.split('/').map(num => parseInt(num));
-      const [hoursNow, minutesNow, secondsNow] = timePartNow.split(':').map(num => parseInt(num));
-      const nowISTDate = new Date(yearNow, monthNow - 1, dayNow, hoursNow, minutesNow, secondsNow);
-      
+      const [datePartNow, timePartNow] = nowISTString.split(", ");
+      const [monthNow, dayNow, yearNow] = datePartNow
+        .split("/")
+        .map((num) => parseInt(num));
+      const [hoursNow, minutesNow, secondsNow] = timePartNow
+        .split(":")
+        .map((num) => parseInt(num));
+      const nowISTDate = new Date(
+        yearNow,
+        monthNow - 1,
+        dayNow,
+        hoursNow,
+        minutesNow,
+        secondsNow
+      );
+
       // Check if event has started
       hasEventStarted = nowISTDate >= eventStartIST;
     } catch (error) {
-      console.error('EventCard: Error calculating event start time:', error);
+      console.error("EventCard: Error calculating event start time:", error);
       hasEventStarted = false;
     }
   }
-  
+
   // Determine event status
   const isUpcoming = startDate && nowIST < startDate;
-  const isOngoing = startDate && endDate && nowIST >= startDate && nowIST <= endDate;
+  const isOngoing =
+    startDate && endDate && nowIST >= startDate && nowIST <= endDate;
   const isPast = endDate && nowIST > endDate;
-  
+
   // Status badge configuration
   const statusBadge = isOngoing
-    ? { text: "ONGOING", classes: "from-green-500 to-emerald-600 border-green-300/50" }
+    ? {
+        text: "ONGOING",
+        classes: "from-green-500 to-emerald-600 border-green-300/50",
+      }
     : isUpcoming
-    ? { text: "UPCOMING", classes: "from-blue-500 to-cyan-600 border-blue-300/50" }
+    ? {
+        text: "UPCOMING",
+        classes: "from-blue-500 to-cyan-600 border-blue-300/50",
+      }
     : isPast
     ? { text: "PAST", classes: "from-gray-500 to-gray-600 border-gray-300/50" }
     : null;
@@ -298,10 +324,7 @@ export default function EventCard({ event }) {
   const imageUrl = getImageUrl();
 
   return (
-    <Link 
-      href={`/events/${event.id}`}
-      className="block"
-    >
+    <Link href={`/events/${event.id}`} className="block">
       <div
         className={`bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 group relative cursor-pointer ${
           event.featured
@@ -311,7 +334,9 @@ export default function EventCard({ event }) {
       >
         {/* Featured Badge */}
         {statusBadge && (
-          <div className={`absolute ${statusTopClass} right-3 z-30 bg-gradient-to-r ${statusBadge.classes} text-white px-3 py-1.5 rounded-full text-xs font-bold shadow-lg border`}>
+          <div
+            className={`absolute ${statusTopClass} right-3 z-30 bg-gradient-to-r ${statusBadge.classes} text-white px-3 py-1.5 rounded-full text-xs font-bold shadow-lg border`}
+          >
             <span className="tracking-wide">{statusBadge.text}</span>
           </div>
         )}
@@ -372,8 +397,6 @@ export default function EventCard({ event }) {
               {event.title}
             </h3>
           </div>
-
-
         </div>
 
         {/* Event Details */}
@@ -402,11 +425,24 @@ export default function EventCard({ event }) {
                 {event.date ? (
                   <div className="flex items-center gap-1 text-gray-700 font-medium text-xs">
                     <span>
-                      {new Date(event.date).toLocaleDateString("en-IN", {
-                        month: "short",
-                        day: "numeric",
-                        timeZone: "Asia/Kolkata",
-                      })}
+                      {(() => {
+                        // Ensure proper UTC parsing for database dates
+                        const dateStr =
+                          event.date.includes("T") && event.date.includes("Z")
+                            ? event.date
+                            : event.date.includes("T")
+                            ? event.date + "Z"
+                            : event.date.replace(" ", "T") + "Z";
+
+                        const eventDate = new Date(dateStr);
+
+                        // Convert to IST and display
+                        return eventDate.toLocaleDateString("en-IN", {
+                          month: "short",
+                          day: "numeric",
+                          timeZone: "Asia/Kolkata",
+                        });
+                      })()}
                     </span>
                     {event.time && (
                       <span className="text-gray-500">
@@ -433,7 +469,6 @@ export default function EventCard({ event }) {
                 ) : (
                   <span className="text-gray-500 text-xs">Date TBD</span>
                 )}
-
               </div>
             </div>
 

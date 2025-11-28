@@ -1115,13 +1115,26 @@ export default function Page({ params }) {
                       Date & Time
                     </div>
                     <div className="text-sm text-gray-300">
-                      {new Date(event.date).toLocaleDateString("en-IN", {
-                        weekday: "long",
-                        year: "numeric",
-                        month: "long",
-                        day: "numeric",
-                        timeZone: "Asia/Kolkata",
-                      })}
+                      {(() => {
+                        // Ensure proper UTC parsing for database dates
+                        const dateStr =
+                          event.date.includes("T") && event.date.includes("Z")
+                            ? event.date
+                            : event.date.includes("T")
+                            ? event.date + "Z"
+                            : event.date.replace(" ", "T") + "Z";
+
+                        const eventDate = new Date(dateStr);
+
+                        // Convert to IST and display
+                        return eventDate.toLocaleDateString("en-IN", {
+                          weekday: "long",
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                          timeZone: "Asia/Kolkata",
+                        });
+                      })()}
                     </div>
                     <div className="text-sm text-gray-400">
                       {(() => {
@@ -1164,26 +1177,34 @@ export default function Page({ params }) {
                       </div>
                       <div className="text-sm text-gray-300">
                         {event.endDate || event.enddate
-                          ? new Date(
-                              event.endDate || event.enddate
-                            ).toLocaleDateString("en-IN", {
-                              weekday: "long",
-                              year: "numeric",
-                              month: "long",
-                              day: "numeric",
-                              timeZone: "Asia/Kolkata",
-                            })
+                          ? (() => {
+                              // Ensure proper UTC parsing for database dates
+                              const endDateValue =
+                                event.endDate || event.enddate;
+                              const dateStr =
+                                endDateValue.includes("T") &&
+                                endDateValue.includes("Z")
+                                  ? endDateValue
+                                  : endDateValue.includes("T")
+                                  ? endDateValue + "Z"
+                                  : endDateValue.replace(" ", "T") + "Z";
+
+                              const endDate = new Date(dateStr);
+
+                              // Convert to IST and display
+                              return endDate.toLocaleDateString("en-IN", {
+                                weekday: "long",
+                                year: "numeric",
+                                month: "long",
+                                day: "numeric",
+                                timeZone: "Asia/Kolkata",
+                              });
+                            })()
                           : "End date not specified"}
                       </div>
                       <div className="text-sm text-gray-400">
                         {(() => {
                           const endTime = event.endTime || event.endtime;
-                          console.log("🔍 DEBUG Ending Time:", {
-                            endTime,
-                            "event.endTime": event.endTime,
-                            "event.endtime": event.endtime,
-                            type: typeof endTime,
-                          });
 
                           if (endTime) {
                             // If time is already formatted with AM/PM, use it directly
