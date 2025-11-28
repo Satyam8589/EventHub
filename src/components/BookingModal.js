@@ -140,6 +140,19 @@ export default function BookingModal({
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
+
+    // Phone number validation: only allow digits and limit to 10
+    if (name === "phoneNumber") {
+      const digitsOnly = value.replace(/\D/g, "");
+      if (digitsOnly.length <= 10) {
+        setFormData((prev) => ({
+          ...prev,
+          [name]: digitsOnly,
+        }));
+      }
+      return;
+    }
+
     setFormData((prev) => ({
       ...prev,
       [name]: value,
@@ -237,6 +250,12 @@ export default function BookingModal({
 
     if (!formData.fullName || !formData.email || !formData.phoneNumber) {
       setErrorMessage("Please fill in all required fields.");
+      return;
+    }
+
+    // Validate phone number is exactly 10 digits
+    if (formData.phoneNumber.length !== 10) {
+      setErrorMessage("Phone number must be exactly 10 digits.");
       return;
     }
 
@@ -583,6 +602,9 @@ export default function BookingModal({
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Phone Number
+                    <span className="text-xs text-gray-500 ml-1">
+                      (10 digits)
+                    </span>
                   </label>
                   <input
                     type="tel"
@@ -590,9 +612,35 @@ export default function BookingModal({
                     value={formData.phoneNumber}
                     onChange={handleInputChange}
                     required
+                    maxLength={10}
+                    pattern="[0-9]{10}"
                     className="w-full px-3 py-2.5 rounded-lg bg-gray-100/80 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-gray-800 placeholder-gray-500 text-sm"
-                    placeholder="+1 (555) 123-4567"
+                    placeholder="1234567890"
                   />
+                  {formData.phoneNumber && formData.phoneNumber.length < 10 && (
+                    <p className="text-xs text-amber-600 mt-1">
+                      {10 - formData.phoneNumber.length} more digit
+                      {10 - formData.phoneNumber.length !== 1 ? "s" : ""}{" "}
+                      required
+                    </p>
+                  )}
+                  {formData.phoneNumber &&
+                    formData.phoneNumber.length === 10 && (
+                      <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
+                        <svg
+                          className="w-3 h-3"
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                        Valid phone number
+                      </p>
+                    )}
                 </div>
 
                 {/* Number of Tickets */}
@@ -713,21 +761,6 @@ export default function BookingModal({
                       ₹{calculateTotal().toLocaleString("en-IN")}
                     </span>
                   </div>
-                </div>
-
-                {/* Special Requests */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Special Requests (Optional)
-                  </label>
-                  <textarea
-                    name="specialRequests"
-                    value={formData.specialRequests}
-                    onChange={handleInputChange}
-                    rows="2"
-                    className="w-full px-3 py-2.5 rounded-lg bg-gray-100/80 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-gray-800 placeholder-gray-500 resize-none text-sm"
-                    placeholder="Any special requirements or requests..."
-                  />
                 </div>
 
                 {/* Submit Button */}
