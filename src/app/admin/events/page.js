@@ -57,10 +57,45 @@ const EventCard = ({
         <div className="flex items-center gap-2 text-white/80">
           <span className="text-blue-400 text-sm">📅</span>
           <span className="text-xs">
-            {new Date(event.date).toLocaleDateString("en-IN", {
-              timeZone: "Asia/Kolkata",
-            })}{" "}
-            at {event.time}
+            {(() => {
+              // Ensure proper UTC parsing for database dates
+              const dateStr =
+                event.date.includes("T") && event.date.includes("Z")
+                  ? event.date
+                  : event.date.includes("T")
+                  ? event.date + "Z"
+                  : event.date.replace(" ", "T") + "Z";
+
+              const eventDate = new Date(dateStr);
+
+              // Convert to IST and display
+              return eventDate.toLocaleDateString("en-IN", {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+                timeZone: "Asia/Kolkata",
+              });
+            })()}{" "}
+            at{" "}
+            {(() => {
+              const time = event.time;
+              if (!time) return "";
+              // If time is already formatted with AM/PM, use it directly
+              if (time.includes("AM") || time.includes("PM")) {
+                return time;
+              }
+              // If time is in 24-hour format (HH:MM or HH:MM:SS), convert to 12-hour with AM/PM
+              const timeParts = time.split(":");
+              if (timeParts.length >= 2) {
+                let hours = parseInt(timeParts[0]);
+                const minutes = timeParts[1];
+                const ampm = hours >= 12 ? "PM" : "AM";
+                hours = hours % 12;
+                hours = hours ? hours : 12; // 0 should be 12
+                return `${hours}:${minutes} ${ampm}`;
+              }
+              return time;
+            })()}
           </span>
         </div>
         <div className="flex items-center gap-2 text-white/80">

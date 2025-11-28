@@ -227,7 +227,25 @@ export default function TicketScanner() {
                 >
                   <h3 className="font-medium">{event.title}</h3>
                   <p className="text-sm opacity-80">
-                    {new Date(event.date).toLocaleDateString()} at {event.time}
+                    {(() => {
+                      const dateStr = event.date;
+                      let eventDate;
+                      if (dateStr.includes("T") && dateStr.includes("Z")) {
+                        eventDate = new Date(dateStr);
+                      } else if (dateStr.includes("T")) {
+                        eventDate = new Date(dateStr + "Z");
+                      } else {
+                        eventDate = new Date(dateStr.replace(" ", "T") + "Z");
+                      }
+                      
+                      if (!eventDate || isNaN(eventDate.getTime())) {
+                        return "Date TBD";
+                      }
+                      
+                      return eventDate.toLocaleDateString("en-IN", {
+                        timeZone: "Asia/Kolkata",
+                      });
+                    })()} at {event.time}
                   </p>
                 </button>
               ))}
@@ -256,9 +274,28 @@ export default function TicketScanner() {
                       <div>
                         <span className="text-gray-400">Date:</span>
                         <span className="text-white ml-2">
-                          {new Date(
-                            events.find((e) => e.id === selectedEvent).date
-                          ).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}
+                          {(() => {
+                            const event = events.find((e) => e.id === selectedEvent);
+                            if (!event) return "Date TBD";
+                            
+                            const dateStr = event.date;
+                            let eventDate;
+                            if (dateStr.includes("T") && dateStr.includes("Z")) {
+                              eventDate = new Date(dateStr);
+                            } else if (dateStr.includes("T")) {
+                              eventDate = new Date(dateStr + "Z");
+                            } else {
+                              eventDate = new Date(dateStr.replace(" ", "T") + "Z");
+                            }
+                            
+                            if (!eventDate || isNaN(eventDate.getTime())) {
+                              return "Date TBD";
+                            }
+                            
+                            return eventDate.toLocaleDateString("en-IN", {
+                              timeZone: "Asia/Kolkata",
+                            });
+                          })()}
                         </span>
                       </div>
                       <div>

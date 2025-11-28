@@ -8,58 +8,53 @@ import EventHubLogo from "@/components/EventHubLogo";
 
 // ===== UTILITY FUNCTIONS =====
 
-// Parse date/time as IST and convert to UTC for comparison
-const parseAsIST = (dateStr, timeStr = null) => {
-  let dateTimeStr;
+// Parse date from database (stored as UTC)
+const parseEventDate = (dateStr) => {
+  if (!dateStr) return null;
   
-  if (timeStr) {
-    const datePart = dateStr.split('T')[0];
-    dateTimeStr = `${datePart}T${timeStr}`;
+  // Ensure proper UTC parsing
+  if (dateStr.includes("T") && dateStr.includes("Z")) {
+    return new Date(dateStr);
   } else if (dateStr.includes("T")) {
-    dateTimeStr = dateStr;
+    return new Date(dateStr + "Z");
   } else {
-    dateTimeStr = dateStr;
+    return new Date(dateStr.replace(" ", "T") + "Z");
   }
-  
-  if (!dateTimeStr.includes('Z') && !dateTimeStr.includes('+') && !dateTimeStr.includes('-', 10)) {
-    dateTimeStr += '+05:30';
-  }
-  
-  return new Date(dateTimeStr);
 };
 
 // Get event end date/time
 const getEventEndDateTime = (event) => {
-  const eventStartDate = parseAsIST(event.date, event.time);
+  // Parse event start date from database (UTC)
+  const eventStartDate = parseEventDate(event.date);
   
+  if (!eventStartDate || isNaN(eventStartDate.getTime())) {
+    return null;
+  }
+  
+  // If event has an end date, use it
   if (event.endDate || event.enddate) {
     const endDateValue = event.endDate || event.enddate;
-    const endTimeValue = event.endtime;
-    const eventEndDateTime = parseAsIST(endDateValue, endTimeValue);
+    const eventEndDateTime = parseEventDate(endDateValue);
     
-    if (!isNaN(eventEndDateTime.getTime())) {
+    if (eventEndDateTime && !isNaN(eventEndDateTime.getTime())) {
       return eventEndDateTime;
     }
   }
   
-  // Fallback: use start date with end of day
-  const fallbackEnd = new Date(eventStartDate);
-  if (event.time) {
-    return eventStartDate;
-  }
-  fallbackEnd.setHours(23, 59, 59, 999);
-  return fallbackEnd;
+  // Fallback: use start date as end date (single-day event)
+  return eventStartDate;
 };
 
 // Get event status
 const getEventStatus = (event) => {
   if (!event || !event.date) return 'unknown';
   
-  const now = new Date();
-  const eventStartDate = parseAsIST(event.date, event.time);
+  const now = new Date(); // Current time in UTC
+  const eventStartDate = parseEventDate(event.date);
   const eventEndDateTime = getEventEndDateTime(event);
   
-  if (isNaN(eventStartDate.getTime()) || isNaN(eventEndDateTime.getTime())) {
+  if (!eventStartDate || isNaN(eventStartDate.getTime()) || 
+      !eventEndDateTime || isNaN(eventEndDateTime.getTime())) {
     return 'unknown';
   }
   
@@ -68,16 +63,34 @@ const getEventStatus = (event) => {
   return 'past';
 };
 
-// Format event date for display
+// Format event date for display in IST
 const formatEventDate = (dateString, timeString) => {
-  const date = new Date(dateString);
+  const date = parseEventDate(dateString);
+  if (!date || isNaN(date.getTime())) {
+    return "Date TBD";
+  }
+  
   const options = {
     year: "numeric",
     month: "long",
     day: "numeric",
     timeZone: "Asia/Kolkata",
   };
-  return `${date.toLocaleDateString("en-IN", options)} at ${timeString}`;
+  
+  const formattedDate = date.toLocaleDateString("en-IN", options);
+  
+  if (timeString) {
+    return `${formattedDate} at ${timeString}`;
+  }
+  
+  // If no separate time string, extract time from the date
+  const timeOptions = {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Asia/Kolkata",
+  };
+  const formattedTime = date.toLocaleTimeString("en-IN", timeOptions);
+  return `${formattedDate} at ${formattedTime}`;
 };
 
 // ===== COMPONENTS =====
@@ -116,10 +129,14 @@ const StatusBadge = ({ event }) => {
 
 // Event Date Display Component
 const EventDateDisplay = ({ event }) => {
-  const startDate = new Date(event.date);
-  const endDate = event.endDate ? new Date(event.endDate) : null;
+  const startDate = parseEventDate(event.date);
+  const endDate = event.endDate ? parseEventDate(event.endDate) : null;
 
-  if (endDate && startDate.toDateString() !== endDate.toDateString()) {
+  if (!startDate || isNaN(startDate.getTime())) {
+    return "Date TBD";
+  }
+
+  if (endDate && !isNaN(endDate.getTime()) && startDate.toDateString() !== endDate.toDateString()) {
     // Multi-day event
     return (
       <>
@@ -142,53 +159,57 @@ const EventDateDisplay = ({ event }) => {
 };
 
 // Completed Stamp Component
-const CompletedStamp = ({ event }) => (
-  <div className="relative flex items-center justify-center py-6 px-4">
-    <div className="relative">
-      {/* Outer Ring - Shadow Effect */}
-      <div className="absolute inset-0 w-24 h-24 rounded-full bg-green-800/30 border-4 border-green-600/40 transform rotate-12"></div>
+const CompletedStamp = ({ event }) => {
+  const endDate = parseEventDate(event.endDate || event.enddate || event.date);
+  
+  return (
+    <div className="relative flex items-center justify-center py-6 px-4">
+      <div className="relative">
+        {/* Outer Ring - Shadow Effect */}
+        <div className="absolute inset-0 w-24 h-24 rounded-full bg-green-800/30 border-4 border-green-600/40 transform rotate-12"></div>
 
-      {/* Main Stamp Circle */}
-      <div className="relative w-24 h-24 rounded-full bg-gradient-to-br from-green-600/40 to-green-800/60 border-4 border-green-500/60 flex flex-col items-center justify-center transform -rotate-6 transition-transform hover:rotate-0 duration-300">
-        {/* Inner Circle */}
-        <div className="w-16 h-16 rounded-full border-2 border-green-400/50 border-dashed flex flex-col items-center justify-center">
-          {/* Checkmark Icon */}
-          <div className="w-8 h-8 rounded-full bg-green-500/80 flex items-center justify-center mb-1">
-            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-            </svg>
+        {/* Main Stamp Circle */}
+        <div className="relative w-24 h-24 rounded-full bg-gradient-to-br from-green-600/40 to-green-800/60 border-4 border-green-500/60 flex flex-col items-center justify-center transform -rotate-6 transition-transform hover:rotate-0 duration-300">
+          {/* Inner Circle */}
+          <div className="w-16 h-16 rounded-full border-2 border-green-400/50 border-dashed flex flex-col items-center justify-center">
+            {/* Checkmark Icon */}
+            <div className="w-8 h-8 rounded-full bg-green-500/80 flex items-center justify-center mb-1">
+              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+
+            {/* Text */}
+            <div className="text-center">
+              <div className="text-green-200 text-[8px] font-bold uppercase tracking-wider leading-none">
+                EVENT
+              </div>
+              <div className="text-green-100 text-[8px] font-bold uppercase tracking-wider leading-none">
+                COMPLETED
+              </div>
+            </div>
           </div>
 
-          {/* Text */}
-          <div className="text-center">
-            <div className="text-green-200 text-[8px] font-bold uppercase tracking-wider leading-none">
-              EVENT
-            </div>
-            <div className="text-green-100 text-[8px] font-bold uppercase tracking-wider leading-none">
-              COMPLETED
-            </div>
-          </div>
+          {/* Decorative elements */}
+          <div className="absolute top-1 left-3 w-1 h-1 rounded-full bg-green-300/60"></div>
+          <div className="absolute top-3 right-1 w-1 h-1 rounded-full bg-green-300/60"></div>
+          <div className="absolute bottom-1 right-3 w-1 h-1 rounded-full bg-green-300/60"></div>
+          <div className="absolute bottom-3 left-1 w-1 h-1 rounded-full bg-green-300/60"></div>
         </div>
 
-        {/* Decorative elements */}
-        <div className="absolute top-1 left-3 w-1 h-1 rounded-full bg-green-300/60"></div>
-        <div className="absolute top-3 right-1 w-1 h-1 rounded-full bg-green-300/60"></div>
-        <div className="absolute bottom-1 right-3 w-1 h-1 rounded-full bg-green-300/60"></div>
-        <div className="absolute bottom-3 left-1 w-1 h-1 rounded-full bg-green-300/60"></div>
-      </div>
-
-      {/* Date stamp effect */}
-      <div className="absolute -bottom-2 -right-2 bg-green-700/80 text-green-100 text-[6px] font-mono px-1 py-0.5 rounded transform rotate-12">
-        {new Date(event.endDate || event.enddate || event.date).toLocaleDateString("en-IN", {
-          month: "2-digit",
-          day: "2-digit",
-          year: "2-digit",
-          timeZone: "Asia/Kolkata",
-        })}
+        {/* Date stamp effect */}
+        <div className="absolute -bottom-2 -right-2 bg-green-700/80 text-green-100 text-[6px] font-mono px-1 py-0.5 rounded transform rotate-12">
+          {endDate && !isNaN(endDate.getTime()) ? endDate.toLocaleDateString("en-IN", {
+            month: "2-digit",
+            day: "2-digit",
+            year: "2-digit",
+            timeZone: "Asia/Kolkata",
+          }) : ""}
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 // Event Card Component
 const EventCard = ({ booking, activeTab, onViewTicket }) => (
@@ -401,13 +422,13 @@ const LoginRequired = ({ redirectCountdown, particles, mousePosition, user, sign
               <EventHubLogo size={64} showText={false} />
             </div>
 
-            <div className="w-20 h-20 mx-auto mb-6 bg-linear-to-br from-blue-600/20 to-purple-600/20 rounded-full flex items-center justify-center border border-blue-500/30">
+            <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-blue-600/20 to-purple-600/20 rounded-full flex items-center justify-center border border-blue-500/30">
               <svg className="w-10 h-10 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
               </svg>
             </div>
 
-            <h1 className="text-3xl font-bold bg-linear-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent mb-4">
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent mb-4">
               Authentication Required
             </h1>
             <p className="text-gray-300 mb-2 leading-relaxed">
@@ -424,7 +445,7 @@ const LoginRequired = ({ redirectCountdown, particles, mousePosition, user, sign
             <div className="space-y-3">
               <Link
                 href="/"
-                className="inline-flex items-center gap-2 w-full justify-center bg-linear-to-r from-blue-600 to-purple-600 text-white px-8 py-3 rounded-xl font-medium hover:from-blue-700 hover:to-purple-700 transition-all transform hover:scale-105 shadow-lg shadow-blue-500/25"
+                className="inline-flex items-center gap-2 w-full justify-center bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-3 rounded-xl font-medium hover:from-blue-700 hover:to-purple-700 transition-all transform hover:scale-105 shadow-lg shadow-blue-500/25"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />

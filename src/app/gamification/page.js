@@ -159,8 +159,20 @@ export default function GamificationPage() {
   };
 
   const isEventInProgress = (event) => {
-    const now = new Date();
-    const endDate = event.endDate ? new Date(event.endDate) : null;
+    const now = new Date(); // Current time in UTC
+    
+    // Parse end date from database (stored as UTC)
+    let endDate = null;
+    if (event.endDate) {
+      const endDateStr = event.endDate;
+      if (endDateStr.includes("T") && endDateStr.includes("Z")) {
+        endDate = new Date(endDateStr);
+      } else if (endDateStr.includes("T")) {
+        endDate = new Date(endDateStr + "Z");
+      } else {
+        endDate = new Date(endDateStr.replace(" ", "T") + "Z");
+      }
+    }
 
     console.log("Event:", event.title, {
       now: now.toISOString(),
@@ -171,17 +183,17 @@ export default function GamificationPage() {
 
     // Users can review from the moment event is registered until it ends
     // If no end date, event is always reviewable
-    if (!endDate) {
+    if (!endDate || isNaN(endDate.getTime())) {
       return true;
     }
 
-    // Event is reviewable until the end date
+    // Event is reviewable until the end date (compare in UTC)
     return now <= endDate;
   };
 
   // Helper function to check if an event is expired
   const isEventExpired = (event) => {
-    const now = new Date();
+    const now = new Date(); // Current time in UTC
 
     // Check if event is cancelled
     if (event.status === "CANCELLED") {
@@ -191,24 +203,39 @@ export default function GamificationPage() {
     // If event has endDate, use it to determine if event is expired
     const endDateValue = event.endDate || event.enddate;
     if (endDateValue) {
-      const endDate = new Date(endDateValue);
-      return endDate <= now;
+      // Parse end date from database (stored as UTC)
+      let endDate;
+      if (endDateValue.includes("T") && endDateValue.includes("Z")) {
+        endDate = new Date(endDateValue);
+      } else if (endDateValue.includes("T")) {
+        endDate = new Date(endDateValue + "Z");
+      } else {
+        endDate = new Date(endDateValue.replace(" ", "T") + "Z");
+      }
+      
+      if (!isNaN(endDate.getTime())) {
+        return endDate <= now;
+      }
     }
 
-    // If no endDate, consider it a single-day event
-    const eventDate = new Date(event.date);
-    const eventDateOnly = new Date(
-      eventDate.getFullYear(),
-      eventDate.getMonth(),
-      eventDate.getDate()
-    );
-    const nowDateOnly = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate()
-    );
+    // If no endDate, use the event start date
+    // Parse event date from database (stored as UTC)
+    let eventDate;
+    const dateStr = event.date;
+    if (dateStr.includes("T") && dateStr.includes("Z")) {
+      eventDate = new Date(dateStr);
+    } else if (dateStr.includes("T")) {
+      eventDate = new Date(dateStr + "Z");
+    } else {
+      eventDate = new Date(dateStr.replace(" ", "T") + "Z");
+    }
 
-    return eventDateOnly < nowDateOnly;
+    if (!eventDate || isNaN(eventDate.getTime())) {
+      return false;
+    }
+
+    // Event is expired if the start date has passed (compare in UTC)
+    return eventDate <= now;
   };
 
   const openReviewModal = (event) => {
@@ -578,24 +605,54 @@ export default function GamificationPage() {
                         <div className="flex items-center gap-1.5 bg-white/10 px-2 py-1 rounded-lg">
                           <span>📅</span>
                           <span>
-                            {new Date(event.date).toLocaleDateString("en-IN", {
-                              month: "short",
-                              day: "numeric",
-                              timeZone: "Asia/Kolkata",
-                            })}
+                            {(() => {
+                              const dateStr = event.date;
+                              let eventDate;
+                              if (dateStr.includes("T") && dateStr.includes("Z")) {
+                                eventDate = new Date(dateStr);
+                              } else if (dateStr.includes("T")) {
+                                eventDate = new Date(dateStr + "Z");
+                              } else {
+                                eventDate = new Date(dateStr.replace(" ", "T") + "Z");
+                              }
+                              
+                              if (!eventDate || isNaN(eventDate.getTime())) {
+                                return "Date TBD";
+                              }
+                              
+                              return eventDate.toLocaleDateString("en-IN", {
+                                month: "short",
+                                day: "numeric",
+                                timeZone: "Asia/Kolkata",
+                              });
+                            })()}
                           </span>
                         </div>
                         {event.endDate && event.endDate !== event.date && (
                           <div className="flex items-center gap-1.5 bg-white/10 px-2 py-1 rounded-lg">
                             <span>→</span>
                             <span>
-                              {new Date(event.endDate).toLocaleDateString(
-                                "en-US",
-                                {
+                              {(() => {
+                                const endDateStr = event.endDate;
+                                let endDate;
+                                if (endDateStr.includes("T") && endDateStr.includes("Z")) {
+                                  endDate = new Date(endDateStr);
+                                } else if (endDateStr.includes("T")) {
+                                  endDate = new Date(endDateStr + "Z");
+                                } else {
+                                  endDate = new Date(endDateStr.replace(" ", "T") + "Z");
+                                }
+                                
+                                if (!endDate || isNaN(endDate.getTime())) {
+                                  return "Date TBD";
+                                }
+                                
+                                return endDate.toLocaleDateString("en-IN", {
                                   month: "short",
                                   day: "numeric",
-                                }
-                              )}
+                                  timeZone: "Asia/Kolkata",
+                                });
+                              })()}
                             </span>
                           </div>
                         )}

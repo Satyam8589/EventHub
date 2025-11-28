@@ -79,18 +79,33 @@ export default function EditEventPage() {
       setEvent(data.event);
 
       // Populate form data
-      const eventDate = new Date(data.event.date);
+      // Convert UTC date to IST for display in date inputs
+      const formatDateForInput = (dateStr) => {
+        if (!dateStr) return "";
+        let dateToFormat = dateStr;
+        // Ensure UTC parsing by adding 'Z' if missing
+        if (!dateToFormat.includes("T")) {
+          dateToFormat = dateToFormat + "T00:00:00Z";
+        } else if (!dateToFormat.endsWith("Z")) {
+          dateToFormat = dateToFormat + "Z";
+        }
+        const date = new Date(dateToFormat);
+        // Get date in IST timezone and format as YYYY-MM-DD for input
+        return date.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+      };
+
+      const eventDate = formatDateForInput(data.event.date);
       // Handle both endDate and enddate (PostgreSQL lowercase)
-      const eventEndDate =
+      const eventEndDate = formatDateForInput(
         data.event.endDate || data.event.enddate
-          ? new Date(data.event.endDate || data.event.enddate)
-          : null;
+      );
+
       setFormData({
         title: data.event.title || "",
         description: data.event.description || "",
         category: data.event.category || "CONFERENCE",
-        date: eventDate.toISOString().split("T")[0],
-        endDate: eventEndDate ? eventEndDate.toISOString().split("T")[0] : "",
+        date: eventDate,
+        endDate: eventEndDate,
         time: data.event.time || "",
         endTime: data.event.endTime || data.event.endtime || "",
         location: data.event.location || "",
@@ -103,9 +118,14 @@ export default function EditEventPage() {
         organizerEmail: data.event.organizerEmail || "",
         organizerPhone: data.event.organizerPhone || "",
         experienceHighlightsRaw: (() => {
-          const highlights = data.event.experienceHighlights || data.event.experience_highlights || data.event.experiencehighlights;
+          const highlights =
+            data.event.experienceHighlights ||
+            data.event.experience_highlights ||
+            data.event.experiencehighlights;
           return Array.isArray(highlights)
-            ? highlights.map((h) => `${h.title}${h.desc ? " - " + h.desc : ""}`).join("\n")
+            ? highlights
+                .map((h) => `${h.title}${h.desc ? " - " + h.desc : ""}`)
+                .join("\n")
             : "";
         })(),
       });
@@ -408,12 +428,17 @@ export default function EditEventPage() {
                 />
                 <p className="text-white/60 text-sm flex items-center gap-1">
                   <span>💡</span>
-                  <span>Tip: Any URLs (https://...) will automatically become clickable links</span>
+                  <span>
+                    Tip: Any URLs (https://...) will automatically become
+                    clickable links
+                  </span>
                 </p>
               </div>
 
               <div className="space-y-2">
-                <label className="block text-white font-medium">What You'll Experience</label>
+                <label className="block text-white font-medium">
+                  What You'll Experience
+                </label>
                 <textarea
                   name="experienceHighlightsRaw"
                   value={formData.experienceHighlightsRaw}
@@ -424,7 +449,10 @@ export default function EditEventPage() {
                 />
                 <p className="text-white/60 text-sm flex items-center gap-1">
                   <span>💡</span>
-                  <span>Tip: URLs in descriptions will automatically become clickable links</span>
+                  <span>
+                    Tip: URLs in descriptions will automatically become
+                    clickable links
+                  </span>
                 </p>
               </div>
 
@@ -503,7 +531,8 @@ export default function EditEventPage() {
                     </label>
                   </div>
                   <p className="text-white/60 text-xs px-4">
-                    When enabled, prevents new bookings regardless of event timing
+                    When enabled, prevents new bookings regardless of event
+                    timing
                   </p>
                 </div>
               </div>

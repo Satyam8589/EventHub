@@ -104,16 +104,29 @@ export default function ProfilePage() {
           setBookings(allBookings);
 
           // Calculate statistics
-          const now = new Date();
+          const now = new Date(); // Current time in UTC
+          
+          // Helper to parse UTC dates
+          const parseEventDate = (dateStr) => {
+            if (!dateStr) return null;
+            if (dateStr.includes("T") && dateStr.includes("Z")) {
+              return new Date(dateStr);
+            } else if (dateStr.includes("T")) {
+              return new Date(dateStr + "Z");
+            } else {
+              return new Date(dateStr.replace(" ", "T") + "Z");
+            }
+          };
+          
           const stats = {
             total: allBookings.length,
             upcoming: allBookings.filter((booking) => {
-              const eventDate = new Date(booking.event?.date);
-              return eventDate >= now && booking.status === "CONFIRMED";
+              const eventDate = parseEventDate(booking.event?.date);
+              return eventDate && eventDate >= now && booking.status === "CONFIRMED";
             }).length,
             completed: allBookings.filter((booking) => {
-              const eventDate = new Date(booking.event?.date);
-              return eventDate < now && booking.status === "CONFIRMED";
+              const eventDate = parseEventDate(booking.event?.date);
+              return eventDate && eventDate < now && booking.status === "CONFIRMED";
             }).length,
           };
           setBookingStats(stats);
@@ -138,7 +151,22 @@ export default function ProfilePage() {
   };
 
   const formatEventDate = (dateString) => {
-    const date = new Date(dateString);
+    if (!dateString) return "Date TBD";
+    
+    // Parse UTC date from database
+    let date;
+    if (dateString.includes("T") && dateString.includes("Z")) {
+      date = new Date(dateString);
+    } else if (dateString.includes("T")) {
+      date = new Date(dateString + "Z");
+    } else {
+      date = new Date(dateString.replace(" ", "T") + "Z");
+    }
+    
+    if (!date || isNaN(date.getTime())) {
+      return "Date TBD";
+    }
+    
     return date.toLocaleDateString("en-IN", {
       year: "numeric",
       month: "long",
@@ -150,12 +178,30 @@ export default function ProfilePage() {
   };
 
   const getEventStatus = (booking) => {
-    const eventDate = new Date(booking.event?.date);
-    const now = new Date();
-
     if (booking.status !== "CONFIRMED") {
       return { text: booking.status, className: "text-yellow-400" };
     }
+    
+    // Parse UTC date from database
+    const dateStr = booking.event?.date;
+    if (!dateStr) {
+      return { text: "Unknown", className: "text-gray-400" };
+    }
+    
+    let eventDate;
+    if (dateStr.includes("T") && dateStr.includes("Z")) {
+      eventDate = new Date(dateStr);
+    } else if (dateStr.includes("T")) {
+      eventDate = new Date(dateStr + "Z");
+    } else {
+      eventDate = new Date(dateStr.replace(" ", "T") + "Z");
+    }
+    
+    if (!eventDate || isNaN(eventDate.getTime())) {
+      return { text: "Unknown", className: "text-gray-400" };
+    }
+    
+    const now = new Date(); // Current time in UTC
 
     if (eventDate >= now) {
       return { text: "Upcoming", className: "text-green-400" };
@@ -167,13 +213,29 @@ export default function ProfilePage() {
   // Filter bookings based on active tab
   const filteredBookings = bookings.filter((booking) => {
     if (activeTab === "overview") return true;
+    
+    // Parse UTC date from database
+    const dateStr = booking.event?.date;
+    if (!dateStr) return false;
+    
+    let eventDate;
+    if (dateStr.includes("T") && dateStr.includes("Z")) {
+      eventDate = new Date(dateStr);
+    } else if (dateStr.includes("T")) {
+      eventDate = new Date(dateStr + "Z");
+    } else {
+      eventDate = new Date(dateStr.replace(" ", "T") + "Z");
+    }
+    
+    if (!eventDate || isNaN(eventDate.getTime())) return false;
+    
+    const now = new Date(); // Current time in UTC
+    
     if (activeTab === "upcoming") {
-      const eventDate = new Date(booking.event?.date);
-      return eventDate >= new Date() && booking.status === "CONFIRMED";
+      return eventDate >= now && booking.status === "CONFIRMED";
     }
     if (activeTab === "completed") {
-      const eventDate = new Date(booking.event?.date);
-      return eventDate < new Date() && booking.status === "CONFIRMED";
+      return eventDate < now && booking.status === "CONFIRMED";
     }
     return true;
   });
