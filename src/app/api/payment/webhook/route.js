@@ -30,6 +30,7 @@ const getIstTimestamp = () => {
 // POST /api/payment/webhook - Razorpay webhook handler
 export async function POST(request) {
   const startTime = Date.now();
+  let webhookEventId = null;
   
   try {
     console.log("🔔 Webhook received at:", new Date().toISOString());
@@ -38,16 +39,56 @@ export async function POST(request) {
     const webhookSignature = request.headers.get("x-razorpay-signature");
     const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
     
+    // Get raw body for signature verification
+    const rawBody = await request.text();
+    
+    // Parse the webhook payload
+    const payload = JSON.parse(rawBody);
+    const event = payload.event;
+    
+    // Log webhook event to database IMMEDIATELY
+    try {
+      const { data: webhookEvent, error: logError } = await supabase
+        .from("webhook_events")
+        .insert({
+          event_type: event,
+          razorpay_payment_id: payload.payload?.payment?.entity?.id || null,
+          razorpay_order_id: payload.payload?.payment?.entity?.order_id || null,
+          payload: payload,
+          signature_valid: false, // Will update after verification
+          processed: false,
+        })
+        .select()
+        .single();
+      
+      if (!logError && webhookEvent) {
+        webhookEventId = webhookEvent.id;
+        console.log("📝 Webhook event logged:", webhookEventId);
+      }
+    } catch (logErr) {
+      console.error("⚠️ Failed to log webhook event:", logErr);
+    }
+    
     if (!webhookSecret) {
       console.error("❌ RAZORPAY_WEBHOOK_SECRET not configured");
+      
+      // Update webhook event as failed
+      if (webhookEventId) {
+        await supabase
+          .from("webhook_events")
+          .update({
+            processed: true,
+            processing_error: "Webhook secret not configured",
+            processed_at: new Date().toISOString(),
+          })
+          .eq("id", webhookEventId);
+      }
+      
       return NextResponse.json(
         { error: "Webhook secret not configured" },
         { status: 500 }
       );
     }
-    
-    // Get raw body for signature verification
-    const rawBody = await request.text();
     
     // Verify webhook signature
     const expectedSignature = crypto
@@ -55,35 +96,79 @@ export async function POST(request) {
       .update(rawBody)
       .digest("hex");
     
-    if (webhookSignature !== expectedSignature) {
+    const signatureValid = webhookSignature === expectedSignature;
+    
+    // Update signature validation status
+    if (webhookEventId) {
+      await supabase
+        .from("webhook_events")
+        .update({ signature_valid: signatureValid })
+        .eq("id", webhookEventId);
+    }
+    
+    if (!signatureValid) {
       console.error("❌ Invalid webhook signature");
+      
+      if (webhookEventId) {
+        await supabase
+          .from("webhook_events")
+          .update({
+            processed: true,
+            processing_error: "Invalid signature",
+            processed_at: new Date().toISOString(),
+          })
+          .eq("id", webhookEventId);
+      }
+      
       return NextResponse.json(
         { error: "Invalid signature" },
         { status: 401 }
       );
     }
     
-    // Parse the webhook payload
-    const payload = JSON.parse(rawBody);
-    const event = payload.event;
-    
     console.log("✅ Webhook signature verified, event:", event);
     
     // Handle different webhook events
+    let result;
     switch (event) {
       case "payment.captured":
-        return await handlePaymentCaptured(payload);
+        result = await handlePaymentCaptured(payload, webhookEventId);
+        break;
       
       case "payment.failed":
-        return await handlePaymentFailed(payload);
+        result = await handlePaymentFailed(payload, webhookEventId);
+        break;
       
       default:
         console.log("ℹ️ Unhandled webhook event:", event);
+        if (webhookEventId) {
+          await supabase
+            .from("webhook_events")
+            .update({
+              processed: true,
+              processed_at: new Date().toISOString(),
+            })
+            .eq("id", webhookEventId);
+        }
         return NextResponse.json({ received: true });
     }
     
+    return result;
+    
   } catch (error) {
     console.error("❌ Webhook processing error:", error);
+    
+    if (webhookEventId) {
+      await supabase
+        .from("webhook_events")
+        .update({
+          processed: true,
+          processing_error: error.message,
+          processed_at: new Date().toISOString(),
+        })
+        .eq("id", webhookEventId);
+    }
+    
     return NextResponse.json(
       { error: "Webhook processing failed", details: error.message },
       { status: 500 }
@@ -92,7 +177,7 @@ export async function POST(request) {
 }
 
 // Handle payment.captured event
-async function handlePaymentCaptured(payload) {
+async function handlePaymentCaptured(payload, webhookEventId) {
   try {
     const payment = payload.payload.payment.entity;
     const orderId = payment.order_id;
@@ -121,6 +206,19 @@ async function handlePaymentCaptured(payload) {
       
       if (confirmedBooking) {
         console.log("✅ Booking already confirmed via webhook/client");
+        
+        // Mark webhook as processed
+        if (webhookEventId) {
+          await supabase
+            .from("webhook_events")
+            .update({
+              booking_id: confirmedBooking.id,
+              processed: true,
+              processed_at: new Date().toISOString(),
+            })
+            .eq("id", webhookEventId);
+        }
+        
         return NextResponse.json({ 
           received: true, 
           message: "Already processed" 
@@ -128,6 +226,19 @@ async function handlePaymentCaptured(payload) {
       }
       
       console.error("❌ Booking not found for order:", orderId);
+      
+      // Mark webhook as processed with error
+      if (webhookEventId) {
+        await supabase
+          .from("webhook_events")
+          .update({
+            processed: true,
+            processing_error: "Booking not found",
+            processed_at: new Date().toISOString(),
+          })
+          .eq("id", webhookEventId);
+      }
+      
       return NextResponse.json({ 
         received: true, 
         error: "Booking not found" 
@@ -135,6 +246,14 @@ async function handlePaymentCaptured(payload) {
     }
     
     console.log("📋 Found booking:", booking.id);
+    
+    // Update webhook event with booking ID
+    if (webhookEventId) {
+      await supabase
+        .from("webhook_events")
+        .update({ booking_id: booking.id })
+        .eq("id", webhookEventId);
+    }
     
     // Use atomic confirmation function
     const { data: confirmationResult, error: rpcError } = await supabase.rpc(
@@ -147,6 +266,19 @@ async function handlePaymentCaptured(payload) {
     
     if (rpcError) {
       console.error("❌ RPC Error:", rpcError);
+      
+      // Mark webhook as failed
+      if (webhookEventId) {
+        await supabase
+          .from("webhook_events")
+          .update({
+            processed: true,
+            processing_error: `Database function error: ${rpcError.message}`,
+            processed_at: new Date().toISOString(),
+          })
+          .eq("id", webhookEventId);
+      }
+      
       throw new Error(`Database function error: ${rpcError.message}`);
     }
     
@@ -165,6 +297,18 @@ async function handlePaymentCaptured(payload) {
           updatedAt: nowIstIso,
         })
         .eq("id", booking.id);
+      
+      // Mark webhook as processed with error
+      if (webhookEventId) {
+        await supabase
+          .from("webhook_events")
+          .update({
+            processed: true,
+            processing_error: result.error,
+            processed_at: new Date().toISOString(),
+          })
+          .eq("id", webhookEventId);
+      }
       
       // Notify user of failure
       try {
@@ -200,6 +344,8 @@ async function handlePaymentCaptured(payload) {
         .update({
           paymentVerifiedAt: nowIstIso,
           ticketgeneratedat: nowIstIso,
+          webhook_received_at: nowIstIso,
+          webhook_processed_at: nowIstIso,
           updatedAt: nowIstIso,
         })
         .eq("id", booking.id);
@@ -246,6 +392,17 @@ async function handlePaymentCaptured(payload) {
       console.error("❌ Error sending ticket email:", error);
     }
     
+    // Mark webhook as successfully processed
+    if (webhookEventId) {
+      await supabase
+        .from("webhook_events")
+        .update({
+          processed: true,
+          processed_at: new Date().toISOString(),
+        })
+        .eq("id", webhookEventId);
+    }
+    
     const duration = Date.now() - startTime;
     console.log(`⏱️ Webhook processed in ${duration}ms`);
     
@@ -256,6 +413,19 @@ async function handlePaymentCaptured(payload) {
     
   } catch (error) {
     console.error("❌ Error handling payment.captured:", error);
+    
+    // Mark webhook as failed
+    if (webhookEventId) {
+      await supabase
+        .from("webhook_events")
+        .update({
+          processed: true,
+          processing_error: error.message,
+          processed_at: new Date().toISOString(),
+        })
+        .eq("id", webhookEventId);
+    }
+    
     return NextResponse.json(
       { received: true, error: error.message },
       { status: 500 }
@@ -264,7 +434,7 @@ async function handlePaymentCaptured(payload) {
 }
 
 // Handle payment.failed event
-async function handlePaymentFailed(payload) {
+async function handlePaymentFailed(payload, webhookEventId) {
   try {
     const payment = payload.payload.payment.entity;
     const orderId = payment.order_id;
@@ -282,7 +452,28 @@ async function handlePaymentFailed(payload) {
     
     if (bookingError || !booking) {
       console.log("⚠️ No booking found for failed payment:", orderId);
+      
+      // Mark webhook as processed
+      if (webhookEventId) {
+        await supabase
+          .from("webhook_events")
+          .update({
+            processed: true,
+            processing_error: "Booking not found",
+            processed_at: new Date().toISOString(),
+          })
+          .eq("id", webhookEventId);
+      }
+      
       return NextResponse.json({ received: true });
+    }
+    
+    // Update webhook with booking ID
+    if (webhookEventId) {
+      await supabase
+        .from("webhook_events")
+        .update({ booking_id: booking.id })
+        .eq("id", webhookEventId);
     }
     
     // Mark booking as failed
@@ -312,6 +503,17 @@ async function handlePaymentFailed(payload) {
       });
     } catch (_) {}
     
+    // Mark webhook as processed
+    if (webhookEventId) {
+      await supabase
+        .from("webhook_events")
+        .update({
+          processed: true,
+          processed_at: new Date().toISOString(),
+        })
+        .eq("id", webhookEventId);
+    }
+    
     return NextResponse.json({ 
       received: true, 
       message: "Payment failure processed" 
@@ -319,6 +521,19 @@ async function handlePaymentFailed(payload) {
     
   } catch (error) {
     console.error("❌ Error handling payment.failed:", error);
+    
+    // Mark webhook as failed
+    if (webhookEventId) {
+      await supabase
+        .from("webhook_events")
+        .update({
+          processed: true,
+          processing_error: error.message,
+          processed_at: new Date().toISOString(),
+        })
+        .eq("id", webhookEventId);
+    }
+    
     return NextResponse.json(
       { received: true, error: error.message },
       { status: 500 }
