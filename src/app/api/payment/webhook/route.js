@@ -178,6 +178,8 @@ export async function POST(request) {
 
 // Handle payment.captured event
 async function handlePaymentCaptured(payload, webhookEventId) {
+  const startTime = Date.now();
+  
   try {
     const payment = payload.payload.payment.entity;
     const orderId = payment.order_id;
