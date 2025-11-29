@@ -346,11 +346,8 @@ async function handlePaymentCaptured(payload, webhookEventId) {
       const { error: updateError } = await supabase
         .from("bookings")
         .update({
-          paymentVerifiedAt: nowIstIso,
-          ticketgeneratedat: nowIstIso,
           webhook_received_at: nowIstIso,
           webhook_processed_at: nowIstIso,
-          updatedAt: nowIstIso,
         })
         .eq("id", confirmedBooking.id);
       
