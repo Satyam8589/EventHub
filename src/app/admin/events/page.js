@@ -105,7 +105,7 @@ const EventCard = ({
         <div className="flex items-center gap-2 text-white/80">
           <span className="text-green-400 text-sm">🎫</span>
           <span className="text-xs">
-            {event._count?.bookings || 0} bookings
+            {event._count?.confirmedBookings || 0} bookings
           </span>
         </div>
       </div>

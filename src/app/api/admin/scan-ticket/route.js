@@ -81,6 +81,115 @@ export async function POST(request) {
       return NextResponse.json({ error: "Event not found" }, { status: 404 });
     }
 
+    // Check if scanning is allowed (must be within 2 hours before event start each day)
+    try {
+      // Get current time in IST
+      const now = new Date();
+      const nowISTString = now.toLocaleString("en-US", {
+        timeZone: "Asia/Kolkata",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false,
+      });
+
+      // Parse current IST time
+      const [datePartNow, timePartNow] = nowISTString.split(", ");
+      const [monthNow, dayNow, yearNow] = datePartNow
+        .split("/")
+        .map((num) => parseInt(num));
+      const [hoursNow, minutesNow, secondsNow] = timePartNow
+        .split(":")
+        .map((num) => parseInt(num));
+      const nowISTDate = new Date(
+        yearNow,
+        monthNow - 1,
+        dayNow,
+        hoursNow,
+        minutesNow,
+        secondsNow
+      );
+
+      // Parse event start time
+      let startHours = 0,
+        startMinutes = 0;
+      const startTimeValue = event.time;
+
+      if (startTimeValue) {
+        if (startTimeValue.includes("AM") || startTimeValue.includes("PM")) {
+          // 12-hour format
+          const match = startTimeValue.match(/(\d+):(\d+)\s*(AM|PM)/i);
+          if (match) {
+            startHours = parseInt(match[1]);
+            startMinutes = parseInt(match[2]);
+            const period = match[3].toUpperCase();
+            if (period === "PM" && startHours !== 12) startHours += 12;
+            if (period === "AM" && startHours === 12) startHours = 0;
+          }
+        } else {
+          // 24-hour format
+          const parts = startTimeValue.split(":");
+          if (parts.length >= 2) {
+            startHours = parseInt(parts[0]);
+            startMinutes = parseInt(parts[1]);
+          }
+        }
+      }
+
+      // Create event time for TODAY in IST
+      const todayEventTimeIST = new Date(
+        yearNow,
+        monthNow - 1,
+        dayNow,
+        startHours,
+        startMinutes,
+        0
+      );
+
+      // Calculate 2 hours before today's event time
+      const twoHoursBeforeTodayEvent = new Date(
+        todayEventTimeIST.getTime() - 2 * 60 * 60 * 1000
+      );
+
+      // Check if current time is before the 2-hour window for today
+      if (nowISTDate < twoHoursBeforeTodayEvent) {
+        const minutesUntilScanningStarts = Math.round(
+          (twoHoursBeforeTodayEvent.getTime() - nowISTDate.getTime()) / 60000
+        );
+        const hoursUntil = Math.floor(minutesUntilScanningStarts / 60);
+        const minutesRemainder = minutesUntilScanningStarts % 60;
+
+        return NextResponse.json(
+          {
+            error: "Scanning not yet available",
+            isValid: false,
+            message: `Ticket scanning starts 2 hours before the event today (${twoHoursBeforeTodayEvent.toLocaleString(
+              "en-IN",
+              { timeZone: "Asia/Kolkata" }
+            )})`,
+            details: `Please wait ${
+              hoursUntil > 0
+                ? `${hoursUntil} hour${hoursUntil > 1 ? "s" : ""} and `
+                : ""
+            }${minutesRemainder} minute${minutesRemainder !== 1 ? "s" : ""}`,
+            scanningStartsAt: twoHoursBeforeTodayEvent.toLocaleString("en-IN", {
+              timeZone: "Asia/Kolkata",
+            }),
+            eventStartsAt: todayEventTimeIST.toLocaleString("en-IN", {
+              timeZone: "Asia/Kolkata",
+            }),
+          },
+          { status: 400 }
+        );
+      }
+    } catch (error) {
+      console.error("Error checking scanning time window:", error);
+      // If there's an error checking the time, allow scanning to proceed
+    }
+
     // Get booking details
     const { data: booking, error: bookingError } = await supabase
       .from("bookings")
@@ -183,7 +292,7 @@ export async function POST(request) {
       const mm = parseInt(m[2], 10);
       const ap = m[3] ? m[3].toLowerCase() : null;
       if (ap) {
-        hh = hh % 12 + (ap === "pm" ? 12 : 0);
+        hh = (hh % 12) + (ap === "pm" ? 12 : 0);
       }
       return hh * 60 + mm;
     };
@@ -197,7 +306,9 @@ export async function POST(request) {
         startMidnight.setHours(0, 0, 0, 0);
         const endMidnight = new Date(endDate);
         endMidnight.setHours(0, 0, 0, 0);
-        const dayDiff = Math.round((endMidnight - startMidnight) / (24 * 60 * 60 * 1000));
+        const dayDiff = Math.round(
+          (endMidnight - startMidnight) / (24 * 60 * 60 * 1000)
+        );
         const totalMinutes = dayDiff * 24 * 60 + (endMinutes - startMinutes);
         if (totalMinutes <= 24 * 60) {
           totalEventDays = 1;
@@ -213,10 +324,12 @@ export async function POST(request) {
     // Calculate current event day (for date comparison only) - Use IST timezone
     const eventStartDateOnly = new Date(eventStartDate);
     eventStartDateOnly.setHours(0, 0, 0, 0);
-    
+
     // Get current date in IST
     const nowUTC = new Date();
-    const nowIST = new Date(nowUTC.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+    const nowIST = new Date(
+      nowUTC.toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
+    );
     const currentDateOnly = new Date(nowIST);
     currentDateOnly.setHours(0, 0, 0, 0);
 
@@ -259,12 +372,17 @@ export async function POST(request) {
         {
           error: "Event not started yet",
           isValid: false,
-          message: `Event starts on ${eventStartDateOnly.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}. Please come back on the event day.`,
+          message: `Event starts on ${eventStartDateOnly.toLocaleDateString(
+            "en-IN",
+            { timeZone: "Asia/Kolkata" }
+          )}. Please come back on the event day.`,
           booking: {
             id: booking.id,
             eventTitle: booking.event.title,
             userName: booking.user.name,
-            eventStartDate: eventStartDateOnly.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" }),
+            eventStartDate: eventStartDateOnly.toLocaleDateString("en-IN", {
+              timeZone: "Asia/Kolkata",
+            }),
           },
         },
         { status: 400 }
@@ -275,78 +393,94 @@ export async function POST(request) {
     if (currentEventDay >= 1 && currentEventDay <= totalEventDays) {
       // Parse event start time and end time
       const eventTimeMinutes = parseTimeToMinutes(event.time);
-      const eventEndTimeMinutes = parseTimeToMinutes(event.endTime || event.endtime);
-      
+      const eventEndTimeMinutes = parseTimeToMinutes(
+        event.endTime || event.endtime
+      );
+
       if (eventTimeMinutes !== null) {
         // Get current time in IST
         const nowUTC = new Date();
-        const nowIST = new Date(nowUTC.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
-        
+        const nowIST = new Date(
+          nowUTC.toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
+        );
+
         // Calculate the date for the current event day in IST
         const currentEventDayDate = new Date(eventStartDateOnly);
-        currentEventDayDate.setDate(currentEventDayDate.getDate() + (currentEventDay - 1));
-        
+        currentEventDayDate.setDate(
+          currentEventDayDate.getDate() + (currentEventDay - 1)
+        );
+
         // Set the event start time for this specific day in IST
         const eventStartDateTime = new Date(currentEventDayDate);
         const eventHours = Math.floor(eventTimeMinutes / 60);
         const eventMinutes = eventTimeMinutes % 60;
         eventStartDateTime.setHours(eventHours, eventMinutes, 0, 0);
-        
+
         // Calculate earliest allowed scanning time (2 hours before event start)
         const earliestScanTime = new Date(eventStartDateTime);
         earliestScanTime.setHours(earliestScanTime.getHours() - 2);
-        
+
         // Get current time (use IST time)
         const now = nowIST;
-        
+
         // Check if current time is before the earliest allowed scan time
         if (now < earliestScanTime) {
-          const timeUntilScanning = Math.ceil((earliestScanTime - now) / (1000 * 60)); // minutes
+          const timeUntilScanning = Math.ceil(
+            (earliestScanTime - now) / (1000 * 60)
+          ); // minutes
           const hoursUntil = Math.floor(timeUntilScanning / 60);
           const minutesUntil = timeUntilScanning % 60;
-          
+
           return NextResponse.json(
             {
               error: "Scanning not yet available",
               isValid: false,
-              message: `Ticket scanning for Day ${currentEventDay} will open at ${earliestScanTime.toLocaleTimeString("en-IN", { 
-                timeZone: "Asia/Kolkata",
-                hour: "2-digit",
-                minute: "2-digit",
-                hour12: true
-              })} (2 hours before event start time).`,
-              details: hoursUntil > 0 
-                ? `Please come back in ${hoursUntil} hour${hoursUntil > 1 ? 's' : ''} and ${minutesUntil} minute${minutesUntil > 1 ? 's' : ''}.`
-                : `Please come back in ${minutesUntil} minute${minutesUntil > 1 ? 's' : ''}.`,
+              message: `Ticket scanning for Day ${currentEventDay} will open at ${earliestScanTime.toLocaleTimeString(
+                "en-IN",
+                {
+                  timeZone: "Asia/Kolkata",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  hour12: true,
+                }
+              )} (2 hours before event start time).`,
+              details:
+                hoursUntil > 0
+                  ? `Please come back in ${hoursUntil} hour${
+                      hoursUntil > 1 ? "s" : ""
+                    } and ${minutesUntil} minute${minutesUntil > 1 ? "s" : ""}.`
+                  : `Please come back in ${minutesUntil} minute${
+                      minutesUntil > 1 ? "s" : ""
+                    }.`,
               booking: {
                 id: booking.id,
                 eventTitle: booking.event.title,
                 userName: booking.user.name,
                 eventDay: currentEventDay,
-                eventStartTime: eventStartDateTime.toLocaleTimeString("en-IN", { 
+                eventStartTime: eventStartDateTime.toLocaleTimeString("en-IN", {
                   timeZone: "Asia/Kolkata",
                   hour: "2-digit",
                   minute: "2-digit",
-                  hour12: true
+                  hour12: true,
                 }),
-                scanningOpensAt: earliestScanTime.toLocaleTimeString("en-IN", { 
+                scanningOpensAt: earliestScanTime.toLocaleTimeString("en-IN", {
                   timeZone: "Asia/Kolkata",
                   hour: "2-digit",
                   minute: "2-digit",
-                  hour12: true
+                  hour12: true,
                 }),
-                currentTime: now.toLocaleTimeString("en-IN", { 
+                currentTime: now.toLocaleTimeString("en-IN", {
                   timeZone: "Asia/Kolkata",
                   hour: "2-digit",
                   minute: "2-digit",
-                  hour12: true
+                  hour12: true,
                 }),
               },
             },
             { status: 400 }
           );
         }
-        
+
         // NEW: Check if current time is after the event end time
         if (eventEndTimeMinutes !== null) {
           // Set the event end time for this specific day
@@ -354,54 +488,72 @@ export async function POST(request) {
           const endHours = Math.floor(eventEndTimeMinutes / 60);
           const endMinutes = eventEndTimeMinutes % 60;
           eventEndDateTime.setHours(endHours, endMinutes, 0, 0);
-          
+
           // Check if current time is after the event end time
           if (now > eventEndDateTime) {
-            const timeSinceEnd = Math.ceil((now - eventEndDateTime) / (1000 * 60)); // minutes
+            const timeSinceEnd = Math.ceil(
+              (now - eventEndDateTime) / (1000 * 60)
+            ); // minutes
             const hoursSince = Math.floor(timeSinceEnd / 60);
             const minutesSince = timeSinceEnd % 60;
-            
+
             return NextResponse.json(
               {
                 error: "Scanning window closed",
                 isValid: false,
-                message: `Ticket scanning for Day ${currentEventDay} has ended. The event ended at ${eventEndDateTime.toLocaleTimeString("en-IN", { 
-                  timeZone: "Asia/Kolkata",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                  hour12: true
-                })}.`,
-                details: hoursSince > 0
-                  ? `The event ended ${hoursSince} hour${hoursSince > 1 ? 's' : ''} and ${minutesSince} minute${minutesSince > 1 ? 's' : ''} ago.`
-                  : `The event ended ${minutesSince} minute${minutesSince > 1 ? 's' : ''} ago.`,
+                message: `Ticket scanning for Day ${currentEventDay} has ended. The event ended at ${eventEndDateTime.toLocaleTimeString(
+                  "en-IN",
+                  {
+                    timeZone: "Asia/Kolkata",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    hour12: true,
+                  }
+                )}.`,
+                details:
+                  hoursSince > 0
+                    ? `The event ended ${hoursSince} hour${
+                        hoursSince > 1 ? "s" : ""
+                      } and ${minutesSince} minute${
+                        minutesSince > 1 ? "s" : ""
+                      } ago.`
+                    : `The event ended ${minutesSince} minute${
+                        minutesSince > 1 ? "s" : ""
+                      } ago.`,
                 booking: {
                   id: booking.id,
                   eventTitle: booking.event.title,
                   userName: booking.user.name,
                   eventDay: currentEventDay,
-                  eventStartTime: eventStartDateTime.toLocaleTimeString("en-IN", { 
+                  eventStartTime: eventStartDateTime.toLocaleTimeString(
+                    "en-IN",
+                    {
+                      timeZone: "Asia/Kolkata",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      hour12: true,
+                    }
+                  ),
+                  eventEndTime: eventEndDateTime.toLocaleTimeString("en-IN", {
                     timeZone: "Asia/Kolkata",
                     hour: "2-digit",
                     minute: "2-digit",
-                    hour12: true
+                    hour12: true,
                   }),
-                  eventEndTime: eventEndDateTime.toLocaleTimeString("en-IN", { 
+                  scanningClosedAt: eventEndDateTime.toLocaleTimeString(
+                    "en-IN",
+                    {
+                      timeZone: "Asia/Kolkata",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      hour12: true,
+                    }
+                  ),
+                  currentTime: now.toLocaleTimeString("en-IN", {
                     timeZone: "Asia/Kolkata",
                     hour: "2-digit",
                     minute: "2-digit",
-                    hour12: true
-                  }),
-                  scanningClosedAt: eventEndDateTime.toLocaleTimeString("en-IN", { 
-                    timeZone: "Asia/Kolkata",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                    hour12: true
-                  }),
-                  currentTime: now.toLocaleTimeString("en-IN", { 
-                    timeZone: "Asia/Kolkata",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                    hour12: true
+                    hour12: true,
                   }),
                 },
               },
@@ -510,7 +662,10 @@ export async function POST(request) {
           error: "Already verified",
           isValid: false,
           isAlreadyScanned: true, // Flag for red popup
-          message: `This ticket was already verified on ${scannedTime.toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}. Thank you for visiting!`,
+          message: `This ticket was already verified on ${scannedTime.toLocaleString(
+            "en-IN",
+            { timeZone: "Asia/Kolkata" }
+          )}. Thank you for visiting!`,
           booking: {
             id: booking.id,
             eventTitle: booking.event.title,
@@ -518,7 +673,9 @@ export async function POST(request) {
             userEmail: booking.user.email,
             eventDay: `Day ${ticketNumberForToday}`,
             totalEventDays: totalEventDays,
-            verifiedAt: scannedTime.toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }),
+            verifiedAt: scannedTime.toLocaleString("en-IN", {
+              timeZone: "Asia/Kolkata",
+            }),
             // Removed remaining tickets field as requested
           },
         },
@@ -593,14 +750,18 @@ export async function POST(request) {
           scannedDays: Object.keys(scannedTicketsData).length,
           totalEventDays: totalEventDays,
           daysAttended: Object.keys(scannedTicketsData).sort().join(", "),
-          completionMessage: "This booking is fully completed - all event days have been attended successfully!",
+          completionMessage:
+            "This booking is fully completed - all event days have been attended successfully!",
         }),
         progressInfo: {
           currentDay: currentEventDay,
           ticketUsedToday: ticketNumberForToday,
           remainingTickets: totalTickets - ticketNumberForToday,
           nextTicketAvailable: nextTicketDay
-            ? `Day ${nextTicketDay} (${nextTicketDate.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })})`
+            ? `Day ${nextTicketDay} (${nextTicketDate.toLocaleDateString(
+                "en-IN",
+                { timeZone: "Asia/Kolkata" }
+              )})`
             : "All tickets used",
           allScannedTickets: scannedTicketsData,
           completionStatus: isLastTicket
@@ -674,21 +835,22 @@ export async function GET(request) {
       return NextResponse.json({ error: "Event not found" }, { status: 404 });
     }
 
-    // Get all confirmed bookings for this event (including completed ones)
+    // Get all confirmed bookings for this event
     const { data: bookings, error: bookingsError } = await supabase
       .from("bookings")
       .select(
         `
         *,
-        user:users(id, name, email, phone)
+        user:users!bookings_userId_fkey(id, name, email, phone)
       `
       )
       .eq("eventId", eventId)
-      .in("status", ["CONFIRMED", "COMPLETED"]);
+      .eq("status", "CONFIRMED");
 
     if (bookingsError) {
+      console.error("Error fetching bookings:", bookingsError);
       return NextResponse.json(
-        { error: "Failed to fetch event data" },
+        { error: "Failed to fetch event data", details: bookingsError.message },
         { status: 500 }
       );
     }
@@ -697,6 +859,47 @@ export async function GET(request) {
       (sum, booking) => sum + booking.tickets,
       0
     );
+
+    // Calculate number of days for the event (from start date to end date) in IST
+    let eventDays = 1;
+    const endDateField = event.enddate || event.endDate;
+
+    if (event.date && endDateField) {
+      try {
+        // Parse dates as IST (Asia/Kolkata)
+        const startDateStr = event.date.split("T")[0]; // Get YYYY-MM-DD
+        const endDateStr = endDateField.split("T")[0]; // Get YYYY-MM-DD
+
+        // Create Date objects at midnight IST
+        const [startYear, startMonth, startDay] = startDateStr
+          .split("-")
+          .map(Number);
+        const [endYear, endMonth, endDay] = endDateStr.split("-").map(Number);
+
+        const startDate = new Date(startYear, startMonth - 1, startDay);
+        const endDate = new Date(endYear, endMonth - 1, endDay);
+
+        // Calculate difference in days
+        const diffTime = endDate.getTime() - startDate.getTime();
+        const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+        eventDays = Math.max(1, diffDays + 1); // Add 1 to include both start and end day
+        
+        console.log("Event Days Calculation (IST):", {
+          startDate: startDateStr,
+          endDate: endDateStr,
+          diffDays,
+          eventDays,
+        });
+      } catch (error) {
+        console.error("Error calculating event days:", error);
+        eventDays = event.numberofdays || 1;
+      }
+    } else if (event.numberofdays) {
+      eventDays = event.numberofdays;
+      console.log("Using numberofdays:", eventDays);
+    } else {
+      console.log("No end date found, using 1 day");
+    }
 
     // Calculate progressive scanning statistics and user details
     let scannedTicketsCount = 0;
@@ -724,8 +927,7 @@ export async function GET(request) {
       }
 
       const isBookingCompleted =
-        booking.status === "COMPLETED" ||
-        bookingScannedTickets === booking.tickets;
+        booking.status === "COMPLETED" || bookingScannedTickets === eventDays;
       if (isBookingCompleted) {
         completedBookings++;
       }
@@ -736,8 +938,9 @@ export async function GET(request) {
         userEmail: booking.user.email,
         userPhone: booking.user.phone || "Not provided",
         totalTickets: booking.tickets,
+        totalQRs: eventDays,
         scannedTickets: bookingScannedTickets,
-        remainingTickets: booking.tickets - bookingScannedTickets,
+        remainingTickets: eventDays - bookingScannedTickets,
         status: booking.status,
         isCompleted: isBookingCompleted,
         bookedAt: booking.createdAt,
@@ -745,9 +948,9 @@ export async function GET(request) {
         scannedDays: Object.keys(scannedTicketsData)
           .map((day) => parseInt(day))
           .sort(),
-        progressPercentage: (
-          (bookingScannedTickets / booking.tickets) * 100
-        ).toFixed(0),
+        progressPercentage: ((bookingScannedTickets / eventDays) * 100).toFixed(
+          0
+        ),
       });
 
       if (bookingScannedTickets > 0) {
@@ -804,8 +1007,9 @@ export async function GET(request) {
       })),
     });
   } catch (error) {
+    console.error("Error fetching scan statistics:", error);
     return NextResponse.json(
-      { error: "Failed to get statistics" },
+      { error: "Failed to get statistics", details: error.message },
       { status: 500 }
     );
   }

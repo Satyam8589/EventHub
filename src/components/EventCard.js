@@ -215,11 +215,106 @@ export default function EventCard({ event }) {
     }
   }
 
+  // Create event end datetime in IST for proper end time checking
+  let eventEndIST = null;
+  let hasEventEnded = false;
+
+  if (endDate && (event.endTime || event.endtime)) {
+    try {
+      // Convert end date UTC to IST date string
+      const eventEndDateISTString = endDate.toLocaleString("en-US", {
+        timeZone: "Asia/Kolkata",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      });
+
+      // Parse the IST date string (format: MM/DD/YYYY)
+      const [endMonth, endDay, endYear] = eventEndDateISTString
+        .split("/")
+        .map((num) => parseInt(num));
+
+      // Parse event end time
+      let endHours = 0,
+        endMinutes = 0;
+      const endTimeStr = event.endTime || event.endtime;
+
+      if (endTimeStr.includes("AM") || endTimeStr.includes("PM")) {
+        // 12-hour format
+        const match = endTimeStr.match(/(\d+):(\d+)\s*(AM|PM)/i);
+        if (match) {
+          endHours = parseInt(match[1]);
+          endMinutes = parseInt(match[2]);
+          const period = match[3].toUpperCase();
+          if (period === "PM" && endHours !== 12) endHours += 12;
+          if (period === "AM" && endHours === 12) endHours = 0;
+        }
+      } else {
+        // 24-hour format
+        const parts = endTimeStr.split(":");
+        if (parts.length >= 2) {
+          endHours = parseInt(parts[0]);
+          endMinutes = parseInt(parts[1]);
+        }
+      }
+
+      // Create event end datetime in IST (month is 0-indexed)
+      eventEndIST = new Date(
+        endYear,
+        endMonth - 1,
+        endDay,
+        endHours,
+        endMinutes,
+        0
+      );
+
+      // Get current time in IST
+      const now = new Date();
+      const nowISTString = now.toLocaleString("en-US", {
+        timeZone: "Asia/Kolkata",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false,
+      });
+
+      // Parse current IST time
+      const [datePartNow, timePartNow] = nowISTString.split(", ");
+      const [monthNow, dayNow, yearNow] = datePartNow
+        .split("/")
+        .map((num) => parseInt(num));
+      const [hoursNow, minutesNow, secondsNow] = timePartNow
+        .split(":")
+        .map((num) => parseInt(num));
+      const nowISTDate = new Date(
+        yearNow,
+        monthNow - 1,
+        dayNow,
+        hoursNow,
+        minutesNow,
+        secondsNow
+      );
+
+      // Check if event has ended
+      hasEventEnded = nowISTDate > eventEndIST;
+    } catch (error) {
+      console.error("EventCard: Error calculating event end time:", error);
+      hasEventEnded = false;
+    }
+  }
+
   // Determine event status
   const isUpcoming = startDate && nowIST < startDate;
   const isOngoing =
-    startDate && endDate && nowIST >= startDate && nowIST <= endDate;
-  const isPast = endDate && nowIST > endDate;
+    startDate &&
+    endDate &&
+    nowIST >= startDate &&
+    nowIST <= endDate &&
+    !hasEventEnded;
+  const isPast = hasEventEnded || (endDate && nowIST > endDate);
 
   // Status badge configuration
   const statusBadge = isOngoing
@@ -538,6 +633,10 @@ export default function EventCard({ event }) {
                   <div className="font-bold">Sold Out</div>
                   <div className="text-xs mt-1">May be upgraded later</div>
                 </div>
+              </div>
+            ) : isPast ? (
+              <div className="bg-gray-400 hover:bg-gray-500 text-white px-6 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 text-center">
+                Event Ended
               </div>
             ) : isExpired ? (
               <div className="bg-gray-400 hover:bg-gray-500 text-white px-6 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 text-center">

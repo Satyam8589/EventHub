@@ -237,15 +237,16 @@ export default function TicketScanner() {
                       } else {
                         eventDate = new Date(dateStr.replace(" ", "T") + "Z");
                       }
-                      
+
                       if (!eventDate || isNaN(eventDate.getTime())) {
                         return "Date TBD";
                       }
-                      
+
                       return eventDate.toLocaleDateString("en-IN", {
                         timeZone: "Asia/Kolkata",
                       });
-                    })()} at {event.time}
+                    })()}{" "}
+                    at {event.time}
                   </p>
                 </button>
               ))}
@@ -275,23 +276,30 @@ export default function TicketScanner() {
                         <span className="text-gray-400">Date:</span>
                         <span className="text-white ml-2">
                           {(() => {
-                            const event = events.find((e) => e.id === selectedEvent);
+                            const event = events.find(
+                              (e) => e.id === selectedEvent
+                            );
                             if (!event) return "Date TBD";
-                            
+
                             const dateStr = event.date;
                             let eventDate;
-                            if (dateStr.includes("T") && dateStr.includes("Z")) {
+                            if (
+                              dateStr.includes("T") &&
+                              dateStr.includes("Z")
+                            ) {
                               eventDate = new Date(dateStr);
                             } else if (dateStr.includes("T")) {
                               eventDate = new Date(dateStr + "Z");
                             } else {
-                              eventDate = new Date(dateStr.replace(" ", "T") + "Z");
+                              eventDate = new Date(
+                                dateStr.replace(" ", "T") + "Z"
+                              );
                             }
-                            
+
                             if (!eventDate || isNaN(eventDate.getTime())) {
                               return "Date TBD";
                             }
-                            
+
                             return eventDate.toLocaleDateString("en-IN", {
                               timeZone: "Asia/Kolkata",
                             });
@@ -301,7 +309,28 @@ export default function TicketScanner() {
                       <div>
                         <span className="text-gray-400">Time:</span>
                         <span className="text-white ml-2">
-                          {events.find((e) => e.id === selectedEvent).time}
+                          {(() => {
+                            const event = events.find(
+                              (e) => e.id === selectedEvent
+                            );
+                            if (!event || !event.time) return "Time TBD";
+                            const time = event.time;
+                            // If time already has AM/PM, return it
+                            if (time.includes("AM") || time.includes("PM")) {
+                              return time;
+                            }
+                            // Convert 24-hour to 12-hour format
+                            const timeParts = time.split(":");
+                            if (timeParts.length >= 2) {
+                              let hours = parseInt(timeParts[0]);
+                              const minutes = timeParts[1];
+                              const ampm = hours >= 12 ? "PM" : "AM";
+                              hours = hours % 12;
+                              hours = hours ? hours : 12;
+                              return `${hours}:${minutes} ${ampm}`;
+                            }
+                            return time;
+                          })()}
                         </span>
                       </div>
                       <div>
@@ -321,7 +350,7 @@ export default function TicketScanner() {
                   <h2 className="text-lg font-semibold text-white mb-4">
                     Scan Statistics
                   </h2>
-                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
                     <div className="text-center p-3 bg-blue-500/20 rounded-lg">
                       <div className="text-2xl font-bold text-blue-300">
                         {statistics.statistics.totalBookings}
@@ -336,14 +365,6 @@ export default function TicketScanner() {
                       </div>
                       <div className="text-sm text-green-200">
                         Scanned Tickets
-                      </div>
-                    </div>
-                    <div className="text-center p-3 bg-yellow-500/20 rounded-lg">
-                      <div className="text-2xl font-bold text-yellow-300">
-                        {statistics.statistics.totalTickets}
-                      </div>
-                      <div className="text-sm text-yellow-200">
-                        Total Tickets
                       </div>
                     </div>
                     <div className="text-center p-3 bg-purple-500/20 rounded-lg">
@@ -383,15 +404,15 @@ export default function TicketScanner() {
             {statistics &&
               statistics.userBookings &&
               statistics.userBookings.length > 0 && (
-                <div className="bg-white/5 backdrop-blur-md rounded-xl border border-white/10 p-6">
-                  <h2 className="text-lg font-semibold text-white mb-4">
-                    👥 User Bookings ({statistics.userBookings.length} users)
+                <div className="bg-white/5 backdrop-blur-md rounded-xl border border-white/10 p-2 sm:p-4">
+                  <h2 className="text-base sm:text-lg font-semibold text-white mb-2 sm:mb-3 px-1">
+                    👥 User Bookings ({statistics.userBookings.length})
                   </h2>
-                  <div className="space-y-3 max-h-96 overflow-y-auto">
+                  <div className="space-y-2 max-h-96 overflow-y-auto">
                     {statistics.userBookings.map((userBooking, index) => (
                       <div
                         key={userBooking.id}
-                        className={`p-4 rounded-lg border ${
+                        className={`p-2 sm:p-3 rounded-lg border ${
                           userBooking.isCompleted
                             ? "bg-green-500/10 border-green-500/20"
                             : userBooking.scannedTickets > 0
@@ -399,46 +420,48 @@ export default function TicketScanner() {
                             : "bg-white/5 border-white/10"
                         }`}
                       >
-                        <div className="flex items-center justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center space-x-3">
-                              <div className="font-medium text-white">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <div className="font-medium text-white text-sm sm:text-base truncate">
                                 {userBooking.userName}
                               </div>
                               {userBooking.isCompleted && (
-                                <span className="px-2 py-1 text-xs bg-green-500/20 text-green-300 rounded-full">
-                                  ✅ Completed
+                                <span className="px-1.5 py-0.5 text-xs bg-green-500/20 text-green-300 rounded-full whitespace-nowrap">
+                                  ✅ Done
                                 </span>
                               )}
                               {!userBooking.isCompleted &&
                                 userBooking.scannedTickets > 0 && (
-                                  <span className="px-2 py-1 text-xs bg-yellow-500/20 text-yellow-300 rounded-full">
-                                    🟡 In Progress
+                                  <span className="px-1.5 py-0.5 text-xs bg-yellow-500/20 text-yellow-300 rounded-full whitespace-nowrap">
+                                    🟡 Progress
                                   </span>
                                 )}
                             </div>
-                            <div className="text-sm text-gray-400 mt-1">
+                            <div className="text-xs sm:text-sm text-gray-400 mt-0.5 truncate">
                               {userBooking.userEmail}
                             </div>
                             {userBooking.userPhone !== "Not provided" && (
-                              <div className="text-sm text-gray-400">
+                              <div className="text-xs sm:text-sm text-gray-400 truncate">
                                 📞 {userBooking.userPhone}
                               </div>
                             )}
                           </div>
-                          <div className="text-right">
-                            <div className="text-lg font-bold text-white">
+                          <div className="text-left sm:text-right shrink-0">
+                            <div className="text-base sm:text-lg font-bold text-white">
                               {userBooking.scannedTickets}/
-                              {userBooking.totalTickets}
+                              {userBooking.totalQRs ||
+                                userBooking.totalTickets ||
+                                1}
                             </div>
-                            <div className="text-sm text-gray-300">
-                              tickets used
+                            <div className="text-xs sm:text-sm text-gray-300">
+                              QR scanned
                             </div>
-                            <div className="text-xs text-gray-400 mt-1">
+                            <div className="text-xs text-gray-400 mt-0.5">
                               {userBooking.progressPercentage}% complete
                             </div>
                             {userBooking.scannedDays.length > 0 && (
-                              <div className="text-xs text-blue-300 mt-1">
+                              <div className="text-xs text-blue-300 mt-0.5">
                                 Days: {userBooking.scannedDays.join(", ")}
                               </div>
                             )}
@@ -446,7 +469,7 @@ export default function TicketScanner() {
                         </div>
 
                         {userBooking.remainingTickets > 0 && (
-                          <div className="mt-2 text-xs text-gray-400">
+                          <div className="mt-1 text-xs text-gray-400">
                             {userBooking.remainingTickets} ticket(s) remaining
                           </div>
                         )}
@@ -676,8 +699,11 @@ export default function TicketScanner() {
                       </div>
                       <div>
                         <span className="font-medium">Scanned Tickets:</span>{" "}
-                        {scanResult.booking.scannedDays || scanResult.booking.scannedTickets} /{" "}
-                        {scanResult.booking.totalEventDays || scanResult.booking.totalTickets}
+                        {scanResult.booking.scannedDays ||
+                          scanResult.booking.scannedTickets}{" "}
+                        /{" "}
+                        {scanResult.booking.totalEventDays ||
+                          scanResult.booking.totalTickets}
                       </div>
                       <div>
                         <span className="font-medium">Days Attended:</span>{" "}
@@ -708,7 +734,8 @@ export default function TicketScanner() {
                         </div>
                         <div>
                           <span className="font-medium">Total Tickets:</span>{" "}
-                          {scanResult.booking.totalTickets || scanResult.booking.tickets}
+                          {scanResult.booking.totalTickets ||
+                            scanResult.booking.tickets}
                         </div>
                         {scanResult.booking.progressInfo.remainingTickets ===
                           0 && (

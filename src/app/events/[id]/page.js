@@ -74,6 +74,212 @@ export default function Page({ params }) {
     return linkedText.replace(/\n/g, "<br />");
   };
 
+  // Check if event has started using IST timezone
+  const hasEventStarted = () => {
+    if (!event) return false;
+
+    try {
+      // Helper to ensure proper UTC format
+      const ensureUTCString = (dateStr) => {
+        if (!dateStr) return null;
+        if (dateStr.includes("T") && dateStr.endsWith("Z")) return dateStr;
+        if (dateStr.includes("T")) return dateStr + "Z";
+        return dateStr.replace(" ", "T") + "Z";
+      };
+
+      // Parse the start date (stored as UTC in database)
+      const startDateUTC = new Date(ensureUTCString(event.date));
+
+      // Convert start date to IST date string
+      const startDateISTString = startDateUTC.toLocaleString("en-US", {
+        timeZone: "Asia/Kolkata",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      });
+
+      // Parse the IST date string (format: MM/DD/YYYY)
+      const [startMonth, startDay, startYear] = startDateISTString
+        .split("/")
+        .map((num) => parseInt(num));
+
+      // Parse event start time
+      let startHours = 0,
+        startMinutes = 0;
+      const startTimeValue = event.time;
+
+      if (!startTimeValue) return false;
+
+      if (startTimeValue.includes("AM") || startTimeValue.includes("PM")) {
+        // 12-hour format
+        const match = startTimeValue.match(/(\d+):(\d+)\s*(AM|PM)/i);
+        if (match) {
+          startHours = parseInt(match[1]);
+          startMinutes = parseInt(match[2]);
+          const period = match[3].toUpperCase();
+          if (period === "PM" && startHours !== 12) startHours += 12;
+          if (period === "AM" && startHours === 12) startHours = 0;
+        }
+      } else {
+        // 24-hour format
+        const parts = startTimeValue.split(":");
+        if (parts.length >= 2) {
+          startHours = parseInt(parts[0]);
+          startMinutes = parseInt(parts[1]);
+        }
+      }
+
+      // Create event start datetime in IST (month is 0-indexed)
+      const eventStartIST = new Date(
+        startYear,
+        startMonth - 1,
+        startDay,
+        startHours,
+        startMinutes,
+        0
+      );
+
+      // Get current time in IST
+      const now = new Date();
+      const nowISTString = now.toLocaleString("en-US", {
+        timeZone: "Asia/Kolkata",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false,
+      });
+
+      // Parse current IST time
+      const [datePartNow, timePartNow] = nowISTString.split(", ");
+      const [monthNow, dayNow, yearNow] = datePartNow
+        .split("/")
+        .map((num) => parseInt(num));
+      const [hoursNow, minutesNow, secondsNow] = timePartNow
+        .split(":")
+        .map((num) => parseInt(num));
+      const nowISTDate = new Date(
+        yearNow,
+        monthNow - 1,
+        dayNow,
+        hoursNow,
+        minutesNow,
+        secondsNow
+      );
+
+      return nowISTDate >= eventStartIST;
+    } catch (error) {
+      console.error("Error calculating event start time:", error);
+      return false;
+    }
+  };
+
+  // Check if event has ended using IST timezone
+  const hasEventEnded = () => {
+    if (!event) return false;
+
+    const endDateValue = event.endDate || event.enddate;
+    const endTimeValue = event.endTime || event.endtime;
+
+    if (!endDateValue || !endTimeValue) return false;
+
+    try {
+      // Helper to ensure proper UTC format
+      const ensureUTCString = (dateStr) => {
+        if (!dateStr) return null;
+        if (dateStr.includes("T") && dateStr.endsWith("Z")) return dateStr;
+        if (dateStr.includes("T")) return dateStr + "Z";
+        return dateStr.replace(" ", "T") + "Z";
+      };
+
+      // Parse the end date (stored as UTC in database)
+      const endDateUTC = new Date(ensureUTCString(endDateValue));
+
+      // Convert end date to IST date string
+      const endDateISTString = endDateUTC.toLocaleString("en-US", {
+        timeZone: "Asia/Kolkata",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      });
+
+      // Parse the IST date string (format: MM/DD/YYYY)
+      const [endMonth, endDay, endYear] = endDateISTString
+        .split("/")
+        .map((num) => parseInt(num));
+
+      // Parse event end time
+      let endHours = 0,
+        endMinutes = 0;
+
+      if (endTimeValue.includes("AM") || endTimeValue.includes("PM")) {
+        // 12-hour format
+        const match = endTimeValue.match(/(\d+):(\d+)\s*(AM|PM)/i);
+        if (match) {
+          endHours = parseInt(match[1]);
+          endMinutes = parseInt(match[2]);
+          const period = match[3].toUpperCase();
+          if (period === "PM" && endHours !== 12) endHours += 12;
+          if (period === "AM" && endHours === 12) endHours = 0;
+        }
+      } else {
+        // 24-hour format
+        const parts = endTimeValue.split(":");
+        if (parts.length >= 2) {
+          endHours = parseInt(parts[0]);
+          endMinutes = parseInt(parts[1]);
+        }
+      }
+
+      // Create event end datetime in IST (month is 0-indexed)
+      const eventEndIST = new Date(
+        endYear,
+        endMonth - 1,
+        endDay,
+        endHours,
+        endMinutes,
+        0
+      );
+
+      // Get current time in IST
+      const now = new Date();
+      const nowISTString = now.toLocaleString("en-US", {
+        timeZone: "Asia/Kolkata",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false,
+      });
+
+      // Parse current IST time
+      const [datePartNow, timePartNow] = nowISTString.split(", ");
+      const [monthNow, dayNow, yearNow] = datePartNow
+        .split("/")
+        .map((num) => parseInt(num));
+      const [hoursNow, minutesNow, secondsNow] = timePartNow
+        .split(":")
+        .map((num) => parseInt(num));
+      const nowISTDate = new Date(
+        yearNow,
+        monthNow - 1,
+        dayNow,
+        hoursNow,
+        minutesNow,
+        secondsNow
+      );
+
+      return nowISTDate > eventEndIST;
+    } catch (error) {
+      console.error("Error calculating event end time:", error);
+      return false;
+    }
+  };
+
   useEffect(() => {
     if (user && event) {
       const fetchUserBookings = async () => {
@@ -278,58 +484,6 @@ export default function Page({ params }) {
     event.max_tickets_per_user && event.max_tickets_per_user > 0;
   const userReachedLimit =
     hasBookingLimit && userTotalTickets >= event.max_tickets_per_user;
-
-  // Check if event has started (booking closes when event starts) - IST timezone
-  let hasEventStarted = false;
-  if (event?.date) {
-    try {
-      // The database date field contains the full datetime in UTC
-      // We need to parse it and compare with current time
-      
-      // Parse event date from database (stored as UTC)
-      let eventDateUTC;
-      const dateStr = event.date;
-      
-      // Ensure proper UTC parsing
-      if (dateStr.includes("T") && dateStr.includes("Z")) {
-        eventDateUTC = new Date(dateStr);
-      } else if (dateStr.includes("T")) {
-        eventDateUTC = new Date(dateStr + "Z");
-      } else {
-        eventDateUTC = new Date(dateStr.replace(" ", "T") + "Z");
-      }
-
-      // Get current time in UTC
-      const nowUTC = new Date();
-
-      // Check if event has started
-      hasEventStarted = nowUTC >= eventDateUTC;
-
-      // Debug logging - convert to IST for display
-      const eventStartISTDisplay = new Date(eventDateUTC.getTime() + (5.5 * 60 * 60 * 1000));
-      const nowISTDisplay = new Date(nowUTC.getTime() + (5.5 * 60 * 60 * 1000));
-      
-      console.log("🕐 Event Start Check (IST):", {
-        eventTitle: event.title,
-        eventDateFromDB: event.date,
-        eventTime: event.time,
-        eventDateUTC: eventDateUTC.toISOString(),
-        eventStartIST: eventStartISTDisplay.toLocaleString("en-IN", {
-          timeZone: "Asia/Kolkata",
-        }),
-        nowUTC: nowUTC.toISOString(),
-        nowIST: nowISTDisplay.toLocaleString("en-IN", { 
-          timeZone: "Asia/Kolkata" 
-        }),
-        hasEventStarted,
-        minutesUntilStart: Math.round((eventDateUTC.getTime() - nowUTC.getTime()) / 60000),
-      });
-    } catch (error) {
-      console.error("Error calculating event start time:", error);
-      hasEventStarted = false;
-    }
-  }
-
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 relative overflow-hidden">
@@ -982,7 +1136,14 @@ export default function Page({ params }) {
 
                 {/* CTA Button */}
                 {user ? (
-                  hasEventStarted ? (
+                  hasEventEnded() ? (
+                    <div className="w-full bg-gray-600 text-white py-3 px-6 rounded-2xl font-bold text-base sm:text-lg text-center">
+                      <div>Event Ended</div>
+                      <div className="text-xs sm:text-sm font-normal mt-1">
+                        This event has concluded
+                      </div>
+                    </div>
+                  ) : hasEventStarted() ? (
                     <div className="w-full bg-orange-600 text-white py-3 px-6 rounded-2xl font-bold text-base sm:text-lg text-center">
                       <div>Event Started</div>
                       <div className="text-xs sm:text-sm font-normal mt-1">

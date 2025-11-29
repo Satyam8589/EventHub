@@ -160,7 +160,7 @@ export default function GamificationPage() {
 
   const isEventInProgress = (event) => {
     const now = new Date(); // Current time in UTC
-    
+
     // Parse end date from database (stored as UTC)
     let endDate = null;
     if (event.endDate) {
@@ -212,7 +212,7 @@ export default function GamificationPage() {
       } else {
         endDate = new Date(endDateValue.replace(" ", "T") + "Z");
       }
-      
+
       if (!isNaN(endDate.getTime())) {
         return endDate <= now;
       }
@@ -608,18 +608,23 @@ export default function GamificationPage() {
                             {(() => {
                               const dateStr = event.date;
                               let eventDate;
-                              if (dateStr.includes("T") && dateStr.includes("Z")) {
+                              if (
+                                dateStr.includes("T") &&
+                                dateStr.includes("Z")
+                              ) {
                                 eventDate = new Date(dateStr);
                               } else if (dateStr.includes("T")) {
                                 eventDate = new Date(dateStr + "Z");
                               } else {
-                                eventDate = new Date(dateStr.replace(" ", "T") + "Z");
+                                eventDate = new Date(
+                                  dateStr.replace(" ", "T") + "Z"
+                                );
                               }
-                              
+
                               if (!eventDate || isNaN(eventDate.getTime())) {
                                 return "Date TBD";
                               }
-                              
+
                               return eventDate.toLocaleDateString("en-IN", {
                                 month: "short",
                                 day: "numeric",
@@ -635,18 +640,23 @@ export default function GamificationPage() {
                               {(() => {
                                 const endDateStr = event.endDate;
                                 let endDate;
-                                if (endDateStr.includes("T") && endDateStr.includes("Z")) {
+                                if (
+                                  endDateStr.includes("T") &&
+                                  endDateStr.includes("Z")
+                                ) {
                                   endDate = new Date(endDateStr);
                                 } else if (endDateStr.includes("T")) {
                                   endDate = new Date(endDateStr + "Z");
                                 } else {
-                                  endDate = new Date(endDateStr.replace(" ", "T") + "Z");
+                                  endDate = new Date(
+                                    endDateStr.replace(" ", "T") + "Z"
+                                  );
                                 }
-                                
+
                                 if (!endDate || isNaN(endDate.getTime())) {
                                   return "Date TBD";
                                 }
-                                
+
                                 return endDate.toLocaleDateString("en-IN", {
                                   month: "short",
                                   day: "numeric",
@@ -666,18 +676,12 @@ export default function GamificationPage() {
 
                       {/* Action Buttons */}
                       <div className="flex flex-wrap gap-2">
-                        {event.isExpired ? (
-                          <div className="px-3 py-1.5 bg-red-500/20 text-red-300 rounded-lg text-sm font-medium border border-red-500/30">
-                            Event Expired
-                          </div>
-                        ) : (
-                          <Link
-                            href={`/events/${event.id}`}
-                            className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-sm font-medium transition-all border border-white/30 hover:border-white/50"
-                          >
-                            Details
-                          </Link>
-                        )}
+                        <Link
+                          href={`/events/${event.id}`}
+                          className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-sm font-medium transition-all border border-white/30 hover:border-white/50"
+                        >
+                          Details
+                        </Link>
                         {!user ? (
                           <button
                             onClick={() => openReviewModal(event)}
