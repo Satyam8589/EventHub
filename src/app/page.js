@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, memo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import { useEventStatusChecker } from "@/hooks/useEventStatusChecker";
@@ -16,9 +16,9 @@ import Link from "next/link";
 // Ensure UTC format for date strings
 const ensureUTCString = (dateStr) => {
   if (!dateStr) return null;
-  if (dateStr.includes('T') && dateStr.endsWith('Z')) return dateStr;
-  if (dateStr.includes('T')) return dateStr + 'Z';
-  return dateStr.replace(' ', 'T') + 'Z';
+  if (dateStr.includes("T") && dateStr.endsWith("Z")) return dateStr;
+  if (dateStr.includes("T")) return dateStr + "Z";
+  return dateStr.replace(" ", "T") + "Z";
 };
 
 // Check if an event is still active (not expired)
@@ -64,28 +64,32 @@ const isEventUpcoming = (event) => {
 
 // ===== COMPONENTS =====
 
-// Loading Skeleton Component
-const LoadingSkeleton = ({ count = 3 }) => (
+// Loading Skeleton Component - Memoized
+const LoadingSkeleton = memo(({ count = 3 }) => (
   <>
-    {Array(count).fill().map((_, index) => (
-      <div key={index} className="animate-pulse">
-        <div className="bg-white/10 backdrop-blur-md rounded-2xl h-96 border border-white/20"></div>
-      </div>
-    ))}
+    {Array(count)
+      .fill()
+      .map((_, index) => (
+        <div key={index} className="animate-pulse">
+          <div className="bg-white/10 backdrop-blur-md rounded-2xl h-96 border border-white/20"></div>
+        </div>
+      ))}
   </>
-);
+));
+LoadingSkeleton.displayName = 'LoadingSkeleton';
 
-// Empty State Component
-const EmptyState = ({ title, description }) => (
+// Empty State Component - Memoized
+const EmptyState = memo(({ title, description }) => (
   <div className="col-span-full text-center py-12">
     <div className="text-6xl mb-4">📅</div>
     <h3 className="text-xl font-semibold text-white mb-2">{title}</h3>
     <p className="text-gray-300">{description}</p>
   </div>
-);
+));
+EmptyState.displayName = 'EmptyState';
 
-// Animated Background Component
-const AnimatedBackground = ({ particles, mousePosition }) => (
+// Animated Background Component - Memoized for performance
+const AnimatedBackground = memo(({ particles, mousePosition }) => (
   <div className="absolute inset-0">
     {/* Floating particles */}
     {particles.map((particle) => (
@@ -105,34 +109,41 @@ const AnimatedBackground = ({ particles, mousePosition }) => (
     <div
       className="absolute w-96 h-96 bg-linear-to-r from-blue-400 to-purple-600 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob"
       style={{
-        transform: `translate(${mousePosition.x * 0.02}px, ${mousePosition.y * 0.02}px)`,
+        transform: `translate(${mousePosition.x * 0.02}px, ${
+          mousePosition.y * 0.02
+        }px)`,
       }}
     />
     <div
       className="absolute w-96 h-96 bg-linear-to-r from-yellow-400 to-pink-600 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-2000 top-20 right-20"
       style={{
-        transform: `translate(${mousePosition.x * -0.01}px, ${mousePosition.y * -0.01}px)`,
+        transform: `translate(${mousePosition.x * -0.01}px, ${
+          mousePosition.y * -0.01
+        }px)`,
       }}
     />
     <div
       className="absolute w-96 h-96 bg-linear-to-r from-green-400 to-blue-600 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-4000 bottom-20 left-20"
       style={{
-        transform: `translate(${mousePosition.x * 0.015}px, ${mousePosition.y * 0.015}px)`,
+        transform: `translate(${mousePosition.x * 0.015}px, ${
+          mousePosition.y * 0.015
+        }px)`,
       }}
     />
   </div>
-);
+));
+AnimatedBackground.displayName = 'AnimatedBackground';
 
-// Hero Section Component
-const HeroSection = ({ router }) => (
+// Hero Section Component - Memoized
+const HeroSection = memo(({ router }) => (
   <section className="relative z-10 text-center py-12 sm:py-16 md:py-20 lg:py-24 px-4 sm:px-6 lg:px-8">
     <div className="max-w-4xl mx-auto relative z-10">
       <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-bold text-white mb-4 sm:mb-6 animate-fade-in-up leading-tight drop-shadow-2xl">
         Discover Amazing Events Near You
       </h1>
       <p className="text-base sm:text-lg md:text-xl text-gray-100 mb-6 sm:mb-8 max-w-2xl mx-auto animate-fade-in-up animation-delay-300 px-4 drop-shadow-lg">
-        Join thousands of people experiencing the best events in music,
-        food, technology, and community. Book your next adventure today!
+        Join thousands of people experiencing the best events in music, food,
+        technology, and community. Book your next adventure today!
       </p>
 
       {/* Search Bar */}
@@ -169,11 +180,11 @@ const HeroSection = ({ router }) => (
       </div>
     </div>
   </section>
-);
+));
+HeroSection.displayName = 'HeroSection';
 
-
-// Stats Section Component
-const StatsSection = () => {
+// Stats Section Component - Memoized
+const StatsSection = memo(() => {
   const stats = [
     { icon: "🎪", value: "10,000+", label: "Events Listed" },
     { icon: "👥", value: "500K+", label: "Happy Attendees" },
@@ -181,32 +192,39 @@ const StatsSection = () => {
   ];
 
   return (
-    <section className="relative z-10 py-16">
-      <div className="max-w-7xl mx-auto px-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
+    <section className="relative z-10 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6">
+        <div className="grid grid-cols-3 gap-3 sm:gap-6 md:gap-8 text-center">
           {stats.map((stat, index) => (
             <div
               key={index}
-              className="bg-white/10 backdrop-blur-md rounded-2xl p-8 border border-white/20 hover:bg-white/20 transition-all duration-300 transform hover:scale-105"
+              className="bg-white/10 backdrop-blur-md rounded-xl sm:rounded-2xl p-3 sm:p-6 md:p-8 border border-white/20 hover:bg-white/20 transition-all duration-300 transform hover:scale-105"
             >
-              <div className="text-4xl mb-4">{stat.icon}</div>
-              <div className="text-3xl font-bold text-white mb-2">{stat.value}</div>
-              <div className="text-gray-300">{stat.label}</div>
+              <div className="text-2xl sm:text-3xl md:text-4xl mb-2 sm:mb-3 md:mb-4">{stat.icon}</div>
+              <div className="text-lg sm:text-2xl md:text-3xl font-bold text-white mb-1 sm:mb-2">
+                {stat.value}
+              </div>
+              <div className="text-xs sm:text-sm md:text-base text-gray-300">{stat.label}</div>
             </div>
           ))}
         </div>
       </div>
     </section>
   );
-};
+});
+StatsSection.displayName = 'StatsSection';
 
-// Categories Section Component
-const CategoriesSection = () => {
+// Categories Section Component - Memoized
+const CategoriesSection = memo(() => {
   const categories = [
     { name: "Music", icon: "🎵", color: "from-pink-500 to-rose-500" },
     { name: "Business", icon: "💼", color: "from-blue-500 to-cyan-500" },
     { name: "Food & Drink", icon: "🍕", color: "from-orange-500 to-amber-500" },
-    { name: "Art & Culture", icon: "🎨", color: "from-purple-500 to-indigo-500" },
+    {
+      name: "Art & Culture",
+      icon: "🎨",
+      color: "from-purple-500 to-indigo-500",
+    },
   ];
 
   return (
@@ -233,11 +251,24 @@ const CategoriesSection = () => {
       </div>
     </section>
   );
-};
+});
+CategoriesSection.displayName = 'CategoriesSection';
 
 // Events Section Component
-const EventsSection = ({ title, description, events, loading, showRefresh, onRefresh, showViewAll }) => (
-  <section className={`relative z-10 py-12 sm:py-16 ${showRefresh ? 'bg-black/20' : ''}`}>
+const EventsSection = ({
+  title,
+  description,
+  events,
+  loading,
+  showRefresh,
+  onRefresh,
+  showViewAll,
+}) => (
+  <section
+    className={`relative z-10 py-12 sm:py-16 ${
+      showRefresh ? "bg-black/20" : ""
+    }`}
+  >
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div className="text-center mb-8 sm:mb-12">
         <h2 className="text-3xl sm:text-4xl font-bold text-white mb-3 sm:mb-4">
@@ -329,8 +360,8 @@ const Footer = () => (
             <EventHubLogo size={32} showText={true} className="mb-4" />
           </a>
           <p className="text-sm">
-            Discover and book amazing events near you. Create memories that
-            last forever.
+            Discover and book amazing events near you. Create memories that last
+            forever.
           </p>
         </div>
 
@@ -338,7 +369,10 @@ const Footer = () => (
           <h4 className="text-white font-semibold mb-4">Quick Links</h4>
           <ul className="space-y-2 text-sm">
             <li>
-              <a href="/my-events" className="hover:text-white transition-colors">
+              <a
+                href="/my-events"
+                className="hover:text-white transition-colors"
+              >
                 My Events
               </a>
             </li>
@@ -397,27 +431,42 @@ const Footer = () => (
           <h4 className="text-white font-semibold mb-4">Legal</h4>
           <ul className="space-y-2 text-sm">
             <li>
-              <Link href="/terms&cond" className="hover:text-white transition-colors">
+              <Link
+                href="/terms&cond"
+                className="hover:text-white transition-colors"
+              >
                 Terms & Conditions
               </Link>
             </li>
             <li>
-              <Link href="/shipping&policy" className="hover:text-white transition-colors">
+              <Link
+                href="/shipping&policy"
+                className="hover:text-white transition-colors"
+              >
                 Shipping & Delivery Policy
               </Link>
             </li>
             <li>
-              <Link href="/refund&rule" className="hover:text-white transition-colors">
+              <Link
+                href="/refund&rule"
+                className="hover:text-white transition-colors"
+              >
                 Cancellation & Refund Policy
               </Link>
             </li>
             <li>
-              <Link href="/privacy&policy" className="hover:text-white transition-colors">
+              <Link
+                href="/privacy&policy"
+                className="hover:text-white transition-colors"
+              >
                 Privacy Policy
               </Link>
             </li>
             <li>
-              <Link href="/contact" className="hover:text-white transition-colors">
+              <Link
+                href="/contact"
+                className="hover:text-white transition-colors"
+              >
                 Contact Us
               </Link>
             </li>
@@ -486,19 +535,34 @@ export default function Home() {
     }
   }, [user, authLoading]);
 
-  // Mouse movement effect
+  // Mouse movement effect - Throttled for performance
   useEffect(() => {
+    let rafId = null;
+    let lastUpdate = 0;
+    const throttleMs = 16; // ~60fps
+
     const handleMouseMove = (e) => {
-      setMousePosition({ x: e.clientX, y: e.clientY });
+      const now = Date.now();
+      if (now - lastUpdate < throttleMs) return;
+      
+      if (rafId) cancelAnimationFrame(rafId);
+      
+      rafId = requestAnimationFrame(() => {
+        setMousePosition({ x: e.clientX, y: e.clientY });
+        lastUpdate = now;
+      });
     };
 
-    window.addEventListener("mousemove", handleMouseMove);
-    return () => window.removeEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mousemove", handleMouseMove, { passive: true });
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      if (rafId) cancelAnimationFrame(rafId);
+    };
   }, []);
 
-  // Generate particles
+  // Generate particles - Reduced count for better performance
   useEffect(() => {
-    const newParticles = [...Array(50)].map((_, i) => ({
+    const newParticles = [...Array(30)].map((_, i) => ({
       id: i,
       left: Math.random() * 100,
       top: Math.random() * 100,
@@ -540,7 +604,7 @@ export default function Home() {
   // Memoized filtered events - OPTIMIZED
   const { featuredEvents, upcomingEvents } = useMemo(() => {
     const activeEvents = events.filter(isEventActive);
-    
+
     // Filter featured events (only active featured events)
     const featured = activeEvents
       .filter((event) => event.featured === true)
@@ -564,28 +628,30 @@ export default function Home() {
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900 relative overflow-hidden">
       {/* Hero Background Image - Covers entire page */}
       <div className="fixed inset-0 z-0">
-        <div 
+        <div
           className="absolute inset-0 bg-cover bg-center bg-no-repeat bg-fixed"
           style={{
-            backgroundImage: 'url(/hero-background.png)',
-            backgroundPosition: 'center center',
-            backgroundSize: 'cover',
+            backgroundImage: "url(/hero-background.png)",
+            backgroundPosition: "center center",
+            backgroundSize: "cover",
           }}
         />
         {/* Stronger dark overlay for better text readability across entire page */}
         <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/60 to-black/50" />
         {/* Color overlay for depth */}
         <div className="absolute inset-0 bg-gradient-to-br from-purple-900/30 via-blue-900/20 to-transparent" />
-        
+
         {/* Soft bottom gradient for footer area */}
         <div className="absolute bottom-0 left-0 right-0 h-[300px] bg-gradient-to-b from-transparent via-gray-900/30 to-gray-900/70" />
       </div>
 
       <div className="relative z-5">
-        <AnimatedBackground particles={particles} mousePosition={mousePosition} />
+        <AnimatedBackground
+          particles={particles}
+          mousePosition={mousePosition}
+        />
       </div>
 
-      
       {/* Navigation */}
       <Navbar setShowLogin={setShowLogin} setShowSignup={setShowSignup} />
 
