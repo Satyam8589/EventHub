@@ -342,7 +342,15 @@ export default function BookingModal({
     setTimeout(() => {
       resetModal();
       onClose();
-      router.push("/my-events");
+      
+      // Navigate to my-events with error handling
+      try {
+        router.push("/my-events");
+      } catch (error) {
+        console.error("Navigation error:", error);
+        // Fallback: use window.location if router fails
+        window.location.href = "/my-events";
+      }
     }, 3000);
   };
 
