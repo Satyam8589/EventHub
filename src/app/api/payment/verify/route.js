@@ -152,6 +152,24 @@ export async function POST(request) {
     if (booking.status === "CONFIRMED") {
       console.log("✅ Booking already confirmed - idempotent request");
       
+      // Log this verification attempt (even though webhook already processed it)
+      try {
+        const attemptNumber = (booking.verification_attempts || 0) + 1;
+        await supabase.rpc("log_verification_attempt", {
+          p_booking_id: bookingId,
+          p_payment_id: razorpay_payment_id,
+          p_order_id: razorpay_order_id,
+          p_attempt_number: attemptNumber,
+          p_source: "client",
+          p_success: true,
+          p_error_message: "Already confirmed by webhook",
+          p_response_time_ms: Date.now() - startTime,
+        });
+        console.log("✅ Idempotent verification attempt logged");
+      } catch (logError) {
+        console.error("⚠️ Failed to log idempotent verification:", logError);
+      }
+      
       // Get event details for response
       const { data: eventInfo } = await supabase
         .from("events")
