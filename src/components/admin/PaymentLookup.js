@@ -44,10 +44,18 @@ export default function PaymentLookup() {
       }
 
       setConfirmSuccess(true);
-      // Refresh the data
-      setTimeout(() => {
-        window.location.reload();
-      }, 2000);
+      // Update the booking status in the displayed data
+      if (data?.booking) {
+        setData({
+          ...data,
+          booking: {
+            ...data.booking,
+            status: "CONFIRMED",
+            tickets: ticketQuantity,
+            paymentId: paymentIdInput.trim() || data.booking.paymentId,
+          },
+        });
+      }
     } catch (err) {
       setConfirmError(err.message);
     } finally {
