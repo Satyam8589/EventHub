@@ -1,6 +1,54 @@
 "use client";
 import { useEffect, useRef } from "react";
 
+// Helper function to poll payment status
+const pollPaymentStatus = async (bookingId, maxAttempts = 15, intervalMs = 2000) => {
+  console.log(`🔍 Starting payment status polling for booking: ${bookingId}`);
+  
+  for (let i = 0; i < maxAttempts; i++) {
+    try {
+      console.log(`📊 Polling attempt ${i + 1}/${maxAttempts}`);
+      
+      const response = await fetch(`/api/payment/status/${bookingId}`);
+      const data = await response.json();
+      
+      if (data.success && data.booking) {
+        const status = data.booking.status;
+        console.log(`📋 Booking status: ${status}`);
+        
+        if (status === "CONFIRMED") {
+          console.log("✅ Payment confirmed!");
+          return { success: true, booking: data.booking };
+        } else if (status === "FAILED") {
+          console.log("❌ Payment failed");
+          return { 
+            success: false, 
+            error: data.booking.failureReason || "Payment failed" 
+          };
+        }
+        // Status is still PENDING, continue polling
+      }
+      
+      // Wait before next attempt (except on last attempt)
+      if (i < maxAttempts - 1) {
+        await new Promise(resolve => setTimeout(resolve, intervalMs));
+      }
+    } catch (error) {
+      console.error(`❌ Polling attempt ${i + 1} error:`, error);
+      // Continue polling even if one attempt fails
+      if (i < maxAttempts - 1) {
+        await new Promise(resolve => setTimeout(resolve, intervalMs));
+      }
+    }
+  }
+  
+  console.log("⏱️ Polling timeout - payment status still pending");
+  return { 
+    success: false, 
+    error: "Payment verification timeout. Please check My Events page." 
+  };
+};
+
 const RazorpayPayment = ({
   orderData,
   userDetails,
@@ -59,66 +107,102 @@ const RazorpayPayment = ({
             immediate: true, // Flag to indicate this is immediate feedback
           });
 
-          // Verify payment in background
-          try {
-            console.log("Verifying payment in background...");
-            console.log("Sending verification request with:", {
-              razorpay_order_id: response.razorpay_order_id,
-              razorpay_payment_id: response.razorpay_payment_id,
-              bookingId: orderData.bookingId,
-            });
+          // Verify payment with retry mechanism
+          const maxRetries = 3;
+          let attempt = 0;
+          let verified = false;
 
-            const verifyResponse = await fetch("/api/payment/verify", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature,
-                bookingId: orderData.bookingId,
-              }),
-            });
+          while (attempt < maxRetries && !verified) {
+            attempt++;
+            console.log(`🔄 Verification attempt ${attempt}/${maxRetries}`);
 
-            console.log("Verify response status:", verifyResponse.status);
-            console.log("Verify response ok:", verifyResponse.ok);
-
-            // Check if response has content before trying to parse JSON
-            const responseText = await verifyResponse.text();
-            console.log("Verify response text:", responseText);
-
-            let verifyData;
             try {
-              verifyData = JSON.parse(responseText);
-              console.log("Verify response data (parsed):", verifyData);
-            } catch (parseError) {
-              console.error("Failed to parse response as JSON:", parseError);
-              console.error("Raw response was:", responseText);
-              throw new Error(
-                "Server returned invalid response. Please check server logs."
-              );
-            }
+              const verifyResponse = await fetch("/api/payment/verify", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  razorpay_order_id: response.razorpay_order_id,
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_signature: response.razorpay_signature,
+                  bookingId: orderData.bookingId,
+                  retryAttempt: attempt > 1 ? attempt : undefined,
+                }),
+              });
 
-            if (verifyData.success) {
-              console.log("Payment verified successfully in background!");
-              // Verification succeeded - user already sees success popup
-            } else {
-              console.error(
-                "Background verification failed:",
-                verifyData.error
-              );
-              console.error("Full error details:", verifyData);
-              // Show error after a moment if verification fails
-              setTimeout(() => {
-                onFailure(verifyData.error || "Payment verification failed");
-              }, 500);
+              console.log("Verify response status:", verifyResponse.status);
+
+              const responseText = await verifyResponse.text();
+              let verifyData;
+
+              try {
+                verifyData = JSON.parse(responseText);
+                console.log("Verify response data:", verifyData);
+              } catch (parseError) {
+                console.error("Failed to parse response:", parseError);
+                throw new Error("Invalid server response");
+              }
+
+              if (verifyData.success) {
+                console.log("✅ Payment verified successfully!");
+                verified = true;
+                // Verification succeeded - user already sees success popup
+                break;
+              } else {
+                console.error(`❌ Verification attempt ${attempt} failed:`, verifyData.error);
+                
+                // If this was the last attempt, try status polling as fallback
+                if (attempt === maxRetries) {
+                  console.log("🔍 Starting status polling fallback...");
+                  const pollingResult = await pollPaymentStatus(orderData.bookingId);
+                  
+                  if (pollingResult.success) {
+                    console.log("✅ Payment confirmed via status polling!");
+                    verified = true;
+                  } else {
+                    throw new Error(verifyData.error || "Payment verification failed");
+                  }
+                } else {
+                  // Wait before retry with exponential backoff
+                  const backoffMs = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
+                  console.log(`⏳ Waiting ${backoffMs}ms before retry...`);
+                  await new Promise(resolve => setTimeout(resolve, backoffMs));
+                }
+              }
+            } catch (error) {
+              console.error(`❌ Verification attempt ${attempt} error:`, error);
+              
+              if (attempt === maxRetries) {
+                // Last attempt failed, try status polling
+                console.log("🔍 Starting status polling fallback...");
+                try {
+                  const pollingResult = await pollPaymentStatus(orderData.bookingId);
+                  
+                  if (pollingResult.success) {
+                    console.log("✅ Payment confirmed via status polling!");
+                    verified = true;
+                  } else {
+                    throw error;
+                  }
+                } catch (pollError) {
+                  console.error("❌ Status polling also failed:", pollError);
+                  setTimeout(() => {
+                    onFailure("Payment verification failed. Please check 'My Events' or contact support.");
+                  }, 500);
+                  return;
+                }
+              } else {
+                // Wait before retry
+                const backoffMs = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
+                await new Promise(resolve => setTimeout(resolve, backoffMs));
+              }
             }
-          } catch (error) {
-            console.error("Background payment verification error:", error);
-            // Show error after a moment if verification fails
+          }
+
+          if (!verified) {
             setTimeout(() => {
-              onFailure("Payment verification failed. Please contact support.");
+              onFailure("Payment verification failed after multiple attempts. Please check 'My Events' or contact support.");
             }, 500);
           }
         },
@@ -140,8 +224,60 @@ const RazorpayPayment = ({
           color: "#3b82f6", // Blue color matching your theme
         },
         modal: {
-          ondismiss: function () {
+          ondismiss: async function () {
             console.log("Payment modal dismissed");
+            
+            // Check if payment might have been completed
+            // Poll the booking status to see if payment succeeded
+            console.log("🔍 Checking if payment was completed before dismissal...");
+            
+            try {
+              // Wait a moment for any in-flight verification to complete
+              await new Promise(resolve => setTimeout(resolve, 2000));
+              
+              // Check booking status
+              const statusResponse = await fetch(`/api/payment/status/${orderData.bookingId}`);
+              const statusData = await statusResponse.json();
+              
+              if (statusData.success && statusData.booking) {
+                const status = statusData.booking.status;
+                console.log(`📋 Booking status after dismissal: ${status}`);
+                
+                if (status === "CONFIRMED") {
+                  // Payment was completed! Show success
+                  console.log("✅ Payment was completed before dismissal!");
+                  onSuccess({
+                    success: true,
+                    message: "Payment successful! Your tickets are confirmed.",
+                  });
+                  return;
+                } else if (status === "PENDING") {
+                  // Payment might still be processing
+                  console.log("⏳ Payment still pending, starting background check...");
+                  
+                  // Start polling in background
+                  pollPaymentStatus(orderData.bookingId, 10, 3000).then(result => {
+                    if (result.success) {
+                      console.log("✅ Payment confirmed via background polling!");
+                      onSuccess({
+                        success: true,
+                        message: "Payment successful! Your tickets are confirmed.",
+                      });
+                    } else {
+                      console.log("ℹ️ Payment not completed");
+                      onClose();
+                    }
+                  }).catch(() => {
+                    onClose();
+                  });
+                  return;
+                }
+              }
+            } catch (error) {
+              console.error("Error checking payment status on dismiss:", error);
+            }
+            
+            // If we get here, payment wasn't completed
             onClose();
           },
         },

@@ -51,7 +51,12 @@ export async function POST(request) {
       razorpay_payment_id,
       razorpay_signature,
       bookingId,
+      retryAttempt, // Track retry attempts
     } = body;
+    
+    if (retryAttempt) {
+      console.log(`🔄 This is retry attempt #${retryAttempt}`);
+    }
     
     console.log(
       "Full request body:",
@@ -61,6 +66,7 @@ export async function POST(request) {
           razorpay_payment_id,
           bookingId,
           signatureLength: razorpay_signature?.length,
+          retryAttempt,
         },
         null,
         2
@@ -144,13 +150,32 @@ export async function POST(request) {
 
     // Check if booking is already confirmed
     if (booking.status === "CONFIRMED") {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "This payment has already been verified",
+      console.log("✅ Booking already confirmed - idempotent request");
+      
+      // Get event details for response
+      const { data: eventInfo } = await supabase
+        .from("events")
+        .select("id, title, date, time, location")
+        .eq("id", booking.eventId)
+        .single();
+      
+      // Return success response (idempotent - already processed)
+      return NextResponse.json({
+        success: true,
+        message: "Payment already verified. Your tickets are confirmed.",
+        alreadyProcessed: true,
+        booking: {
+          id: booking.id,
+          status: booking.status,
+          tickets: booking.tickets,
+          totalAmount: booking.totalAmount,
+          paymentId: booking.paymentId,
+          event: eventInfo || {
+            id: booking.eventId,
+            title: "Event",
+          },
         },
-        { status: 400 }
-      );
+      });
     }
 
     // Check if booking status is PENDING and paymentId matches
