@@ -341,7 +341,9 @@ async function handlePaymentCaptured(payload, webhookEventId) {
     // Update verification metadata
     try {
       const nowIstIso = getIstTimestamp();
-      await supabase
+      console.log("📝 Updating webhook tracking for booking:", confirmedBooking.id);
+      
+      const { error: updateError } = await supabase
         .from("bookings")
         .update({
           paymentVerifiedAt: nowIstIso,
@@ -350,8 +352,16 @@ async function handlePaymentCaptured(payload, webhookEventId) {
           webhook_processed_at: nowIstIso,
           updatedAt: nowIstIso,
         })
-        .eq("id", booking.id);
-    } catch (_) {}
+        .eq("id", confirmedBooking.id);
+      
+      if (updateError) {
+        console.error("❌ Failed to update webhook tracking:", updateError);
+      } else {
+        console.log("✅ Webhook tracking updated successfully");
+      }
+    } catch (error) {
+      console.error("❌ Error updating webhook tracking:", error);
+    }
     
     // Increment discount usage if applicable
     if (confirmedBooking.discountId) {
