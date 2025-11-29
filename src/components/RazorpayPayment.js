@@ -57,10 +57,33 @@ const RazorpayPayment = ({
   onClose,
 }) => {
   const razorpayInstanceRef = useRef(null);
+  const isProcessingRef = useRef(false);
+  const isDismissedRef = useRef(false);
+  const isInitializedRef = useRef(false);
 
   useEffect(() => {
+    // Prevent multiple initializations
+    if (isInitializedRef.current) {
+      console.log("⚠️ Razorpay already initialized, skipping");
+      return;
+    }
+    isInitializedRef.current = true;
+
     // Load Razorpay script
     const loadRazorpay = async () => {
+      // Check if script already exists
+      const existingScript = document.querySelector(
+        'script[src="https://checkout.razorpay.com/v1/checkout.js"]'
+      );
+
+      if (existingScript) {
+        console.log("Razorpay script already loaded");
+        if (window.Razorpay) {
+          initializePayment();
+        }
+        return;
+      }
+
       const script = document.createElement("script");
       script.src = "https://checkout.razorpay.com/v1/checkout.js";
       script.async = true;
@@ -71,6 +94,7 @@ const RazorpayPayment = ({
 
       script.onerror = () => {
         console.error("Failed to load Razorpay SDK");
+        isInitializedRef.current = false;
         onFailure("Failed to load payment gateway");
       };
 
@@ -88,6 +112,13 @@ const RazorpayPayment = ({
         order_id: orderData.orderId,
         handler: async function (response) {
           console.log("Payment Success Response:", response);
+
+          // Prevent duplicate processing
+          if (isProcessingRef.current) {
+            console.log("⚠️ Already processing payment, skipping duplicate call");
+            return;
+          }
+          isProcessingRef.current = true;
 
           // Close Razorpay modal IMMEDIATELY
           if (razorpayInstanceRef.current) {
@@ -227,6 +258,13 @@ const RazorpayPayment = ({
           ondismiss: async function () {
             console.log("Payment modal dismissed");
             
+            // Prevent multiple dismiss calls
+            if (isDismissedRef.current || isProcessingRef.current) {
+              console.log("⚠️ Already dismissed or processing, skipping");
+              return;
+            }
+            isDismissedRef.current = true;
+            
             // Check if payment might have been completed
             // Poll the booking status to see if payment succeeded
             console.log("🔍 Checking if payment was completed before dismissal...");
@@ -252,24 +290,9 @@ const RazorpayPayment = ({
                   });
                   return;
                 } else if (status === "PENDING") {
-                  // Payment might still be processing
-                  console.log("⏳ Payment still pending, starting background check...");
-                  
-                  // Start polling in background
-                  pollPaymentStatus(orderData.bookingId, 10, 3000).then(result => {
-                    if (result.success) {
-                      console.log("✅ Payment confirmed via background polling!");
-                      onSuccess({
-                        success: true,
-                        message: "Payment successful! Your tickets are confirmed.",
-                      });
-                    } else {
-                      console.log("ℹ️ Payment not completed");
-                      onClose();
-                    }
-                  }).catch(() => {
-                    onClose();
-                  });
+                  // Payment might still be processing - just close without polling
+                  console.log("ℹ️ Payment still pending after dismissal");
+                  onClose();
                   return;
                 }
               }
@@ -305,16 +328,17 @@ const RazorpayPayment = ({
       loadRazorpay();
     }
 
-    // Cleanup function
+    // Cleanup function - close Razorpay instance but don't remove script
     return () => {
-      const script = document.querySelector(
-        'script[src="https://checkout.razorpay.com/v1/checkout.js"]'
-      );
-      if (script) {
-        document.head.removeChild(script);
+      if (razorpayInstanceRef.current) {
+        try {
+          razorpayInstanceRef.current.close();
+        } catch (e) {
+          // Ignore errors during cleanup
+        }
       }
     };
-  }, [orderData, userDetails, onSuccess, onFailure, onClose]);
+  }, []); // Empty dependency array - only run once on mount
 
   // This component doesn't render anything visible
   // Razorpay modal will handle the UI
