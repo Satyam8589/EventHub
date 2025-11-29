@@ -10,6 +10,50 @@ export default function PaymentLookup() {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
+  
+  // Manual confirmation states
+  const [confirmLoading, setConfirmLoading] = useState(false);
+  const [confirmSuccess, setConfirmSuccess] = useState(false);
+  const [confirmError, setConfirmError] = useState(null);
+  const [ticketQuantity, setTicketQuantity] = useState(1);
+  const [paymentIdInput, setPaymentIdInput] = useState("");
+
+  const handleManualConfirm = async () => {
+    if (!data?.booking?.id || !user?.uid) return;
+
+    setConfirmLoading(true);
+    setConfirmError(null);
+    setConfirmSuccess(false);
+
+    try {
+      const response = await fetch("/api/admin/manual-confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          bookingId: data.booking.id,
+          userId: user.uid,
+          ticketQuantity: ticketQuantity,
+          paymentId: paymentIdInput.trim() || null,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to confirm booking");
+      }
+
+      setConfirmSuccess(true);
+      // Refresh the data
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
+    } catch (err) {
+      setConfirmError(err.message);
+    } finally {
+      setConfirmLoading(false);
+    }
+  };
 
   const handleSearch = async (e) => {
     e.preventDefault();
@@ -223,6 +267,96 @@ export default function PaymentLookup() {
               </div>
             </div>
           </section>
+
+          {/* Manual Ticket Issuance - Only for PENDING bookings */}
+          {data.booking.status === "PENDING" && (
+            <section className={styles.section}>
+              <h3>🎟️ Manual Ticket Issuance</h3>
+              <p className={styles.sectionDescription}>
+                Issue tickets manually if the user has paid but didn't receive them due to technical issues.
+              </p>
+
+              <div className={styles.manualConfirmBox}>
+                <div className={styles.ticketSelector}>
+                  <label htmlFor="ticketQuantity">Ticket Quantity</label>
+                  <input
+                    id="ticketQuantity"
+                    type="number"
+                    min="1"
+                    max="10"
+                    value={ticketQuantity}
+                    onChange={(e) => setTicketQuantity(parseInt(e.target.value) || 1)}
+                    className={styles.ticketInput}
+                  />
+                  <span className={styles.ticketHint}>
+                    Original: {data.booking.tickets} ticket(s)
+                  </span>
+                </div>
+
+                <div className={styles.ticketSelector}>
+                  <label htmlFor="paymentIdInput">Payment ID (Optional)</label>
+                  <input
+                    id="paymentIdInput"
+                    type="text"
+                    placeholder="e.g., pay_ABC123xyz"
+                    value={paymentIdInput}
+                    onChange={(e) => setPaymentIdInput(e.target.value)}
+                    className={styles.paymentIdInput}
+                  />
+                  <span className={styles.ticketHint}>
+                    Current: {data.booking.paymentId || "None"}
+                  </span>
+                </div>
+
+                <button
+                  onClick={handleManualConfirm}
+                  disabled={confirmLoading || confirmSuccess}
+                  className={styles.confirmButton}
+                >
+                  {confirmLoading ? (
+                    <>⏳ Confirming...</>
+                  ) : confirmSuccess ? (
+                    <>✅ Confirmed!</>
+                  ) : (
+                    <>🎫 Confirm & Send Tickets</>
+                  )}
+                </button>
+              </div>
+
+              {confirmSuccess && (
+                <div className={styles.successMessage}>
+                  <span>✅</span>
+                  <div>
+                    <strong>Tickets sent successfully!</strong>
+                    <p>The user will receive a notification and can view tickets in My Events.</p>
+                  </div>
+                </div>
+              )}
+
+              {confirmError && (
+                <div className={styles.errorMessage}>
+                  <span>❌</span>
+                  <div>
+                    <strong>Failed to confirm booking</strong>
+                    <p>{confirmError}</p>
+                  </div>
+                </div>
+              )}
+
+              <div className={styles.warningBox}>
+                <span>⚠️</span>
+                <div>
+                  <strong>Important:</strong>
+                  <ul>
+                    <li>Only confirm if payment has been verified</li>
+                    <li>This will mark the booking as CONFIRMED</li>
+                    <li>User will receive tickets immediately</li>
+                    <li>This action will be logged for audit purposes</li>
+                  </ul>
+                </div>
+              </div>
+            </section>
+          )}
 
           {/* Event Details */}
           <section className={styles.section}>
