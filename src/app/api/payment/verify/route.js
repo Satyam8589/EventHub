@@ -231,6 +231,24 @@ export async function POST(request) {
     const confirmedBooking = result.booking;
     const eventInfo = result.event;
     const storedPaymentId = confirmedBooking.paymentId || razorpay_payment_id;
+    
+    // Log verification attempt
+    try {
+      const attemptNumber = (confirmedBooking.verification_attempts || 0) + 1;
+      await supabase.rpc("log_verification_attempt", {
+        p_booking_id: bookingId,
+        p_payment_id: razorpay_payment_id,
+        p_order_id: razorpay_order_id,
+        p_attempt_number: attemptNumber,
+        p_source: "client",
+        p_success: true,
+        p_error_message: null,
+        p_response_time_ms: Date.now() - startTime,
+      });
+      console.log("✅ Verification attempt logged");
+    } catch (logError) {
+      console.error("⚠️ Failed to log verification attempt:", logError);
+    }
 
     // Prepare success response
     const successResponse = {
