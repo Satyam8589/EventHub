@@ -330,7 +330,7 @@ export default function EventCard({ event }) {
     : isPast
     ? { text: "PAST", classes: "from-gray-500 to-gray-600 border-gray-300/50" }
     : null;
-  const statusTopClass = event.featured ? "top-14" : "top-3";
+  const statusTopClass = event.featured ? "top-11" : "top-3";
 
   const hasBookingLimit =
     event.max_tickets_per_user && event.max_tickets_per_user > 0;
@@ -427,18 +427,18 @@ export default function EventCard({ event }) {
             : ""
         } ${isExpired ? "opacity-75 grayscale-[0.3]" : ""}`}
       >
-        {/* Featured Badge */}
+        {/* Status Badge - Smaller size */}
         {statusBadge && (
           <div
-            className={`absolute ${statusTopClass} right-3 z-30 bg-gradient-to-r ${statusBadge.classes} text-white px-3 py-1.5 rounded-full text-xs font-bold shadow-lg border`}
+            className={`absolute ${statusTopClass} right-3 z-30 bg-gradient-to-r ${statusBadge.classes} text-white px-2 py-1 rounded-full text-[8px] sm:text-[10px] font-bold shadow-lg border`}
           >
             <span className="tracking-wide">{statusBadge.text}</span>
           </div>
         )}
+        {/* Featured Badge - Star only */}
         {event.featured && (
-          <div className="absolute top-3 right-3 z-20 bg-gradient-to-r from-amber-400 via-yellow-500 to-amber-600 text-white px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 shadow-lg border border-yellow-300/50 animate-pulse">
-            <span className="text-sm">⭐</span>
-            <span className="tracking-wide">FEATURED</span>
+          <div className="absolute top-3 right-3 z-20 bg-gradient-to-r from-amber-400 via-yellow-500 to-amber-600 text-white w-6 h-6 rounded-full shadow-lg border border-yellow-300/50 animate-pulse flex items-center justify-center">
+            <span className="text-xs">⭐</span>
           </div>
         )}
 

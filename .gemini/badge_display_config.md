@@ -60,7 +60,7 @@ const statusBadge = showStatusBadge && !event.featured && isOngoing
 ### Home Page (`/`)
 | Event Type | Mobile | Desktop |
 |------------|--------|---------|
-| **Featured** | ⭐ (star only) | ⭐ FEATURED |
+| **Featured** | ⭐ (star only) | ⭐ (star only) |
 | **Non-Featured Upcoming** | *(no badge)* | *(no badge)* |
 | **Non-Featured Ongoing** | *(no badge)* | *(no badge)* |
 | **Non-Featured Past** | *(no badge)* | *(no badge)* |
@@ -68,10 +68,10 @@ const statusBadge = showStatusBadge && !event.featured && isOngoing
 ### Other Pages (`/events`, `/my-events`, `/admin/events`, etc.)
 | Event Type | Mobile | Desktop |
 |------------|--------|---------|
-| **Featured** | ⭐ (star only) | ⭐ FEATURED |
-| **Non-Featured Upcoming** | UPCOMING | UPCOMING |
-| **Non-Featured Ongoing** | ONGOING | ONGOING |
-| **Non-Featured Past** | PAST | PAST |
+| **Featured** | ⭐ (star only) | ⭐ (star only) |
+| **Non-Featured Upcoming** | UPCOMING (small) | UPCOMING (small) |
+| **Non-Featured Ongoing** | ONGOING (small) | ONGOING (small) |
+| **Non-Featured Past** | PAST (small) | PAST (small) |
 
 ---
 
