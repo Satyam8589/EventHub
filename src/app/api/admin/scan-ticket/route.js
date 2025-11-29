@@ -883,7 +883,7 @@ export async function GET(request) {
         const diffTime = endDate.getTime() - startDate.getTime();
         const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
         eventDays = Math.max(1, diffDays + 1); // Add 1 to include both start and end day
-        
+
         console.log("Event Days Calculation (IST):", {
           startDate: startDateStr,
           endDate: endDateStr,
