@@ -95,7 +95,7 @@ export default function RootLayout({ children }) {
         <meta property="og:site_name" content="EventHub" />
         <meta
           name="google-site-verification"
-          content="lFMJ-P-rQSZM1roUYtf54Pde5-K-uYRM5nq1501brZQ"
+          content="Vkth46F15eq6as0bOJcEcx4EKzvQMRMO0D21knGiRXQ"
         />
         <link rel="manifest" href="/manifest.json" />
 
