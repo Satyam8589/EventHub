@@ -449,7 +449,6 @@ export default function RefundCancellationPage() {
                     </svg>
                     <div className="flex-1">
                       <p className="font-semibold text-white">Phone Support</p>
-                      <p>+91 9263472616</p>
                       <p className="text-sm text-white/60 mt-1">Mon-Fri: 9:00 AM - 6:00 PM IST</p>
                     </div>
                   </div>

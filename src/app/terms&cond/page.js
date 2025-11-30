@@ -346,10 +346,6 @@ export default function TermsConditionsPage() {
                     join.eventhub@gmail.com
                   </p>
                   <p>
-                    <strong className="text-white">Phone:</strong> +91
-                    9263472616
-                  </p>
-                  <p>
                     <strong className="text-white">Address:</strong> 123 Event
                     Street, New York, NY 10001
                   </p>

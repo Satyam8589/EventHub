@@ -328,7 +328,6 @@ export default function PrivacyPolicyPage() {
                 <p>If you have questions about this Privacy Policy or our data practices, please contact us:</p>
                 <div className="bg-white/5 rounded-lg p-4 mt-4 space-y-2">
                   <p><strong className="text-white">Email:</strong> join.eventhub@gmail.com</p>
-                  <p><strong className="text-white">Phone:</strong> +91 9263472616</p>
                   <p><strong className="text-white">Address:</strong> Anandapur, Kolkata, West Bengal</p>
                   <p><strong className="text-white">Business Hours:</strong> Monday-Friday, 9:00 AM - 6:00 PM IST</p>
                 </div>
