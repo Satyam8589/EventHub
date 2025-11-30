@@ -85,6 +85,15 @@ export async function POST(request, { params }) {
     const eventUserId = event.userId || event.user_id;
     const isCreator = eventUserId === userId;
 
+    // Check if user is a super admin
+    const { data: userData } = await supabase
+      .from("users")
+      .select("role")
+      .eq("id", userId)
+      .single();
+
+    const isSuperAdmin = userData?.role === "SUPER_ADMIN";
+
     // Check if user is an assigned admin
     const { data: adminData } = await supabase
       .from("event_admins")
@@ -95,7 +104,7 @@ export async function POST(request, { params }) {
 
     const isAdmin = !!adminData;
 
-    if (!isCreator && !isAdmin) {
+    if (!isCreator && !isAdmin && !isSuperAdmin) {
       return NextResponse.json(
         { error: "Unauthorized. Only event admins can post announcements." },
         { status: 403 }
@@ -110,9 +119,9 @@ export async function POST(request, { params }) {
       createdBy: userId,
     };
 
-    // Get existing announcements and add the new one
+    // Get existing announcements and add the new one at the beginning (latest first)
     const existingAnnouncements = event.announcements || [];
-    const updatedAnnouncements = [...existingAnnouncements, newAnnouncement];
+    const updatedAnnouncements = [newAnnouncement, ...existingAnnouncements];
 
     // Update event with new announcement
     const { data: updatedEvent, error: updateError } = await supabase
@@ -204,6 +213,15 @@ export async function DELETE(request, { params }) {
     const eventUserId = event.userId || event.user_id;
     const isCreator = eventUserId === userId;
 
+    // Check if user is a super admin
+    const { data: userData } = await supabase
+      .from("users")
+      .select("role")
+      .eq("id", userId)
+      .single();
+
+    const isSuperAdmin = userData?.role === "SUPER_ADMIN";
+
     // Check if user is an assigned admin
     const { data: adminData } = await supabase
       .from("event_admins")
@@ -214,7 +232,7 @@ export async function DELETE(request, { params }) {
 
     const isAdmin = !!adminData;
 
-    if (!isCreator && !isAdmin) {
+    if (!isCreator && !isAdmin && !isSuperAdmin) {
       return NextResponse.json(
         { error: "Unauthorized. Only event admins can delete announcements." },
         { status: 403 }
