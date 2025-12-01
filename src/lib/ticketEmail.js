@@ -223,7 +223,9 @@ export async function sendTicketToUser(bookingId, eventInfo) {
             </div>
             
             <div class="footer">
-              <p>Need help? Contact us at <a href="mailto:support@eventhub.com">support@eventhub.com</a></p>
+              <p>Need help? Contact us at <a href="mailto:
+join.eventhub@gmail.com">
+join.eventhub@gmail.com</a></p>
               <p style="margin-top: 10px; font-size: 12px; color: #9ca3af;">
                 This is an automated email. Please do not reply to this message.
               </p>

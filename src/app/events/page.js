@@ -448,7 +448,7 @@ export default function EventsPage() {
               <p className="text-gray-400 text-sm mb-2 wrap-break-word">
                 📧 join.eventhub@gmail.com
               </p>
-              <p className="text-gray-400 text-sm">📍 123 Event St, NY 10001</p>
+              <p className="text-gray-400 text-sm">📍 Kolkata, West Bengal</p>
             </div>
           </div>
 
