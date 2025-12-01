@@ -681,6 +681,126 @@ export default function Page({ params }) {
             <div className="backdrop-blur-xl bg-white/5 rounded-2xl p-4 sm:p-6 md:p-8 border border-black/40 shadow-2xl">
               {activeTab === "overview" && (
                 <div className="space-y-6">
+                  {/* Mobile Ticket Purchase Card - Only visible on mobile */}
+                  <div className="lg:hidden backdrop-blur-xl bg-gradient-to-br from-white/10 to-white/5 rounded-xl p-3 sm:p-4 border border-white/20 shadow-xl relative overflow-hidden mb-4">
+                    {/* Decorative background elements */}
+                    <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-full blur-2xl"></div>
+                    <div className="absolute bottom-0 left-0 w-20 h-20 bg-gradient-to-tr from-purple-500/20 to-pink-500/20 rounded-full blur-xl"></div>
+
+                    <div className="relative z-10">
+                      {/* Compact Price Section */}
+                      <div className="flex items-center justify-between mb-3 pb-3 border-b border-white/20">
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-gradient-to-br from-blue-600/30 to-purple-600/30 border border-blue-500/30">
+                            <span className="text-lg">🎫</span>
+                          </div>
+                          <div>
+                            <div className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                              ₹{(event.price || 499).toLocaleString("en-IN")}
+                            </div>
+                            <div className="text-xs text-gray-400">per ticket</div>
+                          </div>
+                        </div>
+                        
+                        {/* Compact Availability */}
+                        <div className="text-right">
+                          <div className="text-xs text-gray-400 mb-1">Availability</div>
+                          <div className="text-sm font-bold text-white bg-white/10 px-2 py-1 rounded-lg">
+                            {event._count?.bookings || 0}/{event.capacity || 1000}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Compact Progress Bar */}
+                      <div className="mb-3">
+                        <div className="relative w-full h-2 bg-white/10 rounded-full overflow-hidden">
+                          <div
+                            className="absolute top-0 left-0 h-full bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-full transition-all duration-1000"
+                            style={{
+                              width: `${Math.min(
+                                100,
+                                Math.max(5, bookedPercentage)
+                              )}%`,
+                            }}
+                          >
+                            <div className="absolute inset-0 bg-white/30 animate-pulse rounded-full"></div>
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center mt-1">
+                          <p className="text-[10px] text-gray-400">
+                            {Math.round(bookedPercentage)}% filled
+                          </p>
+                          <p className="text-[10px] text-green-400 font-medium">
+                            {availableSpots > 0
+                              ? `${availableSpots} spots left`
+                              : "Sold Out"}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* CTA Button - Compact */}
+                      {user ? (
+                        hasEventEnded() ? (
+                          <div className="w-full bg-gray-600 text-white py-2 px-4 rounded-xl font-bold text-sm text-center">
+                            <div>Event Ended</div>
+                          </div>
+                        ) : hasEventStarted() ? (
+                          <div className="w-full bg-orange-600 text-white py-2 px-4 rounded-xl font-bold text-sm text-center">
+                            <div>Event Started</div>
+                          </div>
+                        ) : event.booking_closed ? (
+                          <div className="w-full bg-red-600 text-white py-2 px-4 rounded-xl font-bold text-sm text-center">
+                            <div>Booking Closed</div>
+                          </div>
+                        ) : userReachedLimit ? (
+                          <div className="w-full bg-green-600 text-white py-2 px-4 rounded-xl font-bold text-sm text-center">
+                            Booked
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => setShowBookingModal(true)}
+                            className="w-full bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 text-white py-2.5 px-4 rounded-xl font-bold text-sm hover:from-blue-700 hover:via-purple-700 hover:to-pink-700 transition-all duration-300 shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 relative overflow-hidden group"
+                          >
+                            <span className="relative z-10 flex items-center justify-center gap-2">
+                              <span>🚀</span>
+                              Book Now
+                            </span>
+                            <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
+                          </button>
+                        )
+                      ) : (
+                        <Link
+                          href="/?login=true"
+                          className="w-full inline-block text-center bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 text-white py-2.5 px-4 rounded-xl font-bold text-sm hover:from-blue-700 hover:via-purple-700 hover:to-pink-700 transition-all duration-300 shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 relative overflow-hidden group"
+                        >
+                          <span className="relative z-10 flex items-center justify-center gap-2">
+                            <span>🔐</span>
+                            Sign In to Book
+                          </span>
+                          <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
+                        </Link>
+                      )}
+
+                      {/* Compact Trust indicators */}
+                      <div className="mt-2 pt-2 border-t border-white/10">
+                        <div className="flex items-center justify-center gap-3 text-[10px] text-gray-400">
+                          <div className="flex items-center gap-1">
+                            <span className="text-green-400">🔒</span>
+                            <span>Secure</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <span className="text-blue-400">⚡</span>
+                            <span>Instant</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <span className="text-purple-400">📱</span>
+                            <span>Mobile</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
                   <div>
                     <h3 className="text-2xl font-bold text-white mb-4">
                       About This Event
