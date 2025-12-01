@@ -1200,7 +1200,7 @@ export default function Page({ params }) {
             }`}
           >
             {/* Pricing Card */}
-            <div className="sticky top-28 backdrop-blur-xl bg-gradient-to-br from-white/10 to-white/5 rounded-3xl p-4 sm:p-6 md:p-8 border border-white/20 shadow-2xl relative overflow-hidden">
+            <div className="hidden lg:block sticky top-28 backdrop-blur-xl bg-gradient-to-br from-white/10 to-white/5 rounded-3xl p-4 sm:p-6 md:p-8 border border-white/20 shadow-2xl relative overflow-hidden">
               {/* Decorative background elements */}
               <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-full blur-2xl"></div>
               <div className="absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-tr from-purple-500/20 to-pink-500/20 rounded-full blur-xl"></div>
