@@ -46,7 +46,7 @@ export async function GET(request) {
       (reels || []).map(async (reel) => {
         const { data: user } = await supabase
           .from("users")
-          .select("id, email, name, username")
+          .select("id, email, name, username, avatar")
           .eq("id", reel.user_id)
           .single();
 
@@ -110,7 +110,7 @@ export async function POST(request) {
     // Fetch user data separately
     const { data: user } = await supabase
       .from("users")
-      .select("id, email, name, username")
+      .select("id, email, name, username, avatar")
       .eq("id", reel.user_id)
       .single();
 

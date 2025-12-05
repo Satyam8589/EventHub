@@ -1464,8 +1464,8 @@ export default function ProfilePage() {
             // Add new reel to the list
             setUserReels((prev) => [newReel, ...prev]);
             setShowUploadModal(false);
-            // Switch to My Reels tab to show the new reel
-            setActiveTab("myreels");
+            // Redirect to reels page to show the new reel
+            router.push("/reels");
           }}
         />
       )}
@@ -1505,7 +1505,6 @@ export default function ProfilePage() {
                   className="w-full h-full object-contain"
                   autoPlay
                   loop
-                  muted
                   playsInline
                   controls
                 />

@@ -434,7 +434,7 @@ export default function ReelsPage() {
                       
                       {/* Description */}
                       {reel.description && reel.description !== reel.title && (
-                        <p 
+                        <div 
                           onClick={(e) => {
                             e.stopPropagation();
                             setExpandedDescriptions(prev => {
@@ -447,12 +447,14 @@ export default function ReelsPage() {
                               return newSet;
                             });
                           }}
-                          className={`text-white/90 text-xs drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] cursor-pointer hover:text-white transition-colors ${
-                            expandedDescriptions.has(reel.id) ? '' : 'line-clamp-1 overflow-hidden text-ellipsis'
+                          className={`text-white/90 text-xs drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] cursor-pointer hover:text-white transition-all ${
+                            expandedDescriptions.has(reel.id) 
+                              ? 'whitespace-normal break-words' 
+                              : 'line-clamp-1 overflow-hidden text-ellipsis whitespace-nowrap'
                           }`}
                         >
                           {reel.description}
-                        </p>
+                        </div>
                       )}
                       
                       {/* Tags */}
@@ -469,9 +471,17 @@ export default function ReelsPage() {
 
                       {/* Username - At Bottom */}
                       <div className="flex items-center gap-2 pt-2">
-                        <div className="w-6 h-6 rounded-full bg-gradient-to-br from-pink-500 to-purple-500 flex items-center justify-center text-white font-bold text-xs shadow-lg">
-                          {reel.users?.username?.[0]?.toUpperCase() || reel.users?.name?.[0]?.toUpperCase() || "U"}
-                        </div>
+                        {reel.users?.avatar ? (
+                          <img
+                            src={reel.users.avatar}
+                            alt={reel.users.username || reel.users.name}
+                            className="w-6 h-6 rounded-full object-cover shadow-lg border border-white/20"
+                          />
+                        ) : (
+                          <div className="w-6 h-6 rounded-full bg-gradient-to-br from-pink-500 to-purple-500 flex items-center justify-center text-white font-bold text-xs shadow-lg">
+                            {reel.users?.username?.[0]?.toUpperCase() || reel.users?.name?.[0]?.toUpperCase() || "U"}
+                          </div>
+                        )}
                         <div className="flex items-center gap-2">
                           <button
                             onClick={async (e) => {
@@ -664,9 +674,17 @@ export default function ReelsPage() {
             {/* User Header */}
             <div className="bg-gradient-to-r from-pink-600/20 to-purple-600/20 border-b border-white/10 p-6">
               <div className="flex items-center gap-4">
-                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-pink-500 to-purple-500 flex items-center justify-center text-white font-bold text-2xl shadow-lg">
-                  {selectedUser.username?.[0]?.toUpperCase() || selectedUser.name?.[0]?.toUpperCase() || "U"}
-                </div>
+                {selectedUser.avatar ? (
+                  <img
+                    src={selectedUser.avatar}
+                    alt={selectedUser.username || selectedUser.name}
+                    className="w-16 h-16 rounded-full object-cover shadow-lg border-2 border-white/20"
+                  />
+                ) : (
+                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-pink-500 to-purple-500 flex items-center justify-center text-white font-bold text-2xl shadow-lg">
+                    {selectedUser.username?.[0]?.toUpperCase() || selectedUser.name?.[0]?.toUpperCase() || "U"}
+                  </div>
+                )}
                 <div>
                   <h2 className="text-white text-2xl font-bold">
                     @{selectedUser.username || selectedUser.email?.split("@")[0] || "user"}
