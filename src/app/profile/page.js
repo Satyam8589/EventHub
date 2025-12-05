@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import TicketModal from "@/components/TicketModal";
 import EventHubLogo from "@/components/EventHubLogo";
+import UploadReelModal from "@/components/UploadReelModal";
+import CommentsModal from "@/components/CommentsModal";
 
 export default function ProfilePage() {
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
@@ -20,6 +22,19 @@ export default function ProfilePage() {
     completed: 0,
   });
   const [redirectCountdown, setRedirectCountdown] = useState(5);
+  const [username, setUsername] = useState("");
+  const [isEditingUsername, setIsEditingUsername] = useState(false);
+  const [usernameInput, setUsernameInput] = useState("");
+  const [usernameError, setUsernameError] = useState("");
+  const [usernameSaving, setUsernameSaving] = useState(false);
+  const [userReels, setUserReels] = useState([]);
+  const [reelsLoading, setReelsLoading] = useState(false);
+  const [deletingReelId, setDeletingReelId] = useState(null);
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [showReelModal, setShowReelModal] = useState(false);
+  const [selectedReel, setSelectedReel] = useState(null);
+  const [showCommentsModal, setShowCommentsModal] = useState(false);
+  const [selectedReelForComments, setSelectedReelForComments] = useState(null);
 
   const { user, loading: authLoading, signOut } = useAuth();
   const router = useRouter();
@@ -144,6 +159,129 @@ export default function ProfilePage() {
 
     fetchBookings();
   }, [user]);
+
+  // Fetch username
+  useEffect(() => {
+    const fetchUsername = async () => {
+      if (!user) return;
+
+      try {
+        const response = await fetch(`/api/username?userId=${user.uid}`);
+        const data = await response.json();
+        
+        if (data.username) {
+          setUsername(data.username);
+          setUsernameInput(data.username);
+        }
+      } catch (error) {
+        console.error("Error fetching username:", error);
+      }
+    };
+
+    fetchUsername();
+  }, [user]);
+
+  const saveUsername = async () => {
+    if (!usernameInput.trim()) {
+      setUsernameError("Username cannot be empty");
+      return;
+    }
+
+    // Validate format
+    const usernameRegex = /^[a-z0-9_]{3,20}$/;
+    if (!usernameRegex.test(usernameInput)) {
+      setUsernameError("Username must be 3-20 characters (lowercase letters, numbers, underscores only)");
+      return;
+    }
+
+    setUsernameSaving(true);
+    setUsernameError("");
+
+    try {
+      const response = await fetch("/api/username", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          userId: user.uid,
+          username: usernameInput.toLowerCase(),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setUsername(data.username);
+        setIsEditingUsername(false);
+        setUsernameError("");
+      } else {
+        setUsernameError(data.error || "Failed to save username");
+      }
+    } catch (error) {
+      console.error("Error saving username:", error);
+      setUsernameError("Failed to save username. Please try again.");
+    } finally {
+      setUsernameSaving(false);
+    }
+  };
+
+  // Fetch user's reels
+  const fetchUserReels = async () => {
+    if (!user) return;
+
+    setReelsLoading(true);
+    try {
+      const response = await fetch(`/api/reels?userId=${user.uid}`);
+      const data = await response.json();
+      
+      if (response.ok) {
+        setUserReels(data.reels || []);
+      } else {
+        console.error("Error fetching user reels:", data);
+        setUserReels([]);
+      }
+    } catch (error) {
+      console.error("Error fetching user reels:", error);
+      setUserReels([]);
+    } finally {
+      setReelsLoading(false);
+    }
+  };
+
+  // Delete a reel
+  const deleteReel = async (reelId) => {
+    if (!confirm("Are you sure you want to delete this reel? This action cannot be undone.")) {
+      return;
+    }
+
+    setDeletingReelId(reelId);
+    try {
+      const response = await fetch(`/api/reels/${reelId}`, {
+        method: "DELETE",
+      });
+
+      if (response.ok) {
+        // Remove from local state
+        setUserReels((prev) => prev.filter((reel) => reel.id !== reelId));
+      } else {
+        const data = await response.json();
+        alert(data.error || "Failed to delete reel");
+      }
+    } catch (error) {
+      console.error("Error deleting reel:", error);
+      alert("Failed to delete reel. Please try again.");
+    } finally {
+      setDeletingReelId(null);
+    }
+  };
+
+  // Fetch reels when My Reels tab is active
+  useEffect(() => {
+    if (activeTab === "myreels") {
+      fetchUserReels();
+    }
+  }, [activeTab, user]);
 
   const openTicketModal = (booking) => {
     setSelectedTicket(booking);
@@ -412,7 +550,52 @@ export default function ProfilePage() {
               <h1 className="text-3xl font-bold text-white mb-2">
                 {user.displayName || user.email?.split("@")[0] || "User"}
               </h1>
-              <p className="text-white/70 mb-4">{user.email}</p>
+              <p className="text-white/70 mb-2">{user.email}</p>
+
+              {/* Creator Tier Badge */}
+              {(() => {
+                const reelsCount = userReels.length;
+                let tier, emoji, gradient, textColor;
+                
+                if (reelsCount >= 300) {
+                  tier = "Diamond Creator";
+                  emoji = "💎";
+                  gradient = "from-cyan-400 to-blue-600";
+                  textColor = "text-cyan-300";
+                } else if (reelsCount >= 200) {
+                  tier = "Platinum Creator";
+                  emoji = "🏆";
+                  gradient = "from-gray-300 to-gray-500";
+                  textColor = "text-gray-300";
+                } else if (reelsCount >= 100) {
+                  tier = "Gold Creator";
+                  emoji = "🥇";
+                  gradient = "from-yellow-400 to-yellow-600";
+                  textColor = "text-yellow-400";
+                } else if (reelsCount >= 50) {
+                  tier = "Silver Creator";
+                  emoji = "🥈";
+                  gradient = "from-gray-200 to-gray-400";
+                  textColor = "text-gray-200";
+                } else {
+                  tier = "Bronze Creator";
+                  emoji = "🥉";
+                  gradient = "from-orange-400 to-orange-600";
+                  textColor = "text-orange-400";
+                }
+
+                return (
+                  <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-black/40 to-black/20 border border-white/20 rounded-full mb-4">
+                    <span className="text-lg">{emoji}</span>
+                    <span className={`font-semibold text-sm ${textColor}`}>
+                      {tier}
+                    </span>
+                    <span className="text-white/60 text-xs">
+                      ({reelsCount} reels)
+                    </span>
+                  </div>
+                );
+              })()}
 
               {/* User Stats */}
               <div className="grid grid-cols-3 gap-4 max-w-md mx-auto md:mx-0">
@@ -439,6 +622,29 @@ export default function ProfilePage() {
 
             {/* Actions */}
             <div className="flex flex-col space-y-2">
+              <button
+                onClick={() => {
+                  // Check if username is set
+                  if (!username) {
+                    // Scroll to username section and open editor
+                    setActiveTab("overview");
+                    setTimeout(() => {
+                      setIsEditingUsername(true);
+                      // Scroll to username section
+                      const usernameSection = document.getElementById("username-section");
+                      if (usernameSection) {
+                        usernameSection.scrollIntoView({ behavior: "smooth", block: "center" });
+                      }
+                    }, 100);
+                  } else {
+                    // Username is set, open upload modal
+                    setShowUploadModal(true);
+                  }
+                }}
+                className="bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 text-white px-4 py-2 rounded-lg transition-all text-center font-medium shadow-lg hover:scale-105 transform"
+              >
+                📸 Post Reel
+              </button>
               <Link
                 href="/contact"
                 className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors text-center"
@@ -466,20 +672,22 @@ export default function ProfilePage() {
         <div className="bg-black/30 backdrop-blur-md rounded-2xl border border-white/10 mb-8">
           <div className="flex space-x-1 p-1">
             {[
-              { id: "overview", label: "Overview" },
-              { id: "upcoming", label: "Upcoming Events" },
-              { id: "completed", label: "Event History" },
+              { id: "overview", label: "Overview", shortLabel: "Overview" },
+              { id: "upcoming", label: "Upcoming Events", shortLabel: "Upcoming" },
+              { id: "completed", label: "Event History", shortLabel: "History" },
+              { id: "myreels", label: "My Reels", shortLabel: "Reels" },
             ].map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex-1 py-3 px-4 rounded-lg font-medium transition-all ${
+                className={`flex-1 py-2 sm:py-3 px-2 sm:px-4 rounded-lg font-medium transition-all text-xs sm:text-sm ${
                   activeTab === tab.id
                     ? "bg-blue-600 text-white shadow-lg"
                     : "text-white/70 hover:text-white hover:bg-white/10"
                 }`}
               >
-                {tab.label}
+                <span className="hidden sm:inline">{tab.label}</span>
+                <span className="sm:hidden">{tab.shortLabel}</span>
               </button>
             ))}
           </div>
@@ -501,13 +709,13 @@ export default function ProfilePage() {
                   </h2>
 
                   {/* Quick Stats */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                  <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-8">
                     <div className="bg-blue-600/20 border border-blue-500/30 rounded-lg p-4">
-                      <h3 className="text-blue-400 font-semibold mb-2">
+                      <h3 className="text-blue-400 font-semibold mb-2 text-sm">
                         Account Status
                       </h3>
-                      <p className="text-white">Active Member</p>
-                      <p className="text-white/60 text-sm">
+                      <p className="text-white text-sm">Active Member</p>
+                      <p className="text-white/60 text-xs">
                         Member since{" "}
                         {new Date(
                           user.metadata?.creationTime || Date.now()
@@ -516,24 +724,130 @@ export default function ProfilePage() {
                     </div>
 
                     <div className="bg-green-600/20 border border-green-500/30 rounded-lg p-4">
-                      <h3 className="text-green-400 font-semibold mb-2">
+                      <h3 className="text-green-400 font-semibold mb-2 text-sm">
                         Total Bookings
                       </h3>
-                      <p className="text-white text-2xl font-bold">
+                      <p className="text-white text-xl font-bold">
                         {bookingStats.total}
                       </p>
-                      <p className="text-white/60 text-sm">Events attended</p>
+                      <p className="text-white/60 text-xs">Events attended</p>
                     </div>
 
                     <div className="bg-purple-600/20 border border-purple-500/30 rounded-lg p-4">
-                      <h3 className="text-purple-400 font-semibold mb-2">
+                      <h3 className="text-purple-400 font-semibold mb-2 text-sm">
                         User Role
                       </h3>
-                      <p className="text-white">
+                      <p className="text-white text-sm">
                         {user.role || "Event Attendee"}
                       </p>
-                      <p className="text-white/60 text-sm">Account type</p>
+                      <p className="text-white/60 text-xs">Account type</p>
                     </div>
+
+                    <div className="bg-pink-600/20 border border-pink-500/30 rounded-lg p-4">
+                      <h3 className="text-pink-400 font-semibold mb-2 text-sm">
+                        Total Reels
+                      </h3>
+                      <p className="text-white text-xl font-bold">
+                        {userReels.length}
+                      </p>
+                      <p className="text-white/60 text-xs">Reels posted</p>
+                    </div>
+                  </div>
+
+                  {/* Username for Reels */}
+                  <div 
+                    id="username-section" 
+                    className={`bg-gradient-to-r from-pink-600/20 to-purple-600/20 border rounded-lg p-6 mb-8 transition-all duration-300 ${
+                      isEditingUsername 
+                        ? "border-pink-500 shadow-lg shadow-pink-500/50" 
+                        : "border-pink-500/30"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between mb-4">
+                      <div>
+                        <h3 className="text-pink-400 font-semibold text-lg mb-1 flex items-center gap-2">
+                          📸 Reels Username
+                        </h3>
+                        <p className="text-white/60 text-sm">
+                          Set a unique username for posting reels
+                        </p>
+                      </div>
+                      {!isEditingUsername && username && (
+                        <button
+                          onClick={() => {
+                            setIsEditingUsername(true);
+                            setUsernameError("");
+                          }}
+                          className="text-blue-400 hover:text-blue-300 text-sm font-medium transition-colors"
+                        >
+                          Edit
+                        </button>
+                      )}
+                    </div>
+
+                    {isEditingUsername ? (
+                      <div className="space-y-3">
+                        <div>
+                          <input
+                            type="text"
+                            value={usernameInput}
+                            onChange={(e) => {
+                              setUsernameInput(e.target.value.toLowerCase());
+                              setUsernameError("");
+                            }}
+                            placeholder="your_username"
+                            className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all"
+                            maxLength={20}
+                          />
+                          <p className="text-white/40 text-xs mt-1">
+                            3-20 characters, lowercase letters, numbers, and underscores only
+                          </p>
+                        </div>
+
+                        {usernameError && (
+                          <p className="text-red-400 text-sm">{usernameError}</p>
+                        )}
+
+                        <div className="flex gap-2">
+                          <button
+                            onClick={saveUsername}
+                            disabled={usernameSaving}
+                            className="flex-1 bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 text-white px-4 py-2 rounded-lg transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {usernameSaving ? "Saving..." : "Save Username"}
+                          </button>
+                          <button
+                            onClick={() => {
+                              setIsEditingUsername(false);
+                              setUsernameInput(username);
+                              setUsernameError("");
+                            }}
+                            disabled={usernameSaving}
+                            className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors disabled:opacity-50"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div>
+                        {username ? (
+                          <div className="flex items-center gap-2">
+                            <span className="text-white text-lg font-mono bg-white/10 px-4 py-2 rounded-lg">
+                              @{username}
+                            </span>
+                            <span className="text-green-400 text-sm">✓ Set</span>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => setIsEditingUsername(true)}
+                            className="bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 text-white px-6 py-3 rounded-lg transition-all font-medium"
+                          >
+                            Set Username to Post Reels
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   {/* Recent Activity */}
@@ -946,6 +1260,185 @@ export default function ProfilePage() {
                   )}
                 </div>
               )}
+
+              {/* My Reels Tab */}
+              {activeTab === "myreels" && (
+                <div className="-m-6 p-4">
+                  <h2 className="text-2xl font-bold text-white mb-3">
+                    My Reels
+                  </h2>
+
+                  {/* Creator Tier Info */}
+                  <div className="bg-gradient-to-r from-purple-600/20 to-pink-600/20 border border-purple-500/30 rounded-lg p-3 mb-4">
+                    <div className="flex items-start gap-2">
+                      <span className="text-lg">🏅</span>
+                      <div className="flex-1">
+                        <p className="text-white/90 text-xs sm:text-sm mb-1">
+                          <span className="font-semibold">Creator Tiers:</span> Post reels to unlock badges!
+                        </p>
+                        <div className="flex flex-wrap gap-2 text-[10px] sm:text-xs text-white/70">
+                          <span>🥉 Bronze (0-49)</span>
+                          <span>🥈 Silver (50-99)</span>
+                          <span>🥇 Gold (100-199)</span>
+                          <span>🏆 Platinum (200-299)</span>
+                          <span>💎 Diamond (300+)</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {reelsLoading ? (
+                    <div className="text-center py-12">
+                      <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+                      <p className="text-white/70 mt-4">Loading your reels...</p>
+                    </div>
+                  ) : userReels.length === 0 ? (
+                    <div className="text-center py-12">
+                      <div className="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <span className="text-4xl">📸</span>
+                      </div>
+                      <h3 className="text-white font-semibold mb-2">
+                        No reels yet
+                      </h3>
+                      <p className="text-white/60 mb-4">
+                        You haven't posted any reels. Start sharing your moments!
+                      </p>
+                      <Link
+                        href="/reels"
+                        className="inline-flex items-center space-x-2 bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 text-white px-6 py-3 rounded-lg transition-all font-medium"
+                      >
+                        <span>Post Your First Reel</span>
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M17 8l4 4m0 0l-4 4m4-4H3"
+                          />
+                        </svg>
+                      </Link>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {userReels.map((reel) => (
+                        <div
+                          key={reel.id}
+                          className="bg-white/5 border border-white/10 rounded-lg overflow-hidden hover:bg-white/10 transition-all flex flex-row"
+                        >
+                          {/* Reel Image/Video - Left Side */}
+                          <div className="relative w-24 sm:w-32 md:w-40 flex-shrink-0 bg-black">
+                            {reel.media_type === "video" ? (
+                              <video
+                                src={reel.media_url}
+                                className="w-full h-full object-cover"
+                                muted
+                              />
+                            ) : (
+                              <img
+                                src={reel.media_url}
+                                alt={reel.title}
+                                className="w-full h-full object-cover"
+                              />
+                            )}
+                          </div>
+
+                          {/* Reel Info - Right Side */}
+                          <div className="flex-1 p-2 flex flex-col justify-between">
+                            <div>
+                              <h3 className="text-white font-semibold text-sm sm:text-base mb-1 line-clamp-2">
+                                {reel.title}
+                              </h3>
+                              
+                              {/* Description - Show on larger screens */}
+                              {reel.description && (
+                                <p className="text-white/60 text-xs mb-2 line-clamp-1 hidden sm:block">
+                                  {reel.description}
+                                </p>
+                              )}
+                              
+                              {/* Stats and Tags Row */}
+                              <div className="flex items-center gap-2 mb-2 flex-wrap">
+                                {/* Likes and Comments */}
+                                <div className="flex items-center gap-2 text-white/80 text-xs">
+                                  <span className="flex items-center gap-1">
+                                    ❤️ {reel.likes_count || 0}
+                                  </span>
+                                  <span className="flex items-center gap-1">
+                                    💬 {reel.comments_count || 0}
+                                  </span>
+                                </div>
+                                
+                                {/* Separator */}
+                                {reel.tags && reel.tags.length > 0 && (
+                                  <span className="text-white/40">•</span>
+                                )}
+                                
+                                {/* Tags */}
+                                {reel.tags && reel.tags.length > 0 && (
+                                  <div className="flex flex-wrap gap-1">
+                                    {reel.tags.slice(0, 2).map((tag, i) => (
+                                      <span
+                                        key={i}
+                                        className="px-1.5 py-0.5 bg-white/10 rounded-full text-white/70 text-[10px]"
+                                      >
+                                        #{tag}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Date */}
+                              <p className="text-white/40 text-[10px]">
+                                {new Date(reel.created_at).toLocaleDateString("en-US", {
+                                  month: "short",
+                                  day: "numeric",
+                                  year: "numeric",
+                                })}
+                              </p>
+                            </div>
+
+                            {/* Actions */}
+                            <div className="flex gap-1.5 mt-2">
+                              <button
+                                onClick={() => {
+                                  setSelectedReel(reel);
+                                  setShowReelModal(true);
+                                }}
+                                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-2 py-1.5 rounded-lg transition-colors text-center text-xs font-medium"
+                              >
+                                View
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setSelectedReelForComments(reel);
+                                  setShowCommentsModal(true);
+                                }}
+                                className="flex-1 bg-purple-600 hover:bg-purple-700 text-white px-2 py-1.5 rounded-lg transition-colors text-center text-xs font-medium flex items-center justify-center gap-1"
+                              >
+                                <span>💬</span>
+                                <span className="hidden sm:inline">Comments</span>
+                              </button>
+                              <button
+                                onClick={() => deleteReel(reel.id)}
+                                disabled={deletingReelId === reel.id}
+                                className="flex-1 bg-red-600 hover:bg-red-700 text-white px-2 py-1.5 rounded-lg transition-colors text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                {deletingReelId === reel.id ? "..." : "Delete"}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </>
           )}
         </div>
@@ -960,6 +1453,125 @@ export default function ProfilePage() {
             setSelectedTicket(null);
           }}
           booking={selectedTicket}
+        />
+      )}
+
+      {/* Upload Reel Modal */}
+      {showUploadModal && (
+        <UploadReelModal
+          onClose={() => setShowUploadModal(false)}
+          onSuccess={(newReel) => {
+            // Add new reel to the list
+            setUserReels((prev) => [newReel, ...prev]);
+            setShowUploadModal(false);
+            // Switch to My Reels tab to show the new reel
+            setActiveTab("myreels");
+          }}
+        />
+      )}
+
+      {/* Reel Viewer Modal */}
+      {showReelModal && selectedReel && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm"
+          onClick={() => {
+            setShowReelModal(false);
+            setSelectedReel(null);
+          }}
+        >
+          <div 
+            className="relative w-full max-w-md h-[90vh] bg-black rounded-xl overflow-hidden shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Close Button */}
+            <button
+              onClick={() => {
+                setShowReelModal(false);
+                setSelectedReel(null);
+              }}
+              className="absolute top-4 right-4 z-10 w-10 h-10 bg-black/50 hover:bg-black/70 rounded-full flex items-center justify-center text-white transition-colors"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+
+            {/* Reel Content */}
+            <div className="relative w-full h-full">
+              {/* Media */}
+              {selectedReel.media_type === "video" ? (
+                <video
+                  src={selectedReel.media_url}
+                  className="w-full h-full object-contain"
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  controls
+                />
+              ) : (
+                <img
+                  src={selectedReel.media_url}
+                  alt={selectedReel.title}
+                  className="w-full h-full object-contain"
+                />
+              )}
+
+              {/* Gradient Overlay */}
+              <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/80 pointer-events-none" />
+
+              {/* Info Overlay */}
+              <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 via-black/60 to-transparent">
+                <h3 className="text-white font-bold text-lg mb-2 line-clamp-2">
+                  {selectedReel.title}
+                </h3>
+                
+                {selectedReel.description && (
+                  <p className="text-white/90 text-sm mb-3 line-clamp-3">
+                    {selectedReel.description}
+                  </p>
+                )}
+
+                {/* Stats */}
+                <div className="flex items-center gap-4 mb-3 text-white text-sm">
+                  <span className="flex items-center gap-1">
+                    ❤️ {selectedReel.likes_count || 0}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    💬 {selectedReel.comments_count || 0}
+                  </span>
+                </div>
+
+                {/* Tags */}
+                {selectedReel.tags && selectedReel.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {selectedReel.tags.map((tag, i) => (
+                      <span
+                        key={i}
+                        className="px-2 py-1 bg-white/20 rounded-full text-white/90 text-xs"
+                      >
+                        #{tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Comments Modal */}
+      {showCommentsModal && selectedReelForComments && (
+        <CommentsModal
+          isOpen={showCommentsModal}
+          onClose={() => {
+            setShowCommentsModal(false);
+            setSelectedReelForComments(null);
+          }}
+          reel={selectedReelForComments}
+          currentUser={user}
+          reelOwnerId={selectedReelForComments.user_id}
         />
       )}
     </div>
