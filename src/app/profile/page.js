@@ -276,6 +276,14 @@ export default function ProfilePage() {
     }
   };
 
+  // Helper function to truncate text to specified number of characters
+  const truncateToChars = (text, charLimit = 20) => {
+    if (!text) return "";
+    const trimmedText = text.trim();
+    if (trimmedText.length <= charLimit) return trimmedText;
+    return trimmedText.slice(0, charLimit) + "...";
+  };
+
   // Fetch reels when My Reels tab is active
   useEffect(() => {
     if (activeTab === "myreels") {
@@ -1350,14 +1358,14 @@ export default function ProfilePage() {
                           {/* Reel Info - Right Side */}
                           <div className="flex-1 p-2 flex flex-col justify-between">
                             <div>
-                              <h3 className="text-white font-semibold text-sm sm:text-base mb-1 line-clamp-2">
-                                {reel.title}
+                              <h3 className="text-white font-semibold text-sm sm:text-base mb-1">
+                                {truncateToChars(reel.title, 20)}
                               </h3>
                               
-                              {/* Description - Show on larger screens */}
+                              {/* Description */}
                               {reel.description && (
-                                <p className="text-white/60 text-xs mb-2 line-clamp-1 hidden sm:block">
-                                  {reel.description}
+                                <p className="text-white/60 text-xs mb-2">
+                                  {truncateToChars(reel.description, 20)}
                                 </p>
                               )}
                               
