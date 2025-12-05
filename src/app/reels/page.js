@@ -516,7 +516,7 @@ export default function ReelsPage() {
                   </div>
 
                   {/* Action Buttons (Right Side) */}
-                  <div className="absolute right-4 bottom-32 flex flex-col gap-6 pointer-events-auto">
+                  <div className="absolute right-4 bottom-20 lg:bottom-32 flex flex-col gap-6 pointer-events-auto">
                     {/* Like Button */}
                     <button 
                       onClick={async () => {

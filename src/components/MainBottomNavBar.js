@@ -46,13 +46,13 @@ export default function MainBottomNavBar() {
     <Link
       href={href || "#"}
       onClick={onClick}
-      className={`flex flex-col items-center justify-center py-3 px-3 min-w-0 flex-1 relative transition-all duration-300 group ${
+      className={`flex flex-col items-center justify-center pt-1.5 pb-0.5 px-2 min-w-0 flex-1 relative transition-all duration-300 group ${
         isActive(href)
           ? "text-blue-400 scale-105"
           : "text-gray-400 hover:text-gray-300 hover:scale-110"
       } rounded-xl hover:bg-gray-800/30`}
     >
-      <div className="relative mb-1">
+      <div className="relative mb-0.5">
         {/* Icon container with glow effect */}
         <div
           className={`transition-all duration-300 ${
@@ -74,7 +74,7 @@ export default function MainBottomNavBar() {
 
       {/* Label */}
       <span
-        className={`text-xs font-medium tracking-wide transition-all duration-300 truncate w-full text-center ${
+        className={`text-[10px] font-medium tracking-wide transition-all duration-300 truncate w-full text-center ${
           isActive(href) ? "font-semibold" : "group-hover:font-medium"
         }`}
       >
@@ -83,7 +83,7 @@ export default function MainBottomNavBar() {
 
       {/* Active indicator */}
       {isActive(href) && (
-        <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-10 h-1 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full shadow-lg shadow-blue-400/50 animate-pulse"></div>
+        <div className="absolute -top-1.5 left-1/2 transform -translate-x-1/2 w-10 h-1 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full shadow-lg shadow-blue-400/50 animate-pulse"></div>
       )}
 
       {/* Hover glow */}
@@ -101,7 +101,7 @@ export default function MainBottomNavBar() {
     <div className="relative user-menu-container">
       <button
         onClick={() => setShowUserMenu(!showUserMenu)}
-        className={`flex flex-col items-center justify-center py-3 px-2 relative ${
+        className={`flex flex-col items-center justify-center pt-1.5 pb-0.5 px-2 relative ${
           showUserMenu || isActive("/profile")
             ? "text-blue-400"
             : "text-gray-400 hover:text-gray-300"
@@ -144,11 +144,11 @@ export default function MainBottomNavBar() {
             <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full border-2 border-gray-900 animate-pulse shadow-sm"></div>
           )}
         </div>
-        <span className="text-xs mt-1.5 font-medium tracking-wide">
+        <span className="text-[10px] mt-0.5 font-medium tracking-wide">
           {user ? "Account" : "Login"}
         </span>
         {(showUserMenu || isActive("/profile")) && (
-          <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-10 h-1 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full shadow-sm"></div>
+          <div className="absolute -top-1.5 left-1/2 transform -translate-x-1/2 w-10 h-1 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full shadow-sm"></div>
         )}
       </button>
 
@@ -421,7 +421,7 @@ export default function MainBottomNavBar() {
         {/* Gradient overlay for visual appeal */}
         <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-blue-500/50 to-transparent"></div>
 
-        <div className="flex items-center justify-around px-2 py-2.5 max-w-md mx-auto relative">
+        <div className="flex items-center justify-around px-1 pt-1 pb-0.5 max-w-md mx-auto relative">
           <NavItem
             href="/"
             icon={
@@ -531,7 +531,7 @@ export default function MainBottomNavBar() {
       </div>
 
       {/* Padding spacer for mobile bottom navigation */}
-      <div className="h-20 md:hidden"></div>
+      <div className="h-12 md:hidden"></div>
     </>
   );
 }
