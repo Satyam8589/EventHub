@@ -118,7 +118,7 @@ export default function UploadReelModal({ onClose, onSuccess }) {
       uploadFormData.append("file", selectedFile);
       uploadFormData.append("upload_preset", "eventhub_reels");
 
-      console.log("Uploading file directly to Cloudinary...");
+      console.log("Uploading file directly to Cloudinary (bypassing server)...");
       const resourceType = selectedFile.type.startsWith("video")
         ? "video"
         : "image";
