@@ -116,14 +116,13 @@ export default function UploadReelModal({ onClose, onSuccess }) {
       // Upload directly to Cloudinary (bypasses server size limits)
       const uploadFormData = new FormData();
       uploadFormData.append("file", selectedFile);
-      uploadFormData.append("upload_preset", "eventhub_reels"); // We'll create this preset
-      uploadFormData.append("folder", "reels");
+      uploadFormData.append("upload_preset", "eventhub_reels");
 
       console.log("Uploading file directly to Cloudinary...");
       const resourceType = selectedFile.type.startsWith("video")
         ? "video"
         : "image";
-      const cloudinaryUrl = `https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/${resourceType}/upload`;
+      const cloudinaryUrl = `https://api.cloudinary.com/v1_1/dz05ozsng/${resourceType}/upload`;
 
       const uploadResponse = await fetch(cloudinaryUrl, {
         method: "POST",
