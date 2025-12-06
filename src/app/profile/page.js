@@ -120,7 +120,7 @@ export default function ProfilePage() {
 
           // Calculate statistics
           const now = new Date(); // Current time in UTC
-          
+
           // Helper to parse UTC dates
           const parseEventDate = (dateStr) => {
             if (!dateStr) return null;
@@ -132,16 +132,20 @@ export default function ProfilePage() {
               return new Date(dateStr.replace(" ", "T") + "Z");
             }
           };
-          
+
           const stats = {
             total: allBookings.length,
             upcoming: allBookings.filter((booking) => {
               const eventDate = parseEventDate(booking.event?.date);
-              return eventDate && eventDate >= now && booking.status === "CONFIRMED";
+              return (
+                eventDate && eventDate >= now && booking.status === "CONFIRMED"
+              );
             }).length,
             completed: allBookings.filter((booking) => {
               const eventDate = parseEventDate(booking.event?.date);
-              return eventDate && eventDate < now && booking.status === "CONFIRMED";
+              return (
+                eventDate && eventDate < now && booking.status === "CONFIRMED"
+              );
             }).length,
           };
           setBookingStats(stats);
@@ -168,7 +172,7 @@ export default function ProfilePage() {
       try {
         const response = await fetch(`/api/username?userId=${user.uid}`);
         const data = await response.json();
-        
+
         if (data.username) {
           setUsername(data.username);
           setUsernameInput(data.username);
@@ -190,7 +194,9 @@ export default function ProfilePage() {
     // Validate format
     const usernameRegex = /^[a-z0-9_]{3,20}$/;
     if (!usernameRegex.test(usernameInput)) {
-      setUsernameError("Username must be 3-20 characters (lowercase letters, numbers, underscores only)");
+      setUsernameError(
+        "Username must be 3-20 characters (lowercase letters, numbers, underscores only)"
+      );
       return;
     }
 
@@ -234,7 +240,7 @@ export default function ProfilePage() {
     try {
       const response = await fetch(`/api/reels?userId=${user.uid}`);
       const data = await response.json();
-      
+
       if (response.ok) {
         setUserReels(data.reels || []);
       } else {
@@ -251,7 +257,11 @@ export default function ProfilePage() {
 
   // Delete a reel
   const deleteReel = async (reelId) => {
-    if (!confirm("Are you sure you want to delete this reel? This action cannot be undone.")) {
+    if (
+      !confirm(
+        "Are you sure you want to delete this reel? This action cannot be undone."
+      )
+    ) {
       return;
     }
 
@@ -298,7 +308,7 @@ export default function ProfilePage() {
 
   const formatEventDate = (dateString) => {
     if (!dateString) return "Date TBD";
-    
+
     // Parse UTC date from database
     let date;
     if (dateString.includes("T") && dateString.includes("Z")) {
@@ -308,11 +318,11 @@ export default function ProfilePage() {
     } else {
       date = new Date(dateString.replace(" ", "T") + "Z");
     }
-    
+
     if (!date || isNaN(date.getTime())) {
       return "Date TBD";
     }
-    
+
     return date.toLocaleDateString("en-IN", {
       year: "numeric",
       month: "long",
@@ -327,13 +337,13 @@ export default function ProfilePage() {
     if (booking.status !== "CONFIRMED") {
       return { text: booking.status, className: "text-yellow-400" };
     }
-    
+
     // Parse UTC date from database
     const dateStr = booking.event?.date;
     if (!dateStr) {
       return { text: "Unknown", className: "text-gray-400" };
     }
-    
+
     let eventDate;
     if (dateStr.includes("T") && dateStr.includes("Z")) {
       eventDate = new Date(dateStr);
@@ -342,11 +352,11 @@ export default function ProfilePage() {
     } else {
       eventDate = new Date(dateStr.replace(" ", "T") + "Z");
     }
-    
+
     if (!eventDate || isNaN(eventDate.getTime())) {
       return { text: "Unknown", className: "text-gray-400" };
     }
-    
+
     const now = new Date(); // Current time in UTC
 
     if (eventDate >= now) {
@@ -359,11 +369,11 @@ export default function ProfilePage() {
   // Filter bookings based on active tab
   const filteredBookings = bookings.filter((booking) => {
     if (activeTab === "overview") return true;
-    
+
     // Parse UTC date from database
     const dateStr = booking.event?.date;
     if (!dateStr) return false;
-    
+
     let eventDate;
     if (dateStr.includes("T") && dateStr.includes("Z")) {
       eventDate = new Date(dateStr);
@@ -372,11 +382,11 @@ export default function ProfilePage() {
     } else {
       eventDate = new Date(dateStr.replace(" ", "T") + "Z");
     }
-    
+
     if (!eventDate || isNaN(eventDate.getTime())) return false;
-    
+
     const now = new Date(); // Current time in UTC
-    
+
     if (activeTab === "upcoming") {
       return eventDate >= now && booking.status === "CONFIRMED";
     }
@@ -564,7 +574,7 @@ export default function ProfilePage() {
               {(() => {
                 const reelsCount = userReels.length;
                 let tier, emoji, gradient, textColor;
-                
+
                 if (reelsCount >= 300) {
                   tier = "Diamond Creator";
                   emoji = "💎";
@@ -639,9 +649,13 @@ export default function ProfilePage() {
                     setTimeout(() => {
                       setIsEditingUsername(true);
                       // Scroll to username section
-                      const usernameSection = document.getElementById("username-section");
+                      const usernameSection =
+                        document.getElementById("username-section");
                       if (usernameSection) {
-                        usernameSection.scrollIntoView({ behavior: "smooth", block: "center" });
+                        usernameSection.scrollIntoView({
+                          behavior: "smooth",
+                          block: "center",
+                        });
                       }
                     }, 100);
                   } else {
@@ -681,8 +695,16 @@ export default function ProfilePage() {
           <div className="flex space-x-1 p-1">
             {[
               { id: "overview", label: "Overview", shortLabel: "Overview" },
-              { id: "upcoming", label: "Upcoming Events", shortLabel: "Upcoming" },
-              { id: "completed", label: "Event History", shortLabel: "History" },
+              {
+                id: "upcoming",
+                label: "Upcoming Events",
+                shortLabel: "Upcoming",
+              },
+              {
+                id: "completed",
+                label: "Event History",
+                shortLabel: "History",
+              },
               { id: "myreels", label: "My Reels", shortLabel: "Reels" },
             ].map((tab) => (
               <button
@@ -763,13 +785,9 @@ export default function ProfilePage() {
                   </div>
 
                   {/* Username for Reels */}
-                  <div 
-                    id="username-section" 
-                    className={`bg-gradient-to-r from-pink-600/20 to-purple-600/20 border rounded-lg p-6 mb-8 transition-all duration-300 ${
-                      isEditingUsername 
-                        ? "border-pink-500 shadow-lg shadow-pink-500/50" 
-                        : "border-pink-500/30"
-                    }`}
+                  <div
+                    id="username-section"
+                    className="bg-gradient-to-r from-pink-600/20 to-purple-600/20 border border-pink-500/30 rounded-lg p-6 mb-8"
                   >
                     <div className="flex items-start justify-between mb-4">
                       <div>
@@ -777,23 +795,13 @@ export default function ProfilePage() {
                           📸 Reels Username
                         </h3>
                         <p className="text-white/60 text-sm">
-                          Set a unique username for posting reels
+                          Set a unique username for posting reels (cannot be
+                          changed once set)
                         </p>
                       </div>
-                      {!isEditingUsername && username && (
-                        <button
-                          onClick={() => {
-                            setIsEditingUsername(true);
-                            setUsernameError("");
-                          }}
-                          className="text-blue-400 hover:text-blue-300 text-sm font-medium transition-colors"
-                        >
-                          Edit
-                        </button>
-                      )}
                     </div>
 
-                    {isEditingUsername ? (
+                    {!username ? (
                       <div className="space-y-3">
                         <div>
                           <input
@@ -808,34 +816,24 @@ export default function ProfilePage() {
                             maxLength={20}
                           />
                           <p className="text-white/40 text-xs mt-1">
-                            3-20 characters, lowercase letters, numbers, and underscores only
+                            3-20 characters, lowercase letters, numbers, and
+                            underscores only
                           </p>
                         </div>
 
                         {usernameError && (
-                          <p className="text-red-400 text-sm">{usernameError}</p>
+                          <p className="text-red-400 text-sm">
+                            {usernameError}
+                          </p>
                         )}
 
-                        <div className="flex gap-2">
-                          <button
-                            onClick={saveUsername}
-                            disabled={usernameSaving}
-                            className="flex-1 bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 text-white px-4 py-2 rounded-lg transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            {usernameSaving ? "Saving..." : "Save Username"}
-                          </button>
-                          <button
-                            onClick={() => {
-                              setIsEditingUsername(false);
-                              setUsernameInput(username);
-                              setUsernameError("");
-                            }}
-                            disabled={usernameSaving}
-                            className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors disabled:opacity-50"
-                          >
-                            Cancel
-                          </button>
-                        </div>
+                        <button
+                          onClick={saveUsername}
+                          disabled={usernameSaving}
+                          className="w-full bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 text-white px-4 py-2 rounded-lg transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {usernameSaving ? "Saving..." : "Set Username"}
+                        </button>
                       </div>
                     ) : (
                       <div>
@@ -844,7 +842,9 @@ export default function ProfilePage() {
                             <span className="text-white text-lg font-mono bg-white/10 px-4 py-2 rounded-lg">
                               @{username}
                             </span>
-                            <span className="text-green-400 text-sm">✓ Set</span>
+                            <span className="text-green-400 text-sm">
+                              ✓ Set
+                            </span>
                           </div>
                         ) : (
                           <button
@@ -1282,7 +1282,8 @@ export default function ProfilePage() {
                       <span className="text-lg">🏅</span>
                       <div className="flex-1">
                         <p className="text-white/90 text-xs sm:text-sm mb-1">
-                          <span className="font-semibold">Creator Tiers:</span> Post reels to unlock badges!
+                          <span className="font-semibold">Creator Tiers:</span>{" "}
+                          Post reels to unlock badges!
                         </p>
                         <div className="flex flex-wrap gap-2 text-[10px] sm:text-xs text-white/70">
                           <span>🥉 Bronze (0-49)</span>
@@ -1298,7 +1299,9 @@ export default function ProfilePage() {
                   {reelsLoading ? (
                     <div className="text-center py-12">
                       <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
-                      <p className="text-white/70 mt-4">Loading your reels...</p>
+                      <p className="text-white/70 mt-4">
+                        Loading your reels...
+                      </p>
                     </div>
                   ) : userReels.length === 0 ? (
                     <div className="text-center py-12">
@@ -1309,7 +1312,8 @@ export default function ProfilePage() {
                         No reels yet
                       </h3>
                       <p className="text-white/60 mb-4">
-                        You haven't posted any reels. Start sharing your moments!
+                        You haven't posted any reels. Start sharing your
+                        moments!
                       </p>
                       <Link
                         href="/reels"
@@ -1361,14 +1365,14 @@ export default function ProfilePage() {
                               <h3 className="text-white font-semibold text-sm sm:text-base mb-1">
                                 {truncateToChars(reel.title, 20)}
                               </h3>
-                              
+
                               {/* Description */}
                               {reel.description && (
                                 <p className="text-white/60 text-xs mb-2">
                                   {truncateToChars(reel.description, 20)}
                                 </p>
                               )}
-                              
+
                               {/* Stats and Tags Row */}
                               <div className="flex items-center gap-2 mb-2 flex-wrap">
                                 {/* Likes and Comments */}
@@ -1380,12 +1384,12 @@ export default function ProfilePage() {
                                     💬 {reel.comments_count || 0}
                                   </span>
                                 </div>
-                                
+
                                 {/* Separator */}
                                 {reel.tags && reel.tags.length > 0 && (
                                   <span className="text-white/40">•</span>
                                 )}
-                                
+
                                 {/* Tags */}
                                 {reel.tags && reel.tags.length > 0 && (
                                   <div className="flex flex-wrap gap-1">
@@ -1403,11 +1407,14 @@ export default function ProfilePage() {
 
                               {/* Date */}
                               <p className="text-white/40 text-[10px]">
-                                {new Date(reel.created_at).toLocaleDateString("en-US", {
-                                  month: "short",
-                                  day: "numeric",
-                                  year: "numeric",
-                                })}
+                                {new Date(reel.created_at).toLocaleDateString(
+                                  "en-US",
+                                  {
+                                    month: "short",
+                                    day: "numeric",
+                                    year: "numeric",
+                                  }
+                                )}
                               </p>
                             </div>
 
@@ -1430,7 +1437,9 @@ export default function ProfilePage() {
                                 className="flex-1 bg-purple-600 hover:bg-purple-700 text-white px-2 py-1.5 rounded-lg transition-colors text-center text-xs font-medium flex items-center justify-center gap-1"
                               >
                                 <span>💬</span>
-                                <span className="hidden sm:inline">Comments</span>
+                                <span className="hidden sm:inline">
+                                  Comments
+                                </span>
                               </button>
                               <button
                                 onClick={() => deleteReel(reel.id)}
@@ -1480,14 +1489,14 @@ export default function ProfilePage() {
 
       {/* Reel Viewer Modal */}
       {showReelModal && selectedReel && (
-        <div 
+        <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm"
           onClick={() => {
             setShowReelModal(false);
             setSelectedReel(null);
           }}
         >
-          <div 
+          <div
             className="relative w-full max-w-md h-[90vh] bg-black rounded-xl overflow-hidden shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
@@ -1499,8 +1508,18 @@ export default function ProfilePage() {
               }}
               className="absolute top-4 right-4 z-10 w-10 h-10 bg-black/50 hover:bg-black/70 rounded-full flex items-center justify-center text-white transition-colors"
             >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
               </svg>
             </button>
 
@@ -1532,7 +1551,7 @@ export default function ProfilePage() {
                 <h3 className="text-white font-bold text-lg mb-2 line-clamp-2">
                   {selectedReel.title}
                 </h3>
-                
+
                 {selectedReel.description && (
                   <p className="text-white/90 text-sm mb-3 line-clamp-3">
                     {selectedReel.description}

@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import AdminLayout from "@/components/AdminLayout";
 import PaymentLookup from "@/components/admin/PaymentLookup";
+import UserLookup from "@/components/admin/UserLookup";
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState({
@@ -253,6 +254,13 @@ export default function AdminDashboard() {
         {isSuper && (
           <div className="bg-white/10 backdrop-blur-md rounded-xl border border-white/20 p-6">
             <PaymentLookup />
+          </div>
+        )}
+
+        {/* User Lookup - Super Admin Only */}
+        {isSuper && (
+          <div className="bg-white/10 backdrop-blur-md rounded-xl border border-white/20 p-6">
+            <UserLookup />
           </div>
         )}
 

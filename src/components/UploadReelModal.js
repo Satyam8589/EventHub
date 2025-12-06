@@ -35,16 +35,31 @@ export default function UploadReelModal({ onClose, onSuccess }) {
     if (!file) return;
 
     // Validate file type
-    const validTypes = ["image/jpeg", "image/png", "image/gif", "image/webp", "video/mp4", "video/webm"];
+    const validTypes = [
+      "image/jpeg",
+      "image/png",
+      "image/gif",
+      "image/webp",
+      "video/mp4",
+      "video/webm",
+    ];
     if (!validTypes.includes(file.type)) {
-      setError("Please select a valid image (JPEG, PNG, GIF, WebP) or video (MP4, WebM)");
+      setError(
+        "Please select a valid image (JPEG, PNG, GIF, WebP) or video (MP4, WebM)"
+      );
       return;
     }
 
     // Validate file size (max 10MB for images, 50MB for videos)
-    const maxSize = file.type.startsWith("video") ? 50 * 1024 * 1024 : 10 * 1024 * 1024;
+    const maxSize = file.type.startsWith("video")
+      ? 50 * 1024 * 1024
+      : 10 * 1024 * 1024;
     if (file.size > maxSize) {
-      setError(`File size must be less than ${file.type.startsWith("video") ? "50MB" : "10MB"}`);
+      setError(
+        `File size must be less than ${
+          file.type.startsWith("video") ? "50MB" : "10MB"
+        }`
+      );
       return;
     }
 
@@ -70,7 +85,7 @@ export default function UploadReelModal({ onClose, onSuccess }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     // Validate user - Firebase uses uid, not id
     const userId = user?.uid || user?.id;
     if (!user || !userId) {
@@ -102,7 +117,10 @@ export default function UploadReelModal({ onClose, onSuccess }) {
       const uploadFormData = new FormData();
       uploadFormData.append("file", selectedFile);
       uploadFormData.append("folder", "reels");
-      uploadFormData.append("resourceType", selectedFile.type.startsWith("video") ? "video" : "image");
+      uploadFormData.append(
+        "resourceType",
+        selectedFile.type.startsWith("video") ? "video" : "image"
+      );
 
       console.log("Uploading file to Cloudinary...");
       const uploadResponse = await fetch("/api/upload", {
@@ -111,9 +129,30 @@ export default function UploadReelModal({ onClose, onSuccess }) {
       });
 
       if (!uploadResponse.ok) {
-        const errorData = await uploadResponse.json();
-        console.error("Upload error:", errorData);
-        throw new Error(errorData.error || "Failed to upload file");
+        let errorMessage = "Failed to upload file";
+        try {
+          const errorData = await uploadResponse.json();
+          console.error("Upload error:", errorData);
+          errorMessage = errorData.error || errorMessage;
+        } catch (parseError) {
+          // If response is not JSON (like "Forbidden"), use status text
+          const responseText = await uploadResponse.text();
+          console.error("Upload error (non-JSON):", responseText);
+          if (uploadResponse.status === 413) {
+            errorMessage = "File is too large. Please try a smaller file.";
+          } else if (
+            responseText.includes("Forbidden") ||
+            uploadResponse.status === 403
+          ) {
+            errorMessage =
+              "Upload forbidden. File may be too large or server limit reached.";
+          } else {
+            errorMessage =
+              responseText ||
+              `Upload failed with status ${uploadResponse.status}`;
+          }
+        }
+        throw new Error(errorMessage);
       }
 
       const uploadData = await uploadResponse.json();
@@ -148,7 +187,7 @@ export default function UploadReelModal({ onClose, onSuccess }) {
 
       const responseData = await reelResponse.json();
       console.log("Reel created successfully:", responseData);
-      
+
       // Success!
       onSuccess(responseData.reel);
       onClose();
@@ -171,8 +210,18 @@ export default function UploadReelModal({ onClose, onSuccess }) {
               onClick={onClose}
               className="text-white hover:bg-white/20 rounded-full p-2 transition-colors"
             >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
               </svg>
             </button>
           </div>
@@ -232,9 +281,7 @@ export default function UploadReelModal({ onClose, onSuccess }) {
 
           {/* Title */}
           <div>
-            <label className="block text-white font-medium mb-3">
-              Title *
-            </label>
+            <label className="block text-white font-medium mb-3">Title *</label>
             <input
               type="text"
               value={formData.title}

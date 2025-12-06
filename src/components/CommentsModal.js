@@ -2,7 +2,13 @@
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 
-export default function CommentsModal({ reel, onClose }) {
+export default function CommentsModal({
+  reel,
+  onClose,
+  currentUserUsername,
+  onShowUsernamePrompt,
+  onCommentCountChange,
+}) {
   const { user } = useAuth();
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState("");
@@ -20,7 +26,7 @@ export default function CommentsModal({ reel, onClose }) {
       setLoading(true);
       const response = await fetch(`/api/reels/${reel.id}/comments`);
       const data = await response.json();
-      
+
       if (response.ok) {
         setComments(data.comments || []);
       }
@@ -34,6 +40,12 @@ export default function CommentsModal({ reel, onClose }) {
   // Post comment
   const handlePostComment = async () => {
     if (!newComment.trim() || posting) return;
+
+    // Check if user has set username
+    if (!currentUserUsername) {
+      onShowUsernamePrompt();
+      return;
+    }
 
     setPosting(true);
     try {
@@ -50,6 +62,10 @@ export default function CommentsModal({ reel, onClose }) {
         const data = await response.json();
         setComments((prev) => [...prev, data.comment]);
         setNewComment("");
+        // Notify parent of comment count change
+        if (onCommentCountChange) {
+          onCommentCountChange(reel.id, comments.length + 1);
+        }
         // Scroll to bottom
         setTimeout(() => {
           commentsEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -70,13 +86,23 @@ export default function CommentsModal({ reel, onClose }) {
     }
 
     try {
-      const response = await fetch(`/api/reels/${reel.id}/comments/${commentId}`, {
-        method: "DELETE",
-      });
+      const response = await fetch(
+        `/api/reels/${reel.id}/comments/${commentId}`,
+        {
+          method: "DELETE",
+        }
+      );
 
       if (response.ok) {
         // Remove from local state
-        setComments((prev) => prev.filter((c) => c.id !== commentId));
+        setComments((prev) => {
+          const newComments = prev.filter((c) => c.id !== commentId);
+          // Notify parent of comment count change
+          if (onCommentCountChange) {
+            onCommentCountChange(reel.id, newComments.length);
+          }
+          return newComments;
+        });
       } else {
         alert("Failed to delete comment");
       }
@@ -98,7 +124,7 @@ export default function CommentsModal({ reel, onClose }) {
     if (diffMins < 60) return `${diffMins}m ago`;
     if (diffHours < 24) return `${diffHours}h ago`;
     if (diffDays < 7) return `${diffDays}d ago`;
-    
+
     return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   };
 
@@ -112,8 +138,18 @@ export default function CommentsModal({ reel, onClose }) {
             onClick={onClose}
             className="text-gray-400 hover:text-white transition-colors"
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            <svg
+              className="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
             </svg>
           </button>
         </div>
@@ -129,7 +165,9 @@ export default function CommentsModal({ reel, onClose }) {
             <div className="text-center py-12">
               <span className="text-4xl mb-2 block">💬</span>
               <p className="text-white/60">No comments yet</p>
-              <p className="text-white/40 text-sm mt-1">Be the first to comment!</p>
+              <p className="text-white/40 text-sm mt-1">
+                Be the first to comment!
+              </p>
             </div>
           ) : (
             <>
@@ -151,7 +189,7 @@ export default function CommentsModal({ reel, onClose }) {
                         <p className="text-gray-400 text-xs">
                           {formatDateTime(comment.created_at)}
                         </p>
-                        
+
                         {/* Delete button - only show for own comments */}
                         {user && comment.user_id === user.uid && (
                           <button
@@ -180,9 +218,7 @@ export default function CommentsModal({ reel, onClose }) {
           {!user ? (
             // Not logged in - show login prompt
             <div className="text-center py-2">
-              <p className="text-white/60 text-sm mb-2">
-                Sign in to comment
-              </p>
+              <p className="text-white/60 text-sm mb-2">Sign in to comment</p>
               <button
                 onClick={onClose}
                 className="text-blue-400 hover:text-blue-300 text-sm font-medium"

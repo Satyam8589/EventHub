@@ -5,6 +5,10 @@ const nextConfig = {
   experimental: {
     optimizePackageImports: ["lucide-react", "@heroicons/react"],
   },
+  // Increase body size limit for file uploads
+  serverRuntimeConfig: {
+    bodySizeLimit: "100mb",
+  },
   async headers() {
     return [
       {

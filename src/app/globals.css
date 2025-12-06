@@ -231,3 +231,33 @@ body {
 .animate-fade-in {
   animation: fadeIn 0.5s ease-in forwards;
 }
+
+/* Smooth Scrolling Performance Optimizations */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Hardware acceleration for better scroll performance */
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Optimize reels scrolling */
+@media (hover: none) and (pointer: coarse) {
+  /* Mobile-specific optimizations */
+  .snap-y {
+    scroll-snap-type: y mandatory;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .snap-start {
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+  }
+}

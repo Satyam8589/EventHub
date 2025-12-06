@@ -27,10 +27,7 @@ export async function GET(request) {
 
     if (error) {
       console.error("Error fetching username:", error);
-      return NextResponse.json(
-        { username: null },
-        { status: 200 }
-      );
+      return NextResponse.json({ username: null }, { status: 200 });
     }
 
     return NextResponse.json({ username: user?.username || null });
@@ -60,8 +57,9 @@ export async function POST(request) {
     const usernameRegex = /^[a-z0-9_]{3,20}$/;
     if (!usernameRegex.test(username)) {
       return NextResponse.json(
-        { 
-          error: "Username must be 3-20 characters long and contain only lowercase letters, numbers, and underscores" 
+        {
+          error:
+            "Username must be 3-20 characters long and contain only lowercase letters, numbers, and underscores",
         },
         { status: 400 }
       );
@@ -82,6 +80,20 @@ export async function POST(request) {
       );
     }
 
+    // Check if user already has a username set (prevent updates)
+    const { data: currentUser } = await supabase
+      .from("users")
+      .select("username")
+      .eq("id", userId)
+      .single();
+
+    if (currentUser?.username) {
+      return NextResponse.json(
+        { error: "Username already set and cannot be changed" },
+        { status: 400 }
+      );
+    }
+
     // Update username
     const { data: updatedUser, error } = await supabase
       .from("users")
@@ -98,9 +110,9 @@ export async function POST(request) {
       );
     }
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       success: true,
-      username: updatedUser.username 
+      username: updatedUser.username,
     });
   } catch (error) {
     console.error("Error in POST /api/username:", error);
