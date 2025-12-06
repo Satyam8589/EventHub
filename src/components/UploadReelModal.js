@@ -131,25 +131,31 @@ export default function UploadReelModal({ onClose, onSuccess }) {
       if (!uploadResponse.ok) {
         let errorMessage = "Failed to upload file";
         try {
-          const errorData = await uploadResponse.json();
+          // Clone the response before reading to avoid "body stream already read" error
+          const responseClone = uploadResponse.clone();
+          const errorData = await responseClone.json();
           console.error("Upload error:", errorData);
           errorMessage = errorData.error || errorMessage;
         } catch (parseError) {
-          // If response is not JSON (like "Forbidden"), use status text
-          const responseText = await uploadResponse.text();
-          console.error("Upload error (non-JSON):", responseText);
-          if (uploadResponse.status === 413) {
-            errorMessage = "File is too large. Please try a smaller file.";
-          } else if (
-            responseText.includes("Forbidden") ||
-            uploadResponse.status === 403
-          ) {
-            errorMessage =
-              "Upload forbidden. File may be too large or server limit reached.";
-          } else {
-            errorMessage =
-              responseText ||
-              `Upload failed with status ${uploadResponse.status}`;
+          // If response is not JSON, read as text
+          try {
+            const responseText = await uploadResponse.text();
+            console.error("Upload error (non-JSON):", responseText);
+            if (uploadResponse.status === 413) {
+              errorMessage = "File is too large. Please try a smaller file.";
+            } else if (
+              responseText.includes("Forbidden") ||
+              uploadResponse.status === 403
+            ) {
+              errorMessage =
+                "Upload forbidden. File may be too large or server limit reached.";
+            } else {
+              errorMessage =
+                responseText ||
+                `Upload failed with status ${uploadResponse.status}`;
+            }
+          } catch (textError) {
+            errorMessage = `Upload failed with status ${uploadResponse.status}`;
           }
         }
         throw new Error(errorMessage);
@@ -180,9 +186,16 @@ export default function UploadReelModal({ onClose, onSuccess }) {
       });
 
       if (!reelResponse.ok) {
-        const errorData = await reelResponse.json();
-        console.error("Reel creation error:", errorData);
-        throw new Error(errorData.error || "Failed to create reel");
+        let errorMessage = "Failed to create reel";
+        try {
+          const errorData = await reelResponse.json();
+          console.error("Reel creation error:", errorData);
+          errorMessage = errorData.error || errorMessage;
+        } catch (parseError) {
+          console.error("Could not parse reel creation error response");
+          errorMessage = `Failed to create reel (Status: ${reelResponse.status})`;
+        }
+        throw new Error(errorMessage);
       }
 
       const responseData = await reelResponse.json();
