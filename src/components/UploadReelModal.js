@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 export default function UploadReelModal({ onClose, onSuccess }) {
   const { user } = useAuth();
   const [uploading, setUploading] = useState(false);
+  const [compressing, setCompressing] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -30,7 +31,138 @@ export default function UploadReelModal({ onClose, onSuccess }) {
     "entertainment",
   ];
 
-  const handleFileSelect = (e) => {
+  // Compress video to target size
+  const compressVideo = async (file, targetSizeMB = 5) => {
+    return new Promise((resolve, reject) => {
+      const targetSize = targetSizeMB * 1024 * 1024; // Convert to bytes
+
+      // If file is already under target size, return as is
+      if (file.size <= targetSize) {
+        resolve(file);
+        return;
+      }
+
+      setCompressing(true);
+      const video = document.createElement("video");
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+
+      video.preload = "metadata";
+      video.src = URL.createObjectURL(file);
+
+      video.onloadedmetadata = async () => {
+        try {
+          // Calculate compression ratio based on file size
+          const compressionRatio = targetSize / file.size;
+
+          // Set canvas dimensions (reduce resolution if needed)
+          let width = video.videoWidth;
+          let height = video.videoHeight;
+
+          // Scale down resolution if file is much larger
+          if (compressionRatio < 0.5) {
+            width = Math.floor(width * 0.7);
+            height = Math.floor(height * 0.7);
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+
+          // Determine bitrate based on compression ratio
+          const baseBitrate = 2500000; // 2.5 Mbps base
+          const videoBitrate = Math.floor(
+            baseBitrate * Math.max(compressionRatio, 0.3)
+          );
+
+          // Check for codec support and use best available
+          let mimeType = "video/webm;codecs=vp9";
+          if (!MediaRecorder.isTypeSupported(mimeType)) {
+            mimeType = "video/webm;codecs=vp8";
+            if (!MediaRecorder.isTypeSupported(mimeType)) {
+              mimeType = "video/webm";
+              if (!MediaRecorder.isTypeSupported(mimeType)) {
+                throw new Error("WebM recording not supported in this browser");
+              }
+            }
+          }
+
+          const stream = canvas.captureStream(30); // 30 fps
+          const mediaRecorder = new MediaRecorder(stream, {
+            mimeType: mimeType,
+            videoBitsPerSecond: videoBitrate,
+          });
+
+          const chunks = [];
+          mediaRecorder.ondataavailable = (e) => {
+            if (e.data.size > 0) {
+              chunks.push(e.data);
+            }
+          };
+
+          mediaRecorder.onstop = () => {
+            const compressedBlob = new Blob(chunks, { type: "video/webm" });
+            const compressedFile = new File(
+              [compressedBlob],
+              file.name.replace(/\.[^.]+$/, ".webm"),
+              {
+                type: "video/webm",
+                lastModified: Date.now(),
+              }
+            );
+
+            console.log(
+              `Compression complete: ${(file.size / 1024 / 1024).toFixed(
+                2
+              )}MB → ${(compressedFile.size / 1024 / 1024).toFixed(2)}MB`
+            );
+
+            URL.revokeObjectURL(video.src);
+            setCompressing(false);
+            resolve(compressedFile);
+          };
+
+          mediaRecorder.onerror = (e) => {
+            console.error("MediaRecorder error:", e);
+            URL.revokeObjectURL(video.src);
+            setCompressing(false);
+            reject(new Error("Video compression failed"));
+          };
+
+          // Start recording
+          mediaRecorder.start();
+          video.play();
+
+          const drawFrame = () => {
+            if (video.paused || video.ended) {
+              mediaRecorder.stop();
+              return;
+            }
+            ctx.drawImage(video, 0, 0, width, height);
+            requestAnimationFrame(drawFrame);
+          };
+
+          video.onended = () => {
+            setTimeout(() => mediaRecorder.stop(), 100);
+          };
+
+          drawFrame();
+        } catch (err) {
+          console.error("Compression error:", err);
+          URL.revokeObjectURL(video.src);
+          setCompressing(false);
+          reject(err);
+        }
+      };
+
+      video.onerror = () => {
+        URL.revokeObjectURL(video.src);
+        setCompressing(false);
+        reject(new Error("Failed to load video"));
+      };
+    });
+  };
+
+  const handleFileSelect = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
@@ -50,7 +182,7 @@ export default function UploadReelModal({ onClose, onSuccess }) {
       return;
     }
 
-    // Validate file size (max 10MB for images, 50MB for videos)
+    // Validate file size (max 10MB for images, 50MB for videos before compression)
     const maxSize = file.type.startsWith("video")
       ? 50 * 1024 * 1024
       : 10 * 1024 * 1024;
@@ -63,15 +195,34 @@ export default function UploadReelModal({ onClose, onSuccess }) {
       return;
     }
 
-    setSelectedFile(file);
     setError(null);
+
+    // Compress video if it's larger than 5MB
+    let finalFile = file;
+    if (file.type.startsWith("video") && file.size > 5 * 1024 * 1024) {
+      try {
+        const originalSize = (file.size / 1024 / 1024).toFixed(2);
+        setError(`Compressing video (${originalSize}MB)...`);
+        finalFile = await compressVideo(file, 5);
+        const compressedSize = (finalFile.size / 1024 / 1024).toFixed(2);
+        setError(`✓ Compressed: ${originalSize}MB → ${compressedSize}MB`);
+        setTimeout(() => setError(null), 3000);
+      } catch (err) {
+        console.error("Compression error:", err);
+        setError(`Compression failed: ${err.message}. Using original file.`);
+        finalFile = file;
+        setTimeout(() => setError(null), 5000);
+      }
+    }
+
+    setSelectedFile(finalFile);
 
     // Create preview
     const reader = new FileReader();
     reader.onloadend = () => {
       setPreviewUrl(reader.result);
     };
-    reader.readAsDataURL(file);
+    reader.readAsDataURL(finalFile);
   };
 
   const toggleTag = (tag) => {
@@ -284,12 +435,19 @@ export default function UploadReelModal({ onClose, onSuccess }) {
                       Click to upload image or video
                     </p>
                     <p className="text-gray-400 text-sm">
-                      Images: max 10MB | Videos: max 50MB
+                      Images: max 10MB | Videos: max 50MB (auto-compressed to
+                      5MB)
                     </p>
                   </div>
                 )}
               </label>
             </div>
+            {compressing && (
+              <div className="mt-2 flex items-center gap-2 text-yellow-400">
+                <div className="w-4 h-4 border-2 border-yellow-400 border-t-transparent rounded-full animate-spin"></div>
+                <span className="text-sm">Compressing video...</span>
+              </div>
+            )}
           </div>
 
           {/* Title */}
