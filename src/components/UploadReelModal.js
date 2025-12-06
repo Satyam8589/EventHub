@@ -113,17 +113,19 @@ export default function UploadReelModal({ onClose, onSuccess }) {
     setError(null);
 
     try {
-      // Upload file to Cloudinary
+      // Upload directly to Cloudinary (bypasses server size limits)
       const uploadFormData = new FormData();
       uploadFormData.append("file", selectedFile);
+      uploadFormData.append("upload_preset", "eventhub_reels"); // We'll create this preset
       uploadFormData.append("folder", "reels");
-      uploadFormData.append(
-        "resourceType",
-        selectedFile.type.startsWith("video") ? "video" : "image"
-      );
 
-      console.log("Uploading file to Cloudinary...");
-      const uploadResponse = await fetch("/api/upload", {
+      console.log("Uploading file directly to Cloudinary...");
+      const resourceType = selectedFile.type.startsWith("video")
+        ? "video"
+        : "image";
+      const cloudinaryUrl = `https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/${resourceType}/upload`;
+
+      const uploadResponse = await fetch(cloudinaryUrl, {
         method: "POST",
         body: uploadFormData,
       });
@@ -131,13 +133,11 @@ export default function UploadReelModal({ onClose, onSuccess }) {
       if (!uploadResponse.ok) {
         let errorMessage = "Failed to upload file";
         try {
-          // Clone the response before reading to avoid "body stream already read" error
           const responseClone = uploadResponse.clone();
           const errorData = await responseClone.json();
           console.error("Upload error:", errorData);
-          errorMessage = errorData.error || errorMessage;
+          errorMessage = errorData.error?.message || errorMessage;
         } catch (parseError) {
-          // If response is not JSON, read as text
           try {
             const responseText = await uploadResponse.text();
             console.error("Upload error (non-JSON):", responseText);
@@ -162,14 +162,15 @@ export default function UploadReelModal({ onClose, onSuccess }) {
       }
 
       const uploadData = await uploadResponse.json();
-      console.log("File uploaded successfully:", uploadData.url);
+      const mediaUrl = uploadData.secure_url;
+      console.log("File uploaded successfully:", mediaUrl);
 
       // Prepare reel data
       const reelData = {
         userId: userId, // Use the extracted userId (uid or id)
         title: formData.title.trim(),
         description: formData.description.trim(),
-        mediaUrl: uploadData.url,
+        mediaUrl: mediaUrl,
         mediaType: selectedFile.type.startsWith("video") ? "video" : "image",
         tags: formData.tags,
       };
