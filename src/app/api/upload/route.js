@@ -1,17 +1,9 @@
 ﻿import { NextResponse } from "next/server";
 import { uploadToCloudinary, deleteFromCloudinary } from "@/lib/cloudinary";
 
-// Configure API route to handle larger file uploads
-export const config = {
-  api: {
-    bodyParser: {
-      sizeLimit: "100mb",
-    },
-  },
-};
-
-// Increase max duration for video uploads
-export const maxDuration = 60; // 60 seconds
+// Configure for large file uploads and longer execution time
+export const maxDuration = 60; // 60 seconds for video uploads
+export const bodyParser = false; // Disable default body parser for large files
 
 // POST /api/upload - Upload file to Cloudinary
 export async function POST(request) {
