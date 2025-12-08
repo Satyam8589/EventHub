@@ -122,11 +122,20 @@ export async function POST(request) {
 
     // Send push notifications to followers
     try {
+      console.log(
+        "🔔 Starting to send push notifications for new reel:",
+        reel.id
+      );
+
       // Get all followers of the user who posted the reel
       const { data: followers } = await supabase
         .from("followers")
         .select("follower_id")
         .eq("following_id", userId);
+
+      console.log(
+        `📊 Found ${followers?.length || 0} followers for user ${userId}`
+      );
 
       if (followers && followers.length > 0) {
         // Get push subscriptions for all followers
@@ -136,10 +145,14 @@ export async function POST(request) {
           .select("subscription")
           .in("user_id", followerIds);
 
+        console.log(
+          `📱 Found ${subscriptions?.length || 0} push subscriptions`
+        );
+
         if (subscriptions && subscriptions.length > 0) {
           // Send push notification to all followers
           const username = user?.username || user?.name || "A user";
-          await sendPushNotificationToMultiple(
+          const notificationResult = await sendPushNotificationToMultiple(
             subscriptions.map((s) => s.subscription),
             {
               title: "New Reel Posted! 🎬",
@@ -155,11 +168,16 @@ export async function POST(request) {
               },
             }
           );
+          console.log(`✅ Push notifications sent:`, notificationResult);
+        } else {
+          console.log("⚠️ No push subscriptions found for followers");
         }
+      } else {
+        console.log("ℹ️ User has no followers yet");
       }
     } catch (notificationError) {
       console.error(
-        "Error sending notifications to followers:",
+        "❌ Error sending notifications to followers:",
         notificationError
       );
       // Don't fail the request if notifications fail

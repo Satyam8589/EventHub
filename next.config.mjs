@@ -9,6 +9,10 @@ const nextConfig = {
   serverRuntimeConfig: {
     bodySizeLimit: "100mb",
   },
+  // Allow images from external domains
+  images: {
+    domains: ["lh3.googleusercontent.com", "res.cloudinary.com"],
+  },
   async headers() {
     return [
       {

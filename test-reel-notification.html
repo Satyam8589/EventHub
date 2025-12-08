@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Reel Push Notifications</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            border-left: 4px solid #667eea;
+        }
+
+        .section h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 20px;
+        }
+
+        .info-box {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .info-box strong {
+            color: #667eea;
+            display: inline-block;
+            min-width: 180px;
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        input,
+        textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        input:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .status {
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 15px;
+            font-size: 14px;
+            display: none;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+            display: block;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            display: block;
+        }
+
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+            display: block;
+        }
+
+        .log-container {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 15px;
+            border-radius: 8px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            margin-top: 15px;
+        }
+
+        .log-entry {
+            margin-bottom: 8px;
+            padding: 5px;
+            border-left: 3px solid transparent;
+        }
+
+        .log-entry.info {
+            border-left-color: #4fc3f7;
+        }
+
+        .log-entry.success {
+            border-left-color: #66bb6a;
+        }
+
+        .log-entry.error {
+            border-left-color: #ef5350;
+        }
+
+        .log-entry.warning {
+            border-left-color: #ffa726;
+        }
+
+        .timestamp {
+            color: #888;
+            margin-right: 10px;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-right: 8px;
+        }
+
+        .badge.info {
+            background: #4fc3f7;
+            color: white;
+        }
+
+        .badge.success {
+            background: #66bb6a;
+            color: white;
+        }
+
+        .badge.error {
+            background: #ef5350;
+            color: white;
+        }
+
+        .badge.warning {
+            background: #ffa726;
+            color: white;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>🔔 Reel Push Notification Tester</h1>
+        <p class="subtitle">Test push notifications for new reels posted by followed users</p>
+
+        <!-- Status Section -->
+        <div class="section">
+            <h2>📊 System Status</h2>
+            <div class="info-box">
+                <strong>Browser Support:</strong> <span id="browserSupport">Checking...</span>
+            </div>
+            <div class="info-box">
+                <strong>Service Worker:</strong> <span id="serviceWorkerStatus">Checking...</span>
+            </div>
+            <div class="info-box">
+                <strong>Notification Permission:</strong> <span id="notificationPermission">Checking...</span>
+            </div>
+            <div class="info-box">
+                <strong>Push Subscription:</strong> <span id="subscriptionStatus">Checking...</span>
+            </div>
+        </div>
+
+        <!-- Test Notification Form -->
+        <div class="section">
+            <h2>🧪 Send Test Notification</h2>
+            <div class="input-group">
+                <label for="userId">User ID (who posted the reel):</label>
+                <input type="text" id="userId" placeholder="Enter user ID">
+            </div>
+            <div class="input-group">
+                <label for="reelTitle">Reel Title:</label>
+                <input type="text" id="reelTitle" value="Amazing sunset at the beach!" placeholder="Enter reel title">
+            </div>
+            <div class="input-group">
+                <label for="username">Username:</label>
+                <input type="text" id="username" value="john_doe" placeholder="Enter username">
+            </div>
+            <div class="input-group">
+                <label for="reelId">Reel ID:</label>
+                <input type="text" id="reelId" value="123" placeholder="Enter reel ID">
+            </div>
+            <button id="sendTestBtn" onclick="sendTestNotification()">Send Test Notification</button>
+            <div id="testStatus" class="status"></div>
+        </div>
+
+        <!-- API Test Section -->
+        <div class="section">
+            <h2>🔍 Test API Endpoint</h2>
+            <div class="input-group">
+                <label for="apiUrl">API URL:</label>
+                <input type="text" id="apiUrl" value="http://localhost:3000/api/reels" placeholder="Enter API URL">
+            </div>
+            <div class="input-group">
+                <label for="testPayload">Test Payload (JSON):</label>
+                <textarea id="testPayload">{
+  "userId": "test-user-123",
+  "title": "Test Reel",
+  "description": "Testing push notifications",
+  "mediaUrl": "https://example.com/video.mp4",
+  "mediaType": "video",
+  "tags": ["test", "notification"]
+}</textarea>
+            </div>
+            <button onclick="testAPIEndpoint()">Test POST to API</button>
+            <div id="apiStatus" class="status"></div>
+        </div>
+
+        <!-- Logs Section -->
+        <div class="section">
+            <h2>📝 Activity Logs</h2>
+            <div class="log-container" id="logContainer">
+                <div class="log-entry info">
+                    <span class="timestamp">[System]</span>
+                    <span class="badge info">INFO</span>
+                    Waiting for actions...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let pushSubscription = null;
+
+        // Logging function
+        function addLog(message, type = 'info') {
+            const logContainer = document.getElementById('logContainer');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry ${type}`;
+            logEntry.innerHTML = `
+                <span class="timestamp">[${timestamp}]</span>
+                <span class="badge ${type}">${type.toUpperCase()}</span>
+                ${message}
+            `;
+            logContainer.appendChild(logEntry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        // Check system status
+        async function checkSystemStatus() {
+            addLog('Checking system status...', 'info');
+
+            // Browser support
+            const browserSupport = 'serviceWorker' in navigator && 'PushManager' in window;
+            document.getElementById('browserSupport').textContent = browserSupport ? '✅ Supported' : '❌ Not Supported';
+            addLog(`Browser support: ${browserSupport ? 'YES' : 'NO'}`, browserSupport ? 'success' : 'error');
+
+            if (!browserSupport) {
+                addLog('Push notifications are not supported in this browser', 'error');
+                return;
+            }
+
+            // Service Worker
+            try {
+                const registration = await navigator.serviceWorker.getRegistration();
+                if (registration) {
+                    document.getElementById('serviceWorkerStatus').textContent = '✅ Active';
+                    addLog('Service Worker is registered and active', 'success');
+                } else {
+                    document.getElementById('serviceWorkerStatus').textContent = '⚠️ Not Registered';
+                    addLog('Service Worker is not registered', 'warning');
+                }
+
+                // Notification permission
+                const permission = Notification.permission;
+                document.getElementById('notificationPermission').textContent = permission === 'granted' ? '✅ Granted' : permission === 'denied' ? '❌ Denied' : '⚠️ Default';
+                addLog(`Notification permission: ${permission}`, permission === 'granted' ? 'success' : 'warning');
+
+                if (permission === 'default') {
+                    addLog('Requesting notification permission...', 'info');
+                    const result = await Notification.requestPermission();
+                    document.getElementById('notificationPermission').textContent = result === 'granted' ? '✅ Granted' : '❌ Denied';
+                    addLog(`Permission result: ${result}`, result === 'granted' ? 'success' : 'error');
+                }
+
+                // Push subscription
+                if (registration) {
+                    pushSubscription = await registration.pushManager.getSubscription();
+                    if (pushSubscription) {
+                        document.getElementById('subscriptionStatus').textContent = '✅ Subscribed';
+                        addLog('Push subscription found', 'success');
+                        addLog(`Endpoint: ${pushSubscription.endpoint.substring(0, 50)}...`, 'info');
+                    } else {
+                        document.getElementById('subscriptionStatus').textContent = '⚠️ Not Subscribed';
+                        addLog('No push subscription found', 'warning');
+                    }
+                }
+            } catch (error) {
+                addLog(`Error checking status: ${error.message}`, 'error');
+                console.error('Error:', error);
+            }
+        }
+
+        // Send test notification
+        async function sendTestNotification() {
+            const userId = document.getElementById('userId').value;
+            const reelTitle = document.getElementById('reelTitle').value;
+            const username = document.getElementById('username').value;
+            const reelId = document.getElementById('reelId').value;
+            const statusDiv = document.getElementById('testStatus');
+
+            if (!userId || !reelTitle) {
+                statusDiv.className = 'status error';
+                statusDiv.textContent = '❌ Please fill in User ID and Reel Title';
+                addLog('Validation failed: Missing required fields', 'error');
+                return;
+            }
+
+            addLog('Attempting to send test notification...', 'info');
+
+            try {
+                // Check if notification permission is granted
+                if (Notification.permission !== 'granted') {
+                    const permission = await Notification.requestPermission();
+                    if (permission !== 'granted') {
+                        throw new Error('Notification permission denied');
+                    }
+                }
+
+                // Show a local notification for testing
+                const notification = new Notification('New Reel Posted! 🎬', {
+                    body: `${username} just posted a new reel: ${reelTitle}`,
+                    icon: '/icon-192.png',
+                    badge: '/icon-192.png',
+                    tag: `new-reel-${reelId}`,
+                    data: {
+                        type: 'new_reel',
+                        reelId: reelId,
+                        userId: userId,
+                        url: '/reels'
+                    }
+                });
+
+                notification.onclick = function (event) {
+                    event.preventDefault();
+                    window.open('/reels', '_blank');
+                    addLog('Notification clicked, opening reels page', 'info');
+                };
+
+                statusDiv.className = 'status success';
+                statusDiv.textContent = '✅ Test notification sent successfully!';
+                addLog('Local test notification displayed', 'success');
+                addLog(`Title: New Reel Posted! 🎬`, 'info');
+                addLog(`Body: ${username} just posted a new reel: ${reelTitle}`, 'info');
+
+            } catch (error) {
+                statusDiv.className = 'status error';
+                statusDiv.textContent = `❌ Error: ${error.message}`;
+                addLog(`Error sending notification: ${error.message}`, 'error');
+                console.error('Error:', error);
+            }
+        }
+
+        // Test API endpoint
+        async function testAPIEndpoint() {
+            const apiUrl = document.getElementById('apiUrl').value;
+            const payload = document.getElementById('testPayload').value;
+            const statusDiv = document.getElementById('apiStatus');
+
+            addLog(`Testing API endpoint: ${apiUrl}`, 'info');
+
+            try {
+                const parsedPayload = JSON.parse(payload);
+                addLog('Payload parsed successfully', 'success');
+                addLog(`Sending POST request...`, 'info');
+
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: payload
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    statusDiv.className = 'status success';
+                    statusDiv.textContent = '✅ API request successful! Check console for response.';
+                    addLog('API request successful', 'success');
+                    addLog(`Response status: ${response.status}`, 'success');
+                    addLog(`Response data: ${JSON.stringify(data, null, 2)}`, 'info');
+                    console.log('API Response:', data);
+                } else {
+                    statusDiv.className = 'status error';
+                    statusDiv.textContent = `❌ API Error: ${data.error || 'Unknown error'}`;
+                    addLog(`API request failed: ${response.status}`, 'error');
+                    addLog(`Error: ${data.error || 'Unknown error'}`, 'error');
+                    console.error('API Error:', data);
+                }
+            } catch (error) {
+                statusDiv.className = 'status error';
+                statusDiv.textContent = `❌ Error: ${error.message}`;
+                addLog(`Error testing API: ${error.message}`, 'error');
+                console.error('Error:', error);
+            }
+        }
+
+        // Initialize on page load
+        window.addEventListener('load', () => {
+            addLog('Page loaded, initializing...', 'info');
+            checkSystemStatus();
+        });
+    </script>
+</body>
+
+</html>

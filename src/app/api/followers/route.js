@@ -68,7 +68,24 @@ export async function GET(request) {
           .select("id, name, email, username, avatar")
           .in("id", userIds);
 
-        users = userData || [];
+        // Fetch reel counts for each user
+        if (userData) {
+          const usersWithReelCounts = await Promise.all(
+            userData.map(async (user) => {
+              const { count: reelCount } = await supabase
+                .from("reels")
+                .select("*", { count: "exact", head: true })
+                .eq("user_id", user.id);
+
+              return {
+                ...user,
+                photoURL: user.avatar,
+                reelCount: reelCount || 0,
+              };
+            })
+          );
+          users = usersWithReelCounts;
+        }
       }
     }
 

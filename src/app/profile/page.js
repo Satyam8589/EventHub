@@ -42,6 +42,11 @@ export default function ProfilePage() {
   const [followersList, setFollowersList] = useState([]);
   const [followingList, setFollowingList] = useState([]);
   const [loadingFollowers, setLoadingFollowers] = useState(false);
+  const [showUserReelsModal, setShowUserReelsModal] = useState(false);
+  const [selectedUserReels, setSelectedUserReels] = useState([]);
+  const [selectedUserData, setSelectedUserData] = useState(null);
+  const [loadingUserReels, setLoadingUserReels] = useState(false);
+  const [likedReels, setLikedReels] = useState(new Set());
 
   const { user, loading: authLoading, signOut } = useAuth();
   const router = useRouter();
@@ -308,6 +313,29 @@ export default function ProfilePage() {
     }
   };
 
+  // Fetch selected user's reels
+  const fetchSelectedUserReels = async (userData) => {
+    setSelectedUserData(userData);
+    setSelectedUserReels([]);
+    setLoadingUserReels(true);
+    setShowUserReelsModal(true);
+
+    try {
+      const response = await fetch(`/api/reels?userId=${userData.id}`);
+      const data = await response.json();
+
+      if (response.ok) {
+        setSelectedUserReels(data.reels || []);
+      } else {
+        console.error("Error fetching user reels:", data);
+      }
+    } catch (error) {
+      console.error("Error fetching user reels:", error);
+    } finally {
+      setLoadingUserReels(false);
+    }
+  };
+
   // Fetch user's reels
   const fetchUserReels = async () => {
     if (!user) return;
@@ -368,6 +396,41 @@ export default function ProfilePage() {
     const trimmedText = text.trim();
     if (trimmedText.length <= charLimit) return trimmedText;
     return trimmedText.slice(0, charLimit) + "...";
+  };
+
+  // Get badge based on reel count
+  const getBadgeForReelCount = (count) => {
+    if (count >= 300)
+      return {
+        emoji: "💎",
+        name: "Diamond",
+        color: "from-cyan-400 to-blue-500",
+      };
+    if (count >= 200)
+      return {
+        emoji: "🏆",
+        name: "Platinum",
+        color: "from-gray-300 to-gray-500",
+      };
+    if (count >= 100)
+      return {
+        emoji: "🥇",
+        name: "Gold",
+        color: "from-yellow-400 to-yellow-600",
+      };
+    if (count >= 50)
+      return {
+        emoji: "🥈",
+        name: "Silver",
+        color: "from-gray-400 to-gray-600",
+      };
+    if (count >= 1)
+      return {
+        emoji: "🥉",
+        name: "Bronze",
+        color: "from-orange-400 to-orange-600",
+      };
+    return null;
   };
 
   // Fetch reels on initial page load
@@ -1589,7 +1652,7 @@ export default function ProfilePage() {
       {/* Reel Viewer Modal */}
       {showReelModal && selectedReel && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm"
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-black/90 backdrop-blur-sm"
           onClick={() => {
             setShowReelModal(false);
             setSelectedReel(null);
@@ -1645,6 +1708,114 @@ export default function ProfilePage() {
               {/* Gradient Overlay */}
               <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/80 pointer-events-none" />
 
+              {/* Action Buttons (Right Side) */}
+              <div className="absolute right-4 bottom-32 flex flex-col gap-4 pointer-events-auto z-20">
+                {/* Like Button */}
+                <button
+                  onClick={async () => {
+                    if (!user) {
+                      alert("Please sign in to like reels");
+                      return;
+                    }
+
+                    const isLiked = likedReels.has(selectedReel.id);
+
+                    // Update UI instantly
+                    if (isLiked) {
+                      setLikedReels((prev) => {
+                        const newSet = new Set(prev);
+                        newSet.delete(selectedReel.id);
+                        return newSet;
+                      });
+                      setSelectedReel((prev) => ({
+                        ...prev,
+                        likes_count: Math.max(0, (prev.likes_count || 0) - 1),
+                      }));
+                    } else {
+                      setLikedReels(
+                        (prev) => new Set([...prev, selectedReel.id])
+                      );
+                      setSelectedReel((prev) => ({
+                        ...prev,
+                        likes_count: (prev.likes_count || 0) + 1,
+                      }));
+                    }
+
+                    // Send request to server
+                    try {
+                      const response = await fetch(
+                        `/api/reels/${selectedReel.id}/like`,
+                        {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ userId: user.uid }),
+                        }
+                      );
+
+                      if (response.ok) {
+                        const data = await response.json();
+                        setSelectedReel((prev) => ({
+                          ...prev,
+                          likes_count: data.likes_count,
+                        }));
+                        if (data.liked) {
+                          setLikedReels(
+                            (prev) => new Set([...prev, selectedReel.id])
+                          );
+                        } else {
+                          setLikedReels((prev) => {
+                            const newSet = new Set(prev);
+                            newSet.delete(selectedReel.id);
+                            return newSet;
+                          });
+                        }
+                      }
+                    } catch (error) {
+                      console.error("Error liking reel:", error);
+                    }
+                  }}
+                  className="flex flex-col items-center gap-1 group"
+                >
+                  <div
+                    className={`w-12 h-12 rounded-full backdrop-blur-md flex items-center justify-center transition-all group-hover:scale-110 ${
+                      likedReels.has(selectedReel.id)
+                        ? "bg-red-500/20"
+                        : "bg-white/10 group-hover:bg-white/20"
+                    }`}
+                  >
+                    <svg
+                      className={`w-7 h-7 transition-all duration-200 ${
+                        likedReels.has(selectedReel.id)
+                          ? "fill-red-500 scale-110"
+                          : "fill-none stroke-white stroke-2"
+                      }`}
+                      viewBox="0 0 24 24"
+                    >
+                      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                    </svg>
+                  </div>
+                  <span className="text-white text-xs font-semibold drop-shadow-lg">
+                    {selectedReel.likes_count || 0}
+                  </span>
+                </button>
+
+                {/* Comment Button */}
+                <button
+                  onClick={() => {
+                    setSelectedReelForComments(selectedReel);
+                    setShowCommentsModal(true);
+                  }}
+                  className="flex flex-col items-center gap-1 group"
+                >
+                  <div className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center group-hover:bg-blue-500/30 transition-all group-hover:scale-110">
+                    <span className="text-2xl">💬</span>
+                  </div>
+                  <span className="text-white text-xs font-semibold drop-shadow-lg">
+                    {selectedReel.comments_count || 0}
+                  </span>
+                </button>
+              </div>
+
               {/* Info Overlay */}
               <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 via-black/60 to-transparent">
                 <h3 className="text-white font-bold text-lg mb-2 line-clamp-2">
@@ -1697,6 +1868,7 @@ export default function ProfilePage() {
           reel={selectedReelForComments}
           currentUser={user}
           reelOwnerId={selectedReelForComments.user_id}
+          zIndex={80}
         />
       )}
 
@@ -1743,9 +1915,10 @@ export default function ProfilePage() {
                   </p>
                 ) : (
                   followersList.map((follower) => (
-                    <div
+                    <button
                       key={follower.id}
-                      className="flex items-center gap-3 p-3 rounded-lg hover:bg-white/5 transition-colors"
+                      onClick={() => fetchSelectedUserReels(follower)}
+                      className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
                     >
                       {follower.photoURL ? (
                         <img
@@ -1767,11 +1940,24 @@ export default function ProfilePage() {
                           "U")[0].toUpperCase()}
                       </div>
                       <div>
-                        <div className="text-white font-semibold">
-                          {follower.username || "Anonymous"}
+                        <div className="flex items-center gap-2">
+                          <span className="text-white font-semibold">
+                            {follower.username || "Anonymous"}
+                          </span>
+                          {follower.reelCount !== undefined &&
+                            getBadgeForReelCount(follower.reelCount) && (
+                              <span
+                                className="text-lg"
+                                title={`${
+                                  getBadgeForReelCount(follower.reelCount).name
+                                } Creator (${follower.reelCount} reels)`}
+                              >
+                                {getBadgeForReelCount(follower.reelCount).emoji}
+                              </span>
+                            )}
                         </div>
                       </div>
-                    </div>
+                    </button>
                   ))
                 )}
               </div>
@@ -1823,9 +2009,10 @@ export default function ProfilePage() {
                   </p>
                 ) : (
                   followingList.map((following) => (
-                    <div
+                    <button
                       key={following.id}
-                      className="flex items-center gap-3 p-3 rounded-lg hover:bg-white/5 transition-colors"
+                      onClick={() => fetchSelectedUserReels(following)}
+                      className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
                     >
                       {following.photoURL ? (
                         <img
@@ -1849,12 +2036,158 @@ export default function ProfilePage() {
                           "U")[0].toUpperCase()}
                       </div>
                       <div>
-                        <div className="text-white font-semibold">
-                          {following.username || "Anonymous"}
+                        <div className="flex items-center gap-2">
+                          <span className="text-white font-semibold">
+                            {following.username || "Anonymous"}
+                          </span>
+                          {following.reelCount !== undefined &&
+                            getBadgeForReelCount(following.reelCount) && (
+                              <span
+                                className="text-lg"
+                                title={`${
+                                  getBadgeForReelCount(following.reelCount).name
+                                } Creator (${following.reelCount} reels)`}
+                              >
+                                {
+                                  getBadgeForReelCount(following.reelCount)
+                                    .emoji
+                                }
+                              </span>
+                            )}
                         </div>
                       </div>
-                    </div>
+                    </button>
                   ))
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* User Reels Modal */}
+      {showUserReelsModal && selectedUserData && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm">
+          <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl p-6 max-w-4xl w-full max-h-[90vh] flex flex-col border border-white/10 shadow-2xl">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-4 pb-4 border-b border-white/10">
+              <div className="flex items-center gap-3">
+                {selectedUserData.photoURL ? (
+                  <img
+                    src={selectedUserData.photoURL}
+                    alt={selectedUserData.username || "User"}
+                    className="w-10 h-10 rounded-full object-cover border-2 border-purple-400/50"
+                  />
+                ) : (
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center text-white font-bold border-2 border-purple-400/50">
+                    {(selectedUserData.username ||
+                      selectedUserData.email ||
+                      "U")[0].toUpperCase()}
+                  </div>
+                )}
+                <div>
+                  <h3 className="text-xl font-bold text-white">
+                    {selectedUserData.username || "Anonymous"}
+                  </h3>
+                  <p className="text-sm text-white/60">Reels</p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setShowUserReelsModal(false);
+                  setSelectedUserData(null);
+                  setSelectedUserReels([]);
+                }}
+                className="text-white/60 hover:text-white transition-colors"
+              >
+                <svg
+                  className="w-6 h-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+
+            {/* Loading State */}
+            {loadingUserReels && (
+              <div className="flex justify-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-400"></div>
+              </div>
+            )}
+
+            {/* Reels Grid */}
+            {!loadingUserReels && (
+              <div className="overflow-y-auto flex-1">
+                {selectedUserReels.length === 0 ? (
+                  <div className="text-center py-12">
+                    <p className="text-white/60 text-lg">No reels yet</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    {selectedUserReels.map((reel) => (
+                      <button
+                        key={reel.id}
+                        onClick={() => {
+                          // Open the reel viewer modal on top of user reels modal
+                          setSelectedReel(reel);
+                          setShowReelModal(true);
+                        }}
+                        className="relative aspect-[9/16] rounded-xl overflow-hidden group cursor-pointer border-2 border-white/10 hover:border-purple-400/50 transition-all"
+                      >
+                        {reel.media_type === "video" ? (
+                          <video
+                            src={reel.media_url}
+                            className="w-full h-full object-cover"
+                            muted
+                          />
+                        ) : (
+                          <img
+                            src={reel.media_url}
+                            alt={reel.title}
+                            className="w-full h-full object-cover"
+                          />
+                        )}
+
+                        {/* Overlay */}
+                        <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/80 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <div className="absolute bottom-0 left-0 right-0 p-3">
+                            <p className="text-white font-semibold text-sm line-clamp-2 mb-2">
+                              {reel.title}
+                            </p>
+                            <div className="flex items-center gap-3 text-white/80 text-xs">
+                              <span className="flex items-center gap-1">
+                                ❤️ {reel.likes_count || 0}
+                              </span>
+                              <span className="flex items-center gap-1">
+                                💬 {reel.comments_count || 0}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Play icon for videos */}
+                        {reel.media_type === "video" && (
+                          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
+                            <svg
+                              className="w-6 h-6 text-white ml-1"
+                              fill="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path d="M8 5v14l11-7z" />
+                            </svg>
+                          </div>
+                        )}
+                      </button>
+                    ))}
+                  </div>
                 )}
               </div>
             )}

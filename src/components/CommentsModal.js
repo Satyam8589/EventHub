@@ -8,6 +8,7 @@ export default function CommentsModal({
   currentUserUsername,
   onShowUsernamePrompt,
   onCommentCountChange,
+  zIndex = 50,
 }) {
   const { user } = useAuth();
   const [comments, setComments] = useState([]);
@@ -129,7 +130,10 @@ export default function CommentsModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div
+      className={`fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-[${zIndex}]`}
+      style={{ zIndex }}
+    >
       <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl w-full max-w-lg max-h-[80vh] flex flex-col border border-white/10 shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-white/10">
