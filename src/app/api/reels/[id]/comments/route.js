@@ -44,14 +44,20 @@ export async function GET(request, context) {
 
         return {
           ...comment,
-          users: user || { id: comment.user_id, email: "Unknown", name: "Anonymous", username: null, avatar: null },
+          users: user || {
+            id: comment.user_id,
+            email: "Unknown",
+            name: "Anonymous",
+            username: null,
+            avatar: null,
+          },
         };
       })
     );
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       comments: commentsWithUsers,
-      count: commentsWithUsers.length
+      count: commentsWithUsers.length,
     });
   } catch (error) {
     console.error("Error in GET /api/reels/[id]/comments:", error);
@@ -103,7 +109,7 @@ export async function POST(request, context) {
       .select("comments_count")
       .eq("id", id)
       .single();
-    
+
     await supabase
       .from("reels")
       .update({ comments_count: (currentReel?.comments_count || 0) + 1 })
@@ -116,12 +122,21 @@ export async function POST(request, context) {
       .eq("id", newComment.user_id)
       .single();
 
-    return NextResponse.json({ 
-      comment: {
-        ...newComment,
-        users: user || { id: newComment.user_id, email: "Unknown", name: "Anonymous", username: null, avatar: null }
-      }
-    }, { status: 201 });
+    return NextResponse.json(
+      {
+        comment: {
+          ...newComment,
+          users: user || {
+            id: newComment.user_id,
+            email: "Unknown",
+            name: "Anonymous",
+            username: null,
+            avatar: null,
+          },
+        },
+      },
+      { status: 201 }
+    );
   } catch (error) {
     console.error("Error in POST /api/reels/[id]/comments:", error);
     return NextResponse.json(

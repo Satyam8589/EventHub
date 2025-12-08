@@ -1,11 +1,16 @@
 "use client";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSearchParams } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import LoginForm from "@/components/auth/LoginForm";
 import SignupForm from "@/components/auth/SignupForm";
 import CommentsModal from "@/components/CommentsModal";
 import UploadReelModal from "@/components/UploadReelModal";
+import { QRCodeSVG } from "qrcode.react";
+import html2canvas from "html2canvas";
+import EventHubLogo from "@/components/EventHubLogo";
+import { supabase } from "@/lib/supabase";
 
 // Utility function to get video MIME type from URL
 const getVideoMimeType = (url) => {
@@ -69,6 +74,7 @@ const AVAILABLE_TAGS = [
 
 export default function ReelsPage() {
   const { user } = useAuth();
+  const searchParams = useSearchParams();
   const [reels, setReels] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -111,7 +117,84 @@ export default function ReelsPage() {
   const [showLikeAnimation, setShowLikeAnimation] = useState({});
   const lastTapTime = useRef({});
   const isDoubleTapProcessing = useRef({});
+  const [copiedReelId, setCopiedReelId] = useState(null);
+  const [showUserProfileCard, setShowUserProfileCard] = useState(false);
+  const [followersCount, setFollowersCount] = useState(0);
+  const userProfileCardRef = useRef(null);
   const REELS_PER_PAGE = 20;
+
+  // Auto-pause videos when any modal is open
+  useEffect(() => {
+    const isAnyModalOpen =
+      showCommentsModal ||
+      showUserModal ||
+      showReelViewerModal ||
+      showLogin ||
+      showSignup ||
+      showUsernamePrompt ||
+      showUploadModal ||
+      showSearchModal;
+
+    if (isAnyModalOpen) {
+      // Pause all videos
+      const videos = document.querySelectorAll("video");
+      videos.forEach((video) => {
+        if (!video.paused) {
+          video.pause();
+          video.dataset.wasPausedByModal = "true";
+        }
+      });
+    } else {
+      // Resume the current video only
+      const videos = document.querySelectorAll("video");
+      videos.forEach((video, index) => {
+        if (
+          video.dataset.wasPausedByModal === "true" &&
+          index === currentIndex
+        ) {
+          video.play().catch(() => {});
+          delete video.dataset.wasPausedByModal;
+        } else {
+          delete video.dataset.wasPausedByModal;
+        }
+      });
+    }
+  }, [
+    showCommentsModal,
+    showUserModal,
+    showReelViewerModal,
+    showLogin,
+    showSignup,
+    showUsernamePrompt,
+    showUploadModal,
+    showSearchModal,
+    currentIndex,
+  ]);
+
+  // Fetch user stats when selectedUser changes
+  useEffect(() => {
+    const fetchUserStats = async () => {
+      if (!selectedUser?.id) {
+        setFollowersCount(0);
+        return;
+      }
+
+      try {
+        // Fetch followers count
+        const { count: followersCount } = await supabase
+          .from("followers")
+          .select("*", { count: "exact", head: true })
+          .eq("following_id", selectedUser.id);
+
+        setFollowersCount(followersCount || 0);
+      } catch (error) {
+        console.error("Error fetching user stats:", error);
+        setFollowersCount(0);
+      }
+    };
+
+    fetchUserStats();
+  }, [selectedUser]);
 
   // Fetch reels from database with pagination
   const fetchReels = useCallback(
@@ -423,6 +506,70 @@ export default function ReelsPage() {
     }
   }, [showReelViewerModal, showUserModal, showSearchModal, currentIndex]);
 
+  // Check URL for user parameter and open their profile
+  useEffect(() => {
+    const username = searchParams.get("user");
+    const reelId = searchParams.get("reel");
+
+    if (username) {
+      // Fetch user data and reels
+      const fetchUserProfile = async () => {
+        try {
+          // Fetch user by username
+          const userResponse = await fetch(`/api/users?username=${username}`);
+          if (userResponse.ok) {
+            const userData = await userResponse.json();
+            if (userData) {
+              setSelectedUser(userData);
+              setShowUserModal(true);
+
+              // Fetch their reels
+              setLoadingUserReels(true);
+              const reelsResponse = await fetch(
+                `/api/reels/user/${userData.id}`
+              );
+              if (reelsResponse.ok) {
+                const reelsData = await reelsResponse.json();
+                setUserReels(reelsData);
+              }
+              setLoadingUserReels(false);
+            }
+          }
+        } catch (error) {
+          console.error("Error fetching user profile:", error);
+          setLoadingUserReels(false);
+        }
+      };
+
+      fetchUserProfile();
+    } else if (reelId) {
+      // Open specific reel in viewer
+      const openSharedReel = async () => {
+        try {
+          // Find the reel in current reels or fetch it
+          let targetReel = reels.find((r) => r.id === reelId);
+
+          if (targetReel) {
+            setSelectedReelForViewer(targetReel);
+            setShowReelViewer(true);
+          } else {
+            // Fetch the specific reel if not in current list
+            const response = await fetch(`/api/reels/${reelId}`);
+            if (response.ok) {
+              const reelData = await response.json();
+              setSelectedReelForViewer(reelData);
+              setShowReelViewer(true);
+            }
+          }
+        } catch (error) {
+          console.error("Error fetching shared reel:", error);
+        }
+      };
+
+      openSharedReel();
+    }
+  }, [searchParams, reels]);
+
   // Handle double tap/click to like
   const handleDoubleTapLike = async (reelId) => {
     if (!user) {
@@ -431,7 +578,7 @@ export default function ReelsPage() {
     }
 
     const isAlreadyLiked = likedReels.has(reelId);
-    
+
     // Show animation
     setShowLikeAnimation((prev) => ({ ...prev, [reelId]: true }));
     setTimeout(() => {
@@ -449,9 +596,7 @@ export default function ReelsPage() {
     // Update like count in UI
     setReels((prev) =>
       prev.map((r) =>
-        r.id === reelId
-          ? { ...r, likes_count: (r.likes_count || 0) + 1 }
-          : r
+        r.id === reelId ? { ...r, likes_count: (r.likes_count || 0) + 1 } : r
       )
     );
 
@@ -490,11 +635,71 @@ export default function ReelsPage() {
       });
       setReels((prev) =>
         prev.map((r) =>
-          r.id === reelId
-            ? { ...r, likes_count: (r.likes_count || 1) - 1 }
-            : r
+          r.id === reelId ? { ...r, likes_count: (r.likes_count || 1) - 1 } : r
         )
       );
+    }
+  };
+
+  // Handle share reel
+  const handleShare = async (reelId) => {
+    // Create shareable URL with reel ID as query parameter
+    const reelUrl = `${window.location.origin}/reels?reel=${reelId}`;
+
+    try {
+      await navigator.clipboard.writeText(reelUrl);
+      setCopiedReelId(reelId);
+
+      // Reset copied state after 2 seconds
+      setTimeout(() => {
+        setCopiedReelId(null);
+      }, 2000);
+    } catch (error) {
+      console.error("Failed to copy link:", error);
+    }
+  };
+
+  // Handle download user profile card
+  const handleDownloadUserCard = async () => {
+    if (!userProfileCardRef.current || !selectedUser) return;
+
+    try {
+      const html2canvas = (await import("html2canvas")).default;
+
+      // Wait for all images to load
+      const images = userProfileCardRef.current.querySelectorAll("img");
+      await Promise.all(
+        Array.from(images).map((img) => {
+          if (img.complete) return Promise.resolve();
+          return new Promise((resolve, reject) => {
+            img.onload = resolve;
+            img.onerror = resolve; // Still resolve even on error to continue
+            // Timeout after 5 seconds
+            setTimeout(resolve, 5000);
+          });
+        })
+      );
+
+      const canvas = await html2canvas(userProfileCardRef.current, {
+        scale: 2,
+        backgroundColor: "#ffffff",
+        logging: false,
+        useCORS: true,
+        allowTaint: false,
+        imageTimeout: 15000,
+        removeContainer: true,
+        foreignObjectRendering: false,
+      });
+
+      const link = document.createElement("a");
+      link.download = `${
+        selectedUser.username || selectedUser.display_name || "user"
+      }-card.png`;
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+    } catch (error) {
+      console.error("Error generating card:", error);
+      alert("Failed to download card. Please try again.");
     }
   };
 
@@ -1159,6 +1364,47 @@ export default function ReelsPage() {
 
                   {/* Action Buttons (Right Side) */}
                   <div className="absolute right-4 bottom-20 lg:bottom-32 flex flex-col gap-6 pointer-events-auto">
+                    {/* Share Button */}
+                    <button
+                      onClick={() => handleShare(reel.id)}
+                      className="flex flex-col items-center gap-1 group"
+                    >
+                      <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center group-hover:bg-green-500/30 transition-all group-hover:scale-110">
+                        {copiedReelId === reel.id ? (
+                          <svg
+                            className="w-6 h-6 text-green-400"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M5 13l4 4L19 7"
+                            />
+                          </svg>
+                        ) : (
+                          <svg
+                            className="w-6 h-6 text-white"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"
+                            />
+                          </svg>
+                        )}
+                      </div>
+                      <span className="text-white text-xs font-semibold drop-shadow-lg">
+                        {copiedReelId === reel.id ? "Copied!" : "Share"}
+                      </span>
+                    </button>
+
                     {/* Like Button */}
                     <button
                       onClick={async () => {
@@ -1410,6 +1656,7 @@ export default function ReelsPage() {
           reel={selectedReelForComments}
           currentUserUsername={currentUserUsername}
           onShowUsernamePrompt={() => setShowUsernamePrompt(true)}
+          zIndex={9999}
           onCommentCountChange={(reelId, newCount) => {
             // Update comment count for specific reel without reloading
             setReels((prev) =>
@@ -1417,6 +1664,24 @@ export default function ReelsPage() {
                 r.id === reelId ? { ...r, comments_count: newCount } : r
               )
             );
+            // Update user reels if in user modal
+            setUserReels((prev) =>
+              prev.map((r) =>
+                r.id === reelId ? { ...r, comments_count: newCount } : r
+              )
+            );
+            // Update viewer modal if open
+            if (selectedReelForViewer?.id === reelId) {
+              setSelectedReelForViewer((prev) => ({
+                ...prev,
+                comments_count: newCount,
+              }));
+            }
+            // Update selected reel for comments
+            setSelectedReelForComments((prev) => ({
+              ...prev,
+              comments_count: newCount,
+            }));
           }}
           onClose={() => {
             setShowCommentsModal(false);
@@ -1698,7 +1963,7 @@ export default function ReelsPage() {
       {/* User Profile Modal */}
       {showUserModal && selectedUser && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm p-2 sm:p-4"
           onClick={() => {
             setShowUserModal(false);
             setSelectedUser(null);
@@ -1706,7 +1971,7 @@ export default function ReelsPage() {
           }}
         >
           <div
-            className="relative w-full max-w-4xl max-h-[90vh] bg-gradient-to-br from-gray-900 to-black rounded-2xl overflow-hidden shadow-2xl border border-white/10"
+            className="relative w-full max-w-4xl max-h-[95vh] sm:max-h-[90vh] bg-gradient-to-br from-gray-900 to-black rounded-xl sm:rounded-2xl overflow-hidden shadow-2xl border border-white/10"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Close Button */}
@@ -1716,10 +1981,10 @@ export default function ReelsPage() {
                 setSelectedUser(null);
                 setUserReels([]);
               }}
-              className="absolute top-4 right-4 z-10 w-10 h-10 bg-black/50 hover:bg-black/70 rounded-full flex items-center justify-center text-white transition-colors"
+              className="absolute top-3 right-3 sm:top-4 sm:right-4 z-10 w-9 h-9 sm:w-10 sm:h-10 bg-black/50 hover:bg-black/70 rounded-full flex items-center justify-center text-white transition-colors"
             >
               <svg
-                className="w-6 h-6"
+                className="w-5 h-5 sm:w-6 sm:h-6"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -1733,25 +1998,46 @@ export default function ReelsPage() {
               </svg>
             </button>
 
+            {/* Download Button */}
+            <button
+              onClick={handleDownloadUserCard}
+              className="absolute top-3 right-14 sm:top-4 sm:right-16 z-10 w-9 h-9 sm:w-10 sm:h-10 bg-black/50 hover:bg-black/70 rounded-full flex items-center justify-center text-white transition-colors"
+              title="Download Profile Card"
+            >
+              <svg
+                className="w-5 h-5 sm:w-6 sm:h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                />
+              </svg>
+            </button>
+
             {/* User Header */}
-            <div className="bg-gradient-to-r from-pink-600/20 to-purple-600/20 border-b border-white/10 p-6">
-              <div className="flex items-center gap-4">
+            <div className="bg-gradient-to-r from-pink-600/20 to-purple-600/20 border-b border-white/10 p-4 sm:p-6">
+              <div className="flex items-center gap-3 sm:gap-4">
                 {selectedUser.avatar ? (
                   <img
                     src={selectedUser.avatar}
                     alt={selectedUser.username || selectedUser.name}
-                    className="w-16 h-16 rounded-full object-cover shadow-lg border-2 border-white/20"
+                    className="w-14 h-14 sm:w-16 sm:h-16 rounded-full object-cover shadow-lg border-2 border-white/20"
                   />
                 ) : (
-                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-pink-500 to-purple-500 flex items-center justify-center text-white font-bold text-2xl shadow-lg">
+                  <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br from-pink-500 to-purple-500 flex items-center justify-center text-white font-bold text-xl sm:text-2xl shadow-lg">
                     {selectedUser.username?.[0]?.toUpperCase() ||
                       selectedUser.name?.[0]?.toUpperCase() ||
                       "U"}
                   </div>
                 )}
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <h2 className="text-white text-2xl font-bold">
+                    <h2 className="text-white text-xl sm:text-2xl font-bold truncate">
                       @
                       {selectedUser.username ||
                         selectedUser.email?.split("@")[0] ||
@@ -1763,7 +2049,7 @@ export default function ReelsPage() {
                         const badge = getBadgeForReelCount(userReels.length);
                         return badge ? (
                           <span
-                            className="text-xl"
+                            className="text-lg sm:text-xl flex-shrink-0"
                             title={`${badge.name} Creator - ${userReels.length} reels`}
                           >
                             {badge.emoji}
@@ -1771,26 +2057,102 @@ export default function ReelsPage() {
                         ) : null;
                       })()}
                   </div>
-                  <p className="text-white/80 text-sm mt-1">
+                  <p className="text-white/80 text-xs sm:text-sm mt-1">
                     {userReels.length}{" "}
                     {userReels.length === 1 ? "Reel" : "Reels"}
                   </p>
+
+                  {/* Follow Button */}
+                  {user && selectedUser.id !== user.uid && (
+                    <button
+                      onClick={async () => {
+                        if (!user) {
+                          setShowLogin(true);
+                          return;
+                        }
+
+                        if (!currentUserUsername) {
+                          setShowUsernamePrompt(true);
+                          return;
+                        }
+
+                        const isFollowing = followingUsers.has(selectedUser.id);
+                        setFollowLoading((prev) =>
+                          new Set(prev).add(selectedUser.id)
+                        );
+
+                        try {
+                          if (isFollowing) {
+                            const response = await fetch(
+                              `/api/followers?followerId=${user.uid}&followingId=${selectedUser.id}`,
+                              { method: "DELETE" }
+                            );
+
+                            if (response.ok) {
+                              setFollowingUsers((prev) => {
+                                const newSet = new Set(prev);
+                                newSet.delete(selectedUser.id);
+                                return newSet;
+                              });
+                            }
+                          } else {
+                            const response = await fetch("/api/followers", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({
+                                followerId: user.uid,
+                                followingId: selectedUser.id,
+                              }),
+                            });
+
+                            if (response.ok) {
+                              setFollowingUsers((prev) =>
+                                new Set(prev).add(selectedUser.id)
+                              );
+                            }
+                          }
+                        } catch (error) {
+                          console.error("Error toggling follow:", error);
+                        } finally {
+                          setFollowLoading((prev) => {
+                            const newSet = new Set(prev);
+                            newSet.delete(selectedUser.id);
+                            return newSet;
+                          });
+                        }
+                      }}
+                      disabled={followLoading.has(selectedUser.id)}
+                      className={`mt-2 sm:mt-3 px-4 sm:px-6 py-1.5 sm:py-2 rounded-full text-sm sm:text-base font-semibold transition-all ${
+                        followingUsers.has(selectedUser.id)
+                          ? "bg-white/20 text-white hover:bg-white/30 border border-white/30"
+                          : "bg-gradient-to-r from-pink-500 to-purple-500 text-white hover:from-pink-600 hover:to-purple-600"
+                      } disabled:opacity-50 disabled:cursor-not-allowed shadow-lg`}
+                    >
+                      {followLoading.has(selectedUser.id)
+                        ? "Loading..."
+                        : followingUsers.has(selectedUser.id)
+                        ? "Following"
+                        : "Follow"}
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
 
             {/* User Reels Grid */}
-            <div className="overflow-y-auto max-h-[calc(90vh-180px)] p-6">
+            <div className="overflow-y-auto max-h-[calc(95vh-200px)] sm:max-h-[calc(90vh-180px)] p-3 sm:p-6">
               {loadingUserReels ? (
                 <div className="flex items-center justify-center py-12">
-                  <div className="w-12 h-12 border-4 border-pink-500 border-t-transparent rounded-full animate-spin"></div>
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 border-4 border-pink-500 border-t-transparent rounded-full animate-spin"></div>
                 </div>
               ) : userReels.length === 0 ? (
                 <div className="text-center py-12">
-                  <p className="text-white/60">No reels posted yet</p>
+                  <p className="text-white/60 text-sm sm:text-base">
+                    No reels posted yet
+                  </p>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-4">
                   {userReels.map((reel) => (
                     <div
                       key={reel.id}
@@ -1838,6 +2200,297 @@ export default function ReelsPage() {
                 </div>
               )}
             </div>
+
+            {/* Hidden Profile Card for Download */}
+            <div
+              ref={userProfileCardRef}
+              style={{
+                position: "fixed",
+                left: "-9999px",
+                top: "-9999px",
+                width: "380px",
+                pointerEvents: "none",
+              }}
+            >
+              <div
+                style={{
+                  background:
+                    "linear-gradient(135deg, #ec4899 0%, #a855f7 50%, #6366f1 100%)",
+                  padding: "4px",
+                  borderRadius: "24px",
+                }}
+              >
+                {/* Card Content */}
+                <div
+                  style={{
+                    background: "white",
+                    borderRadius: "20px",
+                    padding: "32px 24px",
+                  }}
+                >
+                  {/* User Avatar */}
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "center",
+                      marginBottom: "20px",
+                    }}
+                  >
+                    {selectedUser?.avatar ? (
+                      <div
+                        style={{
+                          background:
+                            "linear-gradient(135deg, #ec4899 0%, #a855f7 50%, #6366f1 100%)",
+                          padding: "3px",
+                          borderRadius: "50%",
+                          width: "108px",
+                          height: "108px",
+                        }}
+                      >
+                        <img
+                          src={selectedUser.avatar}
+                          alt={
+                            selectedUser.username || selectedUser.display_name
+                          }
+                          style={{
+                            width: "102px",
+                            height: "102px",
+                            borderRadius: "50%",
+                            objectFit: "cover",
+                            display: "block",
+                            background: "white",
+                          }}
+                          crossOrigin="anonymous"
+                        />
+                      </div>
+                    ) : (
+                      <div
+                        style={{
+                          width: "108px",
+                          height: "108px",
+                          borderRadius: "50%",
+                          background:
+                            "linear-gradient(135deg, #ec4899 0%, #a855f7 50%, #6366f1 100%)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          color: "white",
+                          fontWeight: "bold",
+                          fontSize: "42px",
+                        }}
+                      >
+                        {selectedUser?.username?.[0]?.toUpperCase() ||
+                          selectedUser?.display_name?.[0]?.toUpperCase() ||
+                          "U"}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* User Info */}
+                  <div style={{ textAlign: "center", marginBottom: "24px" }}>
+                    <h3
+                      style={{
+                        color: "#1f2937",
+                        fontWeight: "700",
+                        fontSize: "22px",
+                        marginBottom: "6px",
+                        wordWrap: "break-word",
+                      }}
+                    >
+                      {selectedUser?.display_name ||
+                        selectedUser?.username ||
+                        "User"}
+                    </h3>
+
+                    <p
+                      style={{
+                        color: "#6b7280",
+                        fontSize: "15px",
+                        marginBottom: "20px",
+                        wordWrap: "break-word",
+                      }}
+                    >
+                      @{selectedUser?.username || "username"}
+                    </p>
+
+                    {/* Stats */}
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "center",
+                        gap: "40px",
+                      }}
+                    >
+                      <div style={{ textAlign: "center" }}>
+                        <div
+                          style={{
+                            color: "#ec4899",
+                            fontWeight: "700",
+                            fontSize: "18px",
+                            marginBottom: "4px",
+                          }}
+                        >
+                          {userReels.length}
+                        </div>
+                        <div
+                          style={{
+                            fontSize: "13px",
+                            color: "#6b7280",
+                            fontWeight: "400",
+                          }}
+                        >
+                          Reels
+                        </div>
+                      </div>
+                      <div style={{ textAlign: "center" }}>
+                        <div
+                          style={{
+                            color: "#a855f7",
+                            fontWeight: "700",
+                            fontSize: "18px",
+                            marginBottom: "4px",
+                          }}
+                        >
+                          {followersCount}
+                        </div>
+                        <div
+                          style={{
+                            fontSize: "13px",
+                            color: "#6b7280",
+                            fontWeight: "400",
+                          }}
+                        >
+                          Followers
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Badge */}
+                  {userReels.length > 0 &&
+                    (() => {
+                      const badge = getBadgeForReelCount(userReels.length);
+                      return badge ? (
+                        <div
+                          style={{
+                            background: "#fef3f9",
+                            borderRadius: "12px",
+                            padding: "12px",
+                            marginBottom: "24px",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            gap: "8px",
+                          }}
+                        >
+                          <span style={{ fontSize: "24px" }}>
+                            {badge.emoji}
+                          </span>
+                          <span
+                            style={{
+                              color: "#831843",
+                              fontWeight: "700",
+                              fontSize: "16px",
+                            }}
+                          >
+                            {badge.name} Creator
+                          </span>
+                        </div>
+                      ) : null;
+                    })()}
+
+                  {/* QR Code */}
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "center",
+                      marginBottom: "24px",
+                    }}
+                  >
+                    <QRCodeSVG
+                      value={`https://eventhubx.site/u/${
+                        selectedUser?.username || "user"
+                      }`}
+                      size={100}
+                      level="H"
+                      includeMargin={false}
+                      fgColor="#1f2937"
+                      bgColor="#ffffff"
+                    />
+                  </div>
+
+                  {/* EventHub Branding */}
+                  <div
+                    style={{
+                      textAlign: "center",
+                      paddingTop: "20px",
+                      borderTop: "1px solid #e5e7eb",
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: "8px",
+                        marginBottom: "8px",
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: "36px",
+                          height: "36px",
+                          borderRadius: "8px",
+                          background:
+                            "linear-gradient(135deg, #ec4899 0%, #a855f7 100%)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        <span
+                          style={{
+                            color: "white",
+                            fontWeight: "bold",
+                            fontSize: "18px",
+                          }}
+                        >
+                          E
+                        </span>
+                      </div>
+                      <span
+                        style={{
+                          color: "#1f2937",
+                          fontWeight: "700",
+                          fontSize: "22px",
+                        }}
+                      >
+                        EventHub
+                      </span>
+                    </div>
+                    <p
+                      style={{
+                        color: "#374151",
+                        fontSize: "13px",
+                        marginBottom: "4px",
+                        fontWeight: "600",
+                      }}
+                    >
+                      eventhubx.site/u/{selectedUser?.username || "username"}
+                    </p>
+                    <p
+                      style={{
+                        color: "#9ca3af",
+                        fontSize: "12px",
+                        fontWeight: "400",
+                      }}
+                    >
+                      Scan to connect with me!
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -1882,7 +2535,7 @@ export default function ReelsPage() {
             <div className="relative aspect-[9/16] bg-black">
               {selectedReelForViewer.media_type === "video" ? (
                 <video
-                  className="w-full h-full object-contain"
+                  className="w-full h-full object-cover"
                   controls
                   autoPlay
                   loop
@@ -1897,105 +2550,299 @@ export default function ReelsPage() {
                 <img
                   src={selectedReelForViewer.media_url}
                   alt={selectedReelForViewer.title}
-                  className="w-full h-full object-contain"
+                  className="w-full h-full object-cover"
                 />
               )}
 
-              {/* Reel Info Overlay */}
-              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent p-4">
-                <h3 className="text-white font-bold text-lg mb-1">
+              {/* Reel Info Overlay - Left Side */}
+              <div className="absolute bottom-40 left-0 right-20 p-6 pointer-events-none max-w-[50%]">
+                <h3 className="text-white font-bold text-base mb-2 drop-shadow-2xl leading-tight">
                   {selectedReelForViewer.title}
                 </h3>
                 {selectedReelForViewer.description && (
-                  <p className="text-white/80 text-sm mb-2 line-clamp-2">
+                  <p className="text-white text-sm mb-1 drop-shadow-lg leading-relaxed whitespace-pre-wrap">
                     {selectedReelForViewer.description}
                   </p>
                 )}
-                <div className="flex items-center gap-4 text-white/80 text-sm">
-                  <span>❤️ {selectedReelForViewer.likes_count || 0}</span>
-                  <span>💬 {selectedReelForViewer.comments_count || 0}</span>
-                  <span>👁️ {selectedReelForViewer.views_count || 0}</span>
-                </div>
               </div>
-            </div>
 
-            {/* Action Buttons */}
-            <div className="p-4 bg-black/50 border-t border-white/10 flex gap-2">
-              <button
-                onClick={async () => {
-                  if (!user) {
-                    setShowLogin(true);
-                    return;
-                  }
+              {/* Action Buttons - Right Side */}
+              <div className="absolute bottom-40 right-4 flex flex-col gap-4 items-center">
+                {/* Like Button */}
+                <button
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    if (!user) {
+                      setShowLogin(true);
+                      return;
+                    }
 
-                  const isLiked = likedReels.has(selectedReelForViewer.id);
-                  const newLikesCount = isLiked
-                    ? (selectedReelForViewer.likes_count || 1) - 1
-                    : (selectedReelForViewer.likes_count || 0) + 1;
+                    if (!currentUserUsername) {
+                      setShowUsernamePrompt(true);
+                      return;
+                    }
 
-                  try {
-                    const response = await fetch("/api/reels/like", {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({
-                        reelId: selectedReelForViewer.id,
-                        userId: user.uid,
-                      }),
-                    });
+                    const isLiked = likedReels.has(selectedReelForViewer.id);
 
-                    if (response.ok) {
+                    // Update UI instantly (optimistic update)
+                    if (isLiked) {
+                      // Unlike
                       setLikedReels((prev) => {
                         const newSet = new Set(prev);
-                        if (isLiked) {
-                          newSet.delete(selectedReelForViewer.id);
-                        } else {
-                          newSet.add(selectedReelForViewer.id);
-                        }
+                        newSet.delete(selectedReelForViewer.id);
                         return newSet;
                       });
-
                       setSelectedReelForViewer((prev) => ({
                         ...prev,
-                        likes_count: newLikesCount,
+                        likes_count: Math.max(0, (prev.likes_count || 0) - 1),
                       }));
-
                       setUserReels((prev) =>
                         prev.map((r) =>
                           r.id === selectedReelForViewer.id
-                            ? { ...r, likes_count: newLikesCount }
+                            ? {
+                                ...r,
+                                likes_count: Math.max(
+                                  0,
+                                  (r.likes_count || 0) - 1
+                                ),
+                              }
+                            : r
+                        )
+                      );
+                    } else {
+                      // Like
+                      setLikedReels(
+                        (prev) => new Set([...prev, selectedReelForViewer.id])
+                      );
+                      setSelectedReelForViewer((prev) => ({
+                        ...prev,
+                        likes_count: (prev.likes_count || 0) + 1,
+                      }));
+                      setUserReels((prev) =>
+                        prev.map((r) =>
+                          r.id === selectedReelForViewer.id
+                            ? { ...r, likes_count: (r.likes_count || 0) + 1 }
                             : r
                         )
                       );
                     }
-                  } catch (error) {
-                    console.error("Error toggling like:", error);
-                  }
-                }}
-                className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition-all ${
-                  likedReels.has(selectedReelForViewer.id)
-                    ? "bg-pink-500 text-white"
-                    : "bg-white/10 text-white hover:bg-white/20"
-                }`}
-              >
-                <span className="text-xl">
-                  {likedReels.has(selectedReelForViewer.id) ? "❤️" : "🤍"}
-                </span>
-                <span className="font-semibold">Like</span>
-              </button>
-              <button
-                onClick={() => {
-                  if (!user) {
-                    setShowLogin(true);
-                    return;
-                  }
-                  setSelectedReelForComments(selectedReelForViewer);
-                  setShowCommentsModal(true);
-                }}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-white/10 text-white hover:bg-white/20 transition-all"
-              >
-                <span className="text-xl">💬</span>
-                <span className="font-semibold">Comment</span>
-              </button>
+
+                    // Send request to server
+                    try {
+                      const response = await fetch(
+                        `/api/reels/${selectedReelForViewer.id}/like`,
+                        {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ userId: user.uid }),
+                        }
+                      );
+
+                      if (response.ok) {
+                        const data = await response.json();
+                        // Update with server response to ensure consistency
+                        setSelectedReelForViewer((prev) => ({
+                          ...prev,
+                          likes_count: data.likes_count,
+                        }));
+                        setUserReels((prev) =>
+                          prev.map((r) =>
+                            r.id === selectedReelForViewer.id
+                              ? { ...r, likes_count: data.likes_count }
+                              : r
+                          )
+                        );
+                        if (data.liked) {
+                          setLikedReels(
+                            (prev) =>
+                              new Set([...prev, selectedReelForViewer.id])
+                          );
+                        } else {
+                          setLikedReels((prev) => {
+                            const newSet = new Set(prev);
+                            newSet.delete(selectedReelForViewer.id);
+                            return newSet;
+                          });
+                        }
+                      } else {
+                        // Revert on error
+                        if (isLiked) {
+                          setLikedReels(
+                            (prev) =>
+                              new Set([...prev, selectedReelForViewer.id])
+                          );
+                          setSelectedReelForViewer((prev) => ({
+                            ...prev,
+                            likes_count: (prev.likes_count || 0) + 1,
+                          }));
+                          setUserReels((prev) =>
+                            prev.map((r) =>
+                              r.id === selectedReelForViewer.id
+                                ? {
+                                    ...r,
+                                    likes_count: (r.likes_count || 0) + 1,
+                                  }
+                                : r
+                            )
+                          );
+                        } else {
+                          setLikedReels((prev) => {
+                            const newSet = new Set(prev);
+                            newSet.delete(selectedReelForViewer.id);
+                            return newSet;
+                          });
+                          setSelectedReelForViewer((prev) => ({
+                            ...prev,
+                            likes_count: Math.max(
+                              0,
+                              (prev.likes_count || 0) - 1
+                            ),
+                          }));
+                          setUserReels((prev) =>
+                            prev.map((r) =>
+                              r.id === selectedReelForViewer.id
+                                ? {
+                                    ...r,
+                                    likes_count: Math.max(
+                                      0,
+                                      (r.likes_count || 0) - 1
+                                    ),
+                                  }
+                                : r
+                            )
+                          );
+                        }
+                      }
+                    } catch (error) {
+                      console.error("Error toggling like:", error);
+                      // Revert on error
+                      if (isLiked) {
+                        setLikedReels(
+                          (prev) => new Set([...prev, selectedReelForViewer.id])
+                        );
+                        setSelectedReelForViewer((prev) => ({
+                          ...prev,
+                          likes_count: (prev.likes_count || 0) + 1,
+                        }));
+                        setUserReels((prev) =>
+                          prev.map((r) =>
+                            r.id === selectedReelForViewer.id
+                              ? { ...r, likes_count: (r.likes_count || 0) + 1 }
+                              : r
+                          )
+                        );
+                      } else {
+                        setLikedReels((prev) => {
+                          const newSet = new Set(prev);
+                          newSet.delete(selectedReelForViewer.id);
+                          return newSet;
+                        });
+                        setSelectedReelForViewer((prev) => ({
+                          ...prev,
+                          likes_count: Math.max(0, (prev.likes_count || 0) - 1),
+                        }));
+                        setUserReels((prev) =>
+                          prev.map((r) =>
+                            r.id === selectedReelForViewer.id
+                              ? {
+                                  ...r,
+                                  likes_count: Math.max(
+                                    0,
+                                    (r.likes_count || 0) - 1
+                                  ),
+                                }
+                              : r
+                          )
+                        );
+                      }
+                    }
+                  }}
+                  className="flex flex-col items-center gap-1 pointer-events-auto group"
+                >
+                  <div
+                    className={`w-12 h-12 rounded-full backdrop-blur-md flex items-center justify-center transition-all group-hover:scale-110 ${
+                      likedReels.has(selectedReelForViewer.id)
+                        ? "bg-red-500/20"
+                        : "bg-white/10 group-hover:bg-white/20"
+                    }`}
+                  >
+                    <svg
+                      className={`w-7 h-7 transition-all duration-200 ${
+                        likedReels.has(selectedReelForViewer.id)
+                          ? "fill-red-500 scale-110"
+                          : "fill-none stroke-white stroke-2"
+                      }`}
+                      viewBox="0 0 24 24"
+                    >
+                      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                    </svg>
+                  </div>
+                  <span className="text-white text-xs font-semibold drop-shadow-lg">
+                    {selectedReelForViewer.likes_count || 0}
+                  </span>
+                </button>
+
+                {/* Comment Button */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedReelForComments(selectedReelForViewer);
+                    setShowCommentsModal(true);
+                  }}
+                  className="flex flex-col items-center gap-1 pointer-events-auto group"
+                >
+                  <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center group-hover:bg-blue-500/30 transition-all group-hover:scale-110">
+                    <span className="text-xl">💬</span>
+                  </div>
+                  <span className="text-white text-xs font-semibold drop-shadow-lg">
+                    {selectedReelForViewer.comments_count || 0}
+                  </span>
+                </button>
+
+                {/* Share Button */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleShare(selectedReelForViewer.id);
+                  }}
+                  className="flex flex-col items-center gap-1 pointer-events-auto"
+                >
+                  <div className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center hover:bg-white/20 transition-all">
+                    {copiedReelId === selectedReelForViewer.id ? (
+                      <svg
+                        className="w-6 h-6 text-green-400"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M5 13l4 4L19 7"
+                        />
+                      </svg>
+                    ) : (
+                      <svg
+                        className="w-6 h-6 text-white"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"
+                        />
+                      </svg>
+                    )}
+                  </div>
+                  <span className="text-white text-xs font-semibold drop-shadow-lg">
+                    Share
+                  </span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -2079,7 +2926,8 @@ export default function ReelsPage() {
           30% {
             transform: scale(0.95);
           }
-          45%, 80% {
+          45%,
+          80% {
             transform: scale(1);
             opacity: 1;
           }

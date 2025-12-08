@@ -131,10 +131,14 @@ export default function CommentsModal({
 
   return (
     <div
-      className={`fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-[${zIndex}]`}
+      className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
       style={{ zIndex }}
+      onClick={onClose}
     >
-      <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl w-full max-w-lg max-h-[80vh] flex flex-col border border-white/10 shadow-2xl">
+      <div
+        className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl w-full max-w-lg max-h-[80vh] flex flex-col border border-white/10 shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-white/10">
           <h2 className="text-white text-lg font-semibold">Comments</h2>

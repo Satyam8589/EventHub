@@ -1,8 +1,9 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { QRCodeSVG } from "qrcode.react";
 import TicketModal from "@/components/TicketModal";
 import EventHubLogo from "@/components/EventHubLogo";
 import UploadReelModal from "@/components/UploadReelModal";
@@ -49,6 +50,10 @@ export default function ProfilePage() {
   const [likedReels, setLikedReels] = useState(new Set());
   const [followingUsersSet, setFollowingUsersSet] = useState(new Set());
   const [followLoading, setFollowLoading] = useState(new Set());
+  const [copiedReelId, setCopiedReelId] = useState(null);
+  const [showProfileCard, setShowProfileCard] = useState(false);
+  const [cardCopied, setCardCopied] = useState(false);
+  const cardRef = useRef(null);
 
   const { user, loading: authLoading, signOut } = useAuth();
   const router = useRouter();
@@ -454,6 +459,107 @@ export default function ProfilePage() {
     return null;
   };
 
+  // Handle download profile card
+  const handleDownloadCard = async () => {
+    if (!cardRef.current) return;
+
+    try {
+      const html2canvas = (await import("html2canvas")).default;
+
+      // Wait for all images to load
+      const images = cardRef.current.querySelectorAll("img");
+      console.log("Found images:", images.length);
+
+      await Promise.all(
+        Array.from(images).map((img) => {
+          if (img.complete) {
+            console.log("Image already loaded:", img.src);
+            return Promise.resolve();
+          }
+          return new Promise((resolve) => {
+            console.log("Waiting for image:", img.src);
+            img.onload = () => {
+              console.log("Image loaded:", img.src);
+              resolve();
+            };
+            img.onerror = (e) => {
+              console.warn("Image error:", img.src, e);
+              resolve(); // Still resolve even on error
+            };
+            setTimeout(() => {
+              console.log("Image timeout:", img.src);
+              resolve();
+            }, 5000); // 5-second timeout
+          });
+        })
+      );
+
+      console.log("All images loaded, capturing...");
+
+      // Temporarily disable animations for clean capture
+      const originalStyle = cardRef.current.style.cssText;
+      cardRef.current.style.cssText =
+        originalStyle + "; animation: none !important;";
+
+      const canvas = await html2canvas(cardRef.current, {
+        scale: 2,
+        backgroundColor: null,
+        logging: true,
+        useCORS: true,
+        allowTaint: false,
+        imageTimeout: 15000,
+        removeContainer: true,
+      });
+
+      console.log("Canvas created successfully");
+
+      // Restore original style
+      cardRef.current.style.cssText = originalStyle;
+
+      const link = document.createElement("a");
+      link.download = `${username || user?.displayName || "profile"}-card.png`;
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+
+      console.log("Download initiated");
+    } catch (error) {
+      console.error("Error generating card:", error);
+      console.error("Error stack:", error.stack);
+      alert(`Failed to download card: ${error.message}`);
+    }
+  };
+
+  // Handle copy profile link
+  const handleCopyProfileLink = async () => {
+    const profileUrl = `${window.location.origin}/u/${username}`;
+    try {
+      await navigator.clipboard.writeText(profileUrl);
+      setCardCopied(true);
+      setTimeout(() => setCardCopied(false), 2000);
+    } catch (error) {
+      console.error("Failed to copy link:", error);
+    }
+  };
+
+  // Handle share reel
+  const handleShare = async (reelId) => {
+    // Create a shareable hash from the reel ID
+    const shareHash = btoa(reelId).replace(/=/g, "");
+    const reelUrl = `${window.location.origin}/reels/${shareHash}`;
+
+    try {
+      await navigator.clipboard.writeText(reelUrl);
+      setCopiedReelId(reelId);
+
+      // Reset copied state after 2 seconds
+      setTimeout(() => {
+        setCopiedReelId(null);
+      }, 2000);
+    } catch (error) {
+      console.error("Failed to copy link:", error);
+    }
+  };
+
   // Fetch reels on initial page load
   useEffect(() => {
     if (user) {
@@ -821,6 +927,12 @@ export default function ProfilePage() {
 
             {/* Actions */}
             <div className="flex flex-col space-y-2">
+              <button
+                onClick={() => setShowProfileCard(true)}
+                className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white px-4 py-2 rounded-lg transition-all text-center font-medium shadow-lg hover:scale-105 transform"
+              >
+                🎴 Create Profile Card
+              </button>
               <button
                 onClick={() => {
                   // Check if username is set
@@ -1739,6 +1851,47 @@ export default function ProfilePage() {
 
               {/* Action Buttons (Right Side) */}
               <div className="absolute right-4 bottom-32 flex flex-col gap-4 pointer-events-auto z-20">
+                {/* Share Button */}
+                <button
+                  onClick={() => handleShare(selectedReel.id)}
+                  className="flex flex-col items-center gap-1 group"
+                >
+                  <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center group-hover:bg-green-500/30 transition-all group-hover:scale-110">
+                    {copiedReelId === selectedReel.id ? (
+                      <svg
+                        className="w-6 h-6 text-green-400"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M5 13l4 4L19 7"
+                        />
+                      </svg>
+                    ) : (
+                      <svg
+                        className="w-6 h-6 text-white"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"
+                        />
+                      </svg>
+                    )}
+                  </div>
+                  <span className="text-white text-xs font-semibold drop-shadow-lg">
+                    {copiedReelId === selectedReel.id ? "Copied!" : "Share"}
+                  </span>
+                </button>
+
                 {/* Like Button */}
                 <button
                   onClick={async () => {
@@ -2334,6 +2487,679 @@ export default function ProfilePage() {
                 )}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Profile Card Modal */}
+      {showProfileCard && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center p-2 sm:p-4 bg-black/90 backdrop-blur-sm">
+          <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-xl sm:rounded-2xl p-3 sm:p-6 max-w-2xl w-full max-h-[95vh] overflow-y-auto border border-white/10 shadow-2xl">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-4 sm:mb-6 pb-3 sm:pb-4 border-b border-white/10">
+              <h2 className="text-xl sm:text-2xl font-bold text-white">
+                Profile Card
+              </h2>
+              <button
+                onClick={() => {
+                  setShowProfileCard(false);
+                  setCardCopied(false);
+                }}
+                className="text-white/60 hover:text-white transition-colors"
+              >
+                <svg
+                  className="w-5 h-5 sm:w-6 sm:h-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+
+            {/* Profile Card */}
+            <div
+              ref={cardRef}
+              style={{
+                position: "relative",
+                width: "100%",
+                maxWidth: "48rem",
+                margin: "0 auto",
+                aspectRatio: "16/9",
+                borderRadius: "1.5rem",
+                overflow: "hidden",
+                background:
+                  "linear-gradient(to bottom right, #312e81, #581c87, #831843)",
+                marginBottom: "1.5rem",
+              }}
+            >
+              {/* Animated Background Gradient */}
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  background:
+                    "linear-gradient(to top right, rgba(37, 99, 235, 0.2), rgba(147, 51, 234, 0.2), rgba(236, 72, 153, 0.2))",
+                }}
+              ></div>
+
+              {/* Abstract Background Pattern */}
+              <div className="absolute inset-0 opacity-30">
+                <div className="absolute top-0 right-0 w-full h-full">
+                  <svg
+                    className="w-full h-full"
+                    viewBox="0 0 800 450"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <circle
+                      cx="100"
+                      cy="100"
+                      r="120"
+                      fill="url(#glow1)"
+                      opacity="0.4"
+                    />
+                    <circle
+                      cx="700"
+                      cy="80"
+                      r="100"
+                      fill="url(#glow2)"
+                      opacity="0.4"
+                    />
+                    <circle
+                      cx="650"
+                      cy="350"
+                      r="130"
+                      fill="url(#glow3)"
+                      opacity="0.4"
+                    />
+                    <circle
+                      cx="150"
+                      cy="380"
+                      r="90"
+                      fill="url(#glow4)"
+                      opacity="0.4"
+                    />
+                    <path
+                      d="M600 0C650 100 750 150 800 200V450H0V0C100 50 200 100 300 100C400 100 500 50 600 0Z"
+                      fill="url(#gradient1)"
+                      opacity="0.2"
+                    />
+                    <path
+                      d="M0 450C50 400 100 350 200 350C300 350 400 400 500 400C600 400 700 350 800 300V450H0Z"
+                      fill="url(#gradient2)"
+                      opacity="0.2"
+                    />
+                    <defs>
+                      <radialGradient id="glow1">
+                        <stop offset="0%" stopColor="#3B82F6" />
+                        <stop
+                          offset="100%"
+                          stopColor="#3B82F6"
+                          stopOpacity="0"
+                        />
+                      </radialGradient>
+                      <radialGradient id="glow2">
+                        <stop offset="0%" stopColor="#8B5CF6" />
+                        <stop
+                          offset="100%"
+                          stopColor="#8B5CF6"
+                          stopOpacity="0"
+                        />
+                      </radialGradient>
+                      <radialGradient id="glow3">
+                        <stop offset="0%" stopColor="#EC4899" />
+                        <stop
+                          offset="100%"
+                          stopColor="#EC4899"
+                          stopOpacity="0"
+                        />
+                      </radialGradient>
+                      <radialGradient id="glow4">
+                        <stop offset="0%" stopColor="#06B6D4" />
+                        <stop
+                          offset="100%"
+                          stopColor="#06B6D4"
+                          stopOpacity="0"
+                        />
+                      </radialGradient>
+                      <linearGradient
+                        id="gradient1"
+                        x1="0"
+                        y1="0"
+                        x2="800"
+                        y2="450"
+                      >
+                        <stop offset="0%" stopColor="#3B82F6" />
+                        <stop offset="100%" stopColor="#8B5CF6" />
+                      </linearGradient>
+                      <linearGradient
+                        id="gradient2"
+                        x1="0"
+                        y1="0"
+                        x2="800"
+                        y2="450"
+                      >
+                        <stop offset="0%" stopColor="#8B5CF6" />
+                        <stop offset="100%" stopColor="#EC4899" />
+                      </linearGradient>
+                    </defs>
+                  </svg>
+                </div>
+              </div>
+
+              {/* Content */}
+              <div
+                style={{
+                  position: "relative",
+                  height: "100%",
+                  padding: "1rem",
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "space-between",
+                }}
+              >
+                {/* Top Section */}
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "flex-start",
+                    justifyContent: "space-between",
+                    gap: "0.5rem",
+                  }}
+                >
+                  {/* Avatar and Info */}
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.75rem",
+                    }}
+                  >
+                    <div
+                      style={{
+                        position: "relative",
+                        width: "5rem",
+                        height: "5rem",
+                        borderRadius: "9999px",
+                        border: "4px solid #22d3ee",
+                        overflow: "hidden",
+                        boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+                      }}
+                    >
+                      {user?.photoURL ? (
+                        <img
+                          src={user.photoURL}
+                          alt="Avatar"
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "cover",
+                          }}
+                          crossOrigin="anonymous"
+                        />
+                      ) : (
+                        <div
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            background:
+                              "linear-gradient(to bottom right, #f97316, #ec4899, #9333ea)",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            color: "white",
+                            fontSize: "1.875rem",
+                            fontWeight: "bold",
+                          }}
+                        >
+                          {(user?.displayName ||
+                            user?.email ||
+                            "U")[0].toUpperCase()}
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <h3
+                        style={{
+                          fontSize: "1.875rem",
+                          fontWeight: "900",
+                          color: "#ffffff",
+                          filter:
+                            "drop-shadow(0 25px 25px rgba(0, 0, 0, 0.15))",
+                          marginBottom: "0.125rem",
+                        }}
+                      >
+                        {user?.displayName ||
+                          user?.email?.split("@")[0] ||
+                          "User"}
+                      </h3>
+                      {username && (
+                        <p
+                          style={{
+                            color: "rgba(165, 243, 252, 0.9)",
+                            fontSize: "1.125rem",
+                            fontWeight: "600",
+                            letterSpacing: "0.025em",
+                          }}
+                        >
+                          @{username}
+                        </p>
+                      )}
+                      <p
+                        style={{
+                          color: "rgba(233, 213, 255, 0.7)",
+                          fontSize: "0.875rem",
+                          fontWeight: "500",
+                          fontStyle: "italic",
+                          marginTop: "0.25rem",
+                        }}
+                      >
+                        Creating moments that matter ✨
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Badge and QR Code */}
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "flex-start",
+                      gap: "0.5rem",
+                      flexShrink: 0,
+                    }}
+                  >
+                    {/* Badge */}
+                    {(() => {
+                      const reelsCount = userReels.length;
+                      let emoji, tier, bgGradient;
+
+                      if (reelsCount >= 300) {
+                        emoji = "💎";
+                        tier = "Diamond";
+                        bgGradient =
+                          "linear-gradient(to bottom right, #22d3ee, #3b82f6)";
+                      } else if (reelsCount >= 200) {
+                        emoji = "🏆";
+                        tier = "Platinum";
+                        bgGradient =
+                          "linear-gradient(to bottom right, #cbd5e1, #9ca3af)";
+                      } else if (reelsCount >= 100) {
+                        emoji = "🥇";
+                        tier = "Gold";
+                        bgGradient =
+                          "linear-gradient(to bottom right, #fbbf24, #f59e0b)";
+                      } else if (reelsCount >= 50) {
+                        emoji = "🥈";
+                        tier = "Silver";
+                        bgGradient =
+                          "linear-gradient(to bottom right, #d1d5db, #94a3b8)";
+                      } else if (reelsCount >= 1) {
+                        emoji = "🥉";
+                        tier = "Bronze";
+                        bgGradient =
+                          "linear-gradient(to bottom right, #fb923c, #f59e0b)";
+                      } else {
+                        return null;
+                      }
+
+                      return (
+                        <div
+                          style={{
+                            background: bgGradient,
+                            padding: "0.5rem 0.75rem",
+                            borderRadius: "0.75rem",
+                            boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+                            border: "2px solid rgba(255, 255, 255, 0.2)",
+                          }}
+                        >
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "0.375rem",
+                            }}
+                          >
+                            <span
+                              style={{
+                                fontSize: "1.5rem",
+                                filter:
+                                  "drop-shadow(0 10px 8px rgba(0, 0, 0, 0.04))",
+                              }}
+                            >
+                              {emoji}
+                            </span>
+                            <div>
+                              <div
+                                style={{
+                                  color: "white",
+                                  fontWeight: "900",
+                                  fontSize: "0.875rem",
+                                  lineHeight: "1.25",
+                                  filter:
+                                    "drop-shadow(0 4px 3px rgba(0, 0, 0, 0.07))",
+                                }}
+                              >
+                                {tier}
+                              </div>
+                              <div
+                                style={{
+                                  color: "rgba(255, 255, 255, 0.95)",
+                                  fontWeight: "bold",
+                                  fontSize: "0.75rem",
+                                }}
+                              >
+                                Creator
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {/* QR Code */}
+                    {username && (
+                      <div
+                        style={{
+                          background: "white",
+                          padding: "0.5rem",
+                          borderRadius: "0.75rem",
+                          boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+                          border: "2px solid rgba(192, 132, 252, 0.5)",
+                        }}
+                      >
+                        <QRCodeSVG
+                          value={`${
+                            typeof window !== "undefined"
+                              ? window.location.origin
+                              : ""
+                          }/u/${username}`}
+                          size={70}
+                          level="H"
+                          includeMargin={false}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Stats Section */}
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+                    gap: "0.5rem",
+                  }}
+                >
+                  <div
+                    style={{
+                      background: "rgba(255, 255, 255, 0.1)",
+                      backdropFilter: "blur(40px)",
+                      borderRadius: "0.75rem",
+                      padding: "0.75rem",
+                      textAlign: "center",
+                      border: "1px solid rgba(255, 255, 255, 0.2)",
+                      boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: "1.875rem",
+                        fontWeight: "900",
+                        color: "#67e8f9",
+                      }}
+                    >
+                      {followersCount}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: "0.75rem",
+                        fontWeight: "bold",
+                        color: "rgba(255, 255, 255, 0.8)",
+                        marginTop: "0.125rem",
+                      }}
+                    >
+                      Followers
+                    </div>
+                  </div>
+                  <div
+                    style={{
+                      background: "rgba(255, 255, 255, 0.1)",
+                      backdropFilter: "blur(40px)",
+                      borderRadius: "0.75rem",
+                      padding: "0.75rem",
+                      textAlign: "center",
+                      border: "1px solid rgba(255, 255, 255, 0.2)",
+                      boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: "1.875rem",
+                        fontWeight: "900",
+                        color: "#d8b4fe",
+                      }}
+                    >
+                      {followingCount}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: "0.75rem",
+                        fontWeight: "bold",
+                        color: "rgba(255, 255, 255, 0.8)",
+                        marginTop: "0.125rem",
+                      }}
+                    >
+                      Following
+                    </div>
+                  </div>
+                  <div
+                    style={{
+                      background: "rgba(255, 255, 255, 0.1)",
+                      backdropFilter: "blur(40px)",
+                      borderRadius: "0.75rem",
+                      padding: "0.75rem",
+                      textAlign: "center",
+                      border: "1px solid rgba(255, 255, 255, 0.2)",
+                      boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: "1.875rem",
+                        fontWeight: "900",
+                        color: "#f9a8d4",
+                      }}
+                    >
+                      {userReels.length}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: "0.75rem",
+                        fontWeight: "bold",
+                        color: "rgba(255, 255, 255, 0.8)",
+                        marginTop: "0.125rem",
+                      }}
+                    >
+                      Reels
+                    </div>
+                  </div>
+                </div>
+
+                {/* Bottom Section */}
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: "0.5rem",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.5rem",
+                      background: "rgba(0, 0, 0, 0.4)",
+                      backdropFilter: "blur(40px)",
+                      padding: "0.625rem 1rem",
+                      borderRadius: "0.75rem",
+                      border: "1px solid rgba(255, 255, 255, 0.2)",
+                      boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: "2rem",
+                        height: "2rem",
+                        background:
+                          "linear-gradient(to bottom right, #a855f7, #ec4899)",
+                        borderRadius: "0.5rem",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        color: "white",
+                        fontWeight: "900",
+                        fontSize: "1rem",
+                        boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)",
+                      }}
+                    >
+                      E
+                    </div>
+                    <span
+                      style={{
+                        color: "white",
+                        fontWeight: "bold",
+                        fontSize: "1rem",
+                        filter: "drop-shadow(0 10px 8px rgba(0, 0, 0, 0.04))",
+                      }}
+                    >
+                      EventHub
+                    </span>
+                  </div>
+                  {username && (
+                    <div
+                      style={{
+                        background:
+                          "linear-gradient(to right, rgba(34, 197, 94, 0.2), rgba(16, 185, 129, 0.2))",
+                        backdropFilter: "blur(40px)",
+                        padding: "0.5rem 0.75rem",
+                        borderRadius: "0.75rem",
+                        border: "1px solid rgba(74, 222, 128, 0.3)",
+                        boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "0.375rem",
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: "0.375rem",
+                            height: "0.375rem",
+                            background: "#4ade80",
+                            borderRadius: "9999px",
+                            boxShadow: "0 0 10px rgba(74, 222, 128, 0.8)",
+                          }}
+                        ></div>
+                        <span
+                          style={{
+                            color: "rgba(255, 255, 255, 0.9)",
+                            fontWeight: "600",
+                            fontSize: "0.75rem",
+                            filter:
+                              "drop-shadow(0 10px 8px rgba(0, 0, 0, 0.04))",
+                          }}
+                        >
+                          eventhubx.site/u/{username}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+              <button
+                onClick={handleDownloadCard}
+                className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg transition-all font-medium flex items-center justify-center gap-2 text-sm sm:text-base"
+              >
+                <svg
+                  className="w-4 h-4 sm:w-5 sm:h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                  />
+                </svg>
+                Download Card
+              </button>
+              <button
+                onClick={handleCopyProfileLink}
+                className={`flex-1 ${
+                  cardCopied
+                    ? "bg-green-500 hover:bg-green-600"
+                    : "bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600"
+                } text-white px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg transition-all font-medium flex items-center justify-center gap-2 text-sm sm:text-base`}
+              >
+                {cardCopied ? (
+                  <>
+                    <svg
+                      className="w-4 h-4 sm:w-5 sm:h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                    Copied!
+                  </>
+                ) : (
+                  <>
+                    <svg
+                      className="w-4 h-4 sm:w-5 sm:h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                      />
+                    </svg>
+                    Copy Profile Link
+                  </>
+                )}
+              </button>
+            </div>
+
+            <p className="text-white/60 text-sm text-center mt-4">
+              Share your profile card on social media or download it to use
+              anywhere!
+            </p>
           </div>
         </div>
       )}

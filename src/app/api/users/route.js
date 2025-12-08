@@ -1,9 +1,34 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 
-// GET /api/users - Get all users
-export async function GET() {
+// GET /api/users - Get all users or specific user by username
+export async function GET(request) {
   try {
+    const { searchParams } = new URL(request.url);
+    const username = searchParams.get("username");
+
+    // If username is provided, fetch specific user
+    if (username) {
+      const { data: user, error } = await supabase
+        .from("users")
+        .select("id, name, email, username, avatar, role, createdAt")
+        .eq("username", username)
+        .single();
+
+      if (error) {
+        if (error.code === "PGRST116") {
+          return NextResponse.json(
+            { error: "User not found" },
+            { status: 404 }
+          );
+        }
+        throw error;
+      }
+
+      return NextResponse.json(user);
+    }
+
+    // Otherwise, fetch all users
     const { data: users, error } = await supabase
       .from("users")
       .select(
