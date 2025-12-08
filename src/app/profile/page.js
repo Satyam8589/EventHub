@@ -47,6 +47,8 @@ export default function ProfilePage() {
   const [selectedUserData, setSelectedUserData] = useState(null);
   const [loadingUserReels, setLoadingUserReels] = useState(false);
   const [likedReels, setLikedReels] = useState(new Set());
+  const [followingUsersSet, setFollowingUsersSet] = useState(new Set());
+  const [followLoading, setFollowLoading] = useState(new Set());
 
   const { user, loading: authLoading, signOut } = useAuth();
   const router = useRouter();
@@ -195,6 +197,25 @@ export default function ProfilePage() {
     };
 
     fetchUsername();
+  }, [user]);
+
+  // Fetch user's following list for follow button states
+  useEffect(() => {
+    const fetchFollowingUsers = async () => {
+      if (!user) return;
+      try {
+        const response = await fetch(
+          `/api/followers?userId=${user.uid}&type=following`
+        );
+        const data = await response.json();
+        if (response.ok) {
+          setFollowingUsersSet(new Set(data.users.map((u) => u.id)));
+        }
+      } catch (error) {
+        console.error("Error fetching following users:", error);
+      }
+    };
+    fetchFollowingUsers();
   }, [user]);
 
   // Fetch followers and following count
@@ -794,28 +815,6 @@ export default function ProfilePage() {
                     {userReels.length}
                   </div>
                   <div className="text-sm text-white/60">Total Reels</div>
-                  {getBadgeForReelCount(userReels.length) && (
-                    <div className="mt-1.5">
-                      <div className="text-2xl">
-                        {getBadgeForReelCount(userReels.length).emoji}
-                      </div>
-                      {userReels.length === 0 ? (
-                        <div className="text-xs text-yellow-400/90 mt-0.5 px-1 leading-relaxed">
-                          Post your moments to get your exclusive badges
-                        </div>
-                      ) : (
-                        <>
-                          <div className="text-xs text-white/70 mt-0.5">
-                            {getBadgeForReelCount(userReels.length).name}{" "}
-                            Creator
-                          </div>
-                          <div className="text-xs text-white/50">
-                            ({userReels.length} reels)
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  )}
                 </div>
               </div>
             </div>
@@ -1945,49 +1944,121 @@ export default function ProfilePage() {
                   </p>
                 ) : (
                   followersList.map((follower) => (
-                    <button
+                    <div
                       key={follower.id}
-                      onClick={() => fetchSelectedUserReels(follower)}
-                      className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
+                      className="flex items-center gap-3 p-3 rounded-lg hover:bg-white/5 transition-colors"
                     >
-                      {follower.photoURL ? (
-                        <img
-                          src={follower.photoURL}
-                          alt={follower.username || "User"}
-                          className="w-12 h-12 rounded-full object-cover border-2 border-cyan-400/50"
-                          onError={(e) => {
-                            e.target.style.display = "none";
-                            e.target.nextSibling.style.display = "flex";
-                          }}
-                        />
-                      ) : null}
-                      <div
-                        className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-white font-bold text-lg border-2 border-cyan-400/50"
-                        style={{ display: follower.photoURL ? "none" : "flex" }}
+                      <button
+                        onClick={() => fetchSelectedUserReels(follower)}
+                        className="flex items-center gap-3 flex-1 cursor-pointer"
                       >
-                        {(follower.username ||
-                          follower.email ||
-                          "U")[0].toUpperCase()}
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-white font-semibold">
-                            {follower.username || "Anonymous"}
-                          </span>
-                          {follower.reelCount !== undefined &&
-                            getBadgeForReelCount(follower.reelCount) && (
-                              <span
-                                className="text-lg"
-                                title={`${
-                                  getBadgeForReelCount(follower.reelCount).name
-                                } Creator (${follower.reelCount} reels)`}
-                              >
-                                {getBadgeForReelCount(follower.reelCount).emoji}
-                              </span>
-                            )}
+                        {follower.photoURL ? (
+                          <img
+                            src={follower.photoURL}
+                            alt={follower.username || "User"}
+                            className="w-12 h-12 rounded-full object-cover border-2 border-cyan-400/50"
+                            onError={(e) => {
+                              e.target.style.display = "none";
+                              e.target.nextSibling.style.display = "flex";
+                            }}
+                          />
+                        ) : null}
+                        <div
+                          className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-white font-bold text-lg border-2 border-cyan-400/50"
+                          style={{
+                            display: follower.photoURL ? "none" : "flex",
+                          }}
+                        >
+                          {(follower.username ||
+                            follower.email ||
+                            "U")[0].toUpperCase()}
                         </div>
-                      </div>
-                    </button>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-white font-semibold">
+                              {follower.username || "Anonymous"}
+                            </span>
+                            {follower.reelCount !== undefined &&
+                              getBadgeForReelCount(follower.reelCount) && (
+                                <span
+                                  className="text-lg"
+                                  title={`${
+                                    getBadgeForReelCount(follower.reelCount)
+                                      .name
+                                  } Creator (${follower.reelCount} reels)`}
+                                >
+                                  {
+                                    getBadgeForReelCount(follower.reelCount)
+                                      .emoji
+                                  }
+                                </span>
+                              )}
+                          </div>
+                        </div>
+                      </button>
+                      <button
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          const isFollowing = followingUsersSet.has(
+                            follower.id
+                          );
+                          setFollowLoading((prev) =>
+                            new Set(prev).add(follower.id)
+                          );
+                          try {
+                            if (isFollowing) {
+                              const response = await fetch(
+                                `/api/followers?followerId=${user.uid}&followingId=${follower.id}`,
+                                { method: "DELETE" }
+                              );
+                              if (response.ok) {
+                                setFollowingUsersSet((prev) => {
+                                  const newSet = new Set(prev);
+                                  newSet.delete(follower.id);
+                                  return newSet;
+                                });
+                                setFollowingCount((prev) => prev - 1);
+                              }
+                            } else {
+                              const response = await fetch("/api/followers", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({
+                                  followerId: user.uid,
+                                  followingId: follower.id,
+                                }),
+                              });
+                              if (response.ok) {
+                                setFollowingUsersSet((prev) =>
+                                  new Set(prev).add(follower.id)
+                                );
+                                setFollowingCount((prev) => prev + 1);
+                              }
+                            }
+                          } catch (error) {
+                            console.error("Error toggling follow:", error);
+                          } finally {
+                            setFollowLoading((prev) => {
+                              const newSet = new Set(prev);
+                              newSet.delete(follower.id);
+                              return newSet;
+                            });
+                          }
+                        }}
+                        disabled={followLoading.has(follower.id)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                          followingUsersSet.has(follower.id)
+                            ? "bg-white/10 text-white hover:bg-white/20"
+                            : "bg-cyan-500 text-white hover:bg-cyan-600"
+                        } disabled:opacity-50 whitespace-nowrap`}
+                      >
+                        {followLoading.has(follower.id)
+                          ? "..."
+                          : followingUsersSet.has(follower.id)
+                          ? "Following"
+                          : "Follow"}
+                      </button>
+                    </div>
                   ))
                 )}
               </div>
@@ -2039,54 +2110,96 @@ export default function ProfilePage() {
                   </p>
                 ) : (
                   followingList.map((following) => (
-                    <button
+                    <div
                       key={following.id}
-                      onClick={() => fetchSelectedUserReels(following)}
-                      className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
+                      className="flex items-center gap-3 p-3 rounded-lg hover:bg-white/5 transition-colors"
                     >
-                      {following.photoURL ? (
-                        <img
-                          src={following.photoURL}
-                          alt={following.username || "User"}
-                          className="w-12 h-12 rounded-full object-cover border-2 border-indigo-400/50"
-                          onError={(e) => {
-                            e.target.style.display = "none";
-                            e.target.nextSibling.style.display = "flex";
-                          }}
-                        />
-                      ) : null}
-                      <div
-                        className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg border-2 border-indigo-400/50"
-                        style={{
-                          display: following.photoURL ? "none" : "flex",
-                        }}
+                      <button
+                        onClick={() => fetchSelectedUserReels(following)}
+                        className="flex items-center gap-3 flex-1 cursor-pointer"
                       >
-                        {(following.username ||
-                          following.email ||
-                          "U")[0].toUpperCase()}
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-white font-semibold">
-                            {following.username || "Anonymous"}
-                          </span>
-                          {following.reelCount !== undefined &&
-                            getBadgeForReelCount(following.reelCount) && (
-                              <span
-                                className="text-lg"
-                                title={`${
-                                  getBadgeForReelCount(following.reelCount).name
-                                } Creator (${following.reelCount} reels)`}
-                              >
-                                {
-                                  getBadgeForReelCount(following.reelCount)
-                                    .emoji
-                                }
-                              </span>
-                            )}
+                        {following.photoURL ? (
+                          <img
+                            src={following.photoURL}
+                            alt={following.username || "User"}
+                            className="w-12 h-12 rounded-full object-cover border-2 border-indigo-400/50"
+                            onError={(e) => {
+                              e.target.style.display = "none";
+                              e.target.nextSibling.style.display = "flex";
+                            }}
+                          />
+                        ) : null}
+                        <div
+                          className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg border-2 border-indigo-400/50"
+                          style={{
+                            display: following.photoURL ? "none" : "flex",
+                          }}
+                        >
+                          {(following.username ||
+                            following.email ||
+                            "U")[0].toUpperCase()}
                         </div>
-                      </div>
-                    </button>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-white font-semibold">
+                              {following.username || "Anonymous"}
+                            </span>
+                            {following.reelCount !== undefined &&
+                              getBadgeForReelCount(following.reelCount) && (
+                                <span
+                                  className="text-lg"
+                                  title={`${
+                                    getBadgeForReelCount(following.reelCount)
+                                      .name
+                                  } Creator (${following.reelCount} reels)`}
+                                >
+                                  {
+                                    getBadgeForReelCount(following.reelCount)
+                                      .emoji
+                                  }
+                                </span>
+                              )}
+                          </div>
+                        </div>
+                      </button>
+                      <button
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          setFollowLoading((prev) =>
+                            new Set(prev).add(following.id)
+                          );
+                          try {
+                            const response = await fetch(
+                              `/api/followers?followerId=${user.uid}&followingId=${following.id}`,
+                              { method: "DELETE" }
+                            );
+                            if (response.ok) {
+                              setFollowingUsersSet((prev) => {
+                                const newSet = new Set(prev);
+                                newSet.delete(following.id);
+                                return newSet;
+                              });
+                              setFollowingList((prev) =>
+                                prev.filter((u) => u.id !== following.id)
+                              );
+                              setFollowingCount((prev) => prev - 1);
+                            }
+                          } catch (error) {
+                            console.error("Error unfollowing:", error);
+                          } finally {
+                            setFollowLoading((prev) => {
+                              const newSet = new Set(prev);
+                              newSet.delete(following.id);
+                              return newSet;
+                            });
+                          }
+                        }}
+                        disabled={followLoading.has(following.id)}
+                        className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white/10 text-white hover:bg-white/20 transition-all disabled:opacity-50 whitespace-nowrap"
+                      >
+                        {followLoading.has(following.id) ? "..." : "Following"}
+                      </button>
+                    </div>
                   ))
                 )}
               </div>
