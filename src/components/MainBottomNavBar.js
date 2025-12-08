@@ -291,27 +291,6 @@ export default function MainBottomNavBar() {
                       </Link>
                     )}
                   </div>
-
-                  {/* Sign Out Button */}
-                  <button
-                    onClick={handleSignOut}
-                    className="w-full flex items-center justify-center space-x-3 px-4 py-3 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-xl transition-all duration-200 border border-red-500/30 hover:border-red-400/40 group"
-                  >
-                    <svg
-                      className="w-5 h-5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-                      />
-                    </svg>
-                    <span className="font-medium">Sign Out</span>
-                  </button>
                 </div>
               ) : (
                 <div className="p-6">
@@ -416,8 +395,8 @@ export default function MainBottomNavBar() {
 
   return (
     <>
-      {/* Bottom Navigation Bar - Only visible on mobile */}
-      <div className="fixed bottom-0 left-0 right-0 bg-gray-900/95 backdrop-blur-xl border-t border-gray-700/50 z-40 md:hidden shadow-2xl shadow-black/20">
+      {/* Bottom Navigation Bar - Visible on mobile and medium screens */}
+      <div className="fixed bottom-0 left-0 right-0 bg-gray-900/95 backdrop-blur-xl border-t border-gray-700/50 z-40 lg:hidden shadow-2xl shadow-black/20">
         {/* Gradient overlay for visual appeal */}
         <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-blue-500/50 to-transparent"></div>
 
@@ -530,8 +509,8 @@ export default function MainBottomNavBar() {
         </div>
       </div>
 
-      {/* Padding spacer for mobile bottom navigation */}
-      <div className="h-12 md:hidden"></div>
+      {/* Padding spacer for mobile and medium screens bottom navigation */}
+      <div className="h-12 lg:hidden"></div>
     </>
   );
 }

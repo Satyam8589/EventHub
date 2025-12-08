@@ -104,15 +104,6 @@ export default function UserMenu() {
                 🛡️ Admin Panel
               </a>
             )}
-
-            <div className="border-t border-white/20 mt-2 pt-2">
-              <button
-                onClick={handleSignOut}
-                className="block w-full text-left px-4 py-2 text-sm text-red-400 hover:text-red-300 hover:bg-white/10 transition-colors"
-              >
-                Sign Out
-              </button>
-            </div>
           </div>
         </div>
       )}

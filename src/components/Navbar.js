@@ -60,8 +60,8 @@ export default function Navbar({ setShowLogin, setShowSignup }) {
             <Link href="/events" className="hover:text-white transition-colors">
               Events
             </Link>
-            <Link 
-              href="/reels" 
+            <Link
+              href="/reels"
               className="hover:text-white transition-colors flex items-center gap-1.5"
             >
               <span>📸</span>
@@ -119,8 +119,10 @@ export default function Navbar({ setShowLogin, setShowSignup }) {
 
           <div className="flex items-center space-x-4">
             {/* Mobile Reels Button - Only visible on small screens AND specific pages */}
-            {(pathname === "/" || pathname === "/events" || pathname.startsWith("/reviews")) && (
-              <Link 
+            {(pathname === "/" ||
+              pathname === "/events" ||
+              pathname.startsWith("/reviews")) && (
+              <Link
                 href="/reels"
                 className="lg:hidden flex items-center gap-1.5 bg-gradient-to-r from-pink-500 to-purple-500 text-white px-3 py-1.5 rounded-full text-sm font-medium hover:scale-105 transition-transform"
               >
@@ -142,34 +144,6 @@ export default function Navbar({ setShowLogin, setShowSignup }) {
                 {user ? (
                   <div className="hidden md:flex items-center space-x-3">
                     <UserMenu />
-                    <button
-                      onClick={async () => {
-                        try {
-                          const result = await signOut();
-                          if (!result.error) {
-                            window.location.reload();
-                          }
-                        } catch (error) {
-                          // Silent error handling for security
-                        }
-                      }}
-                      className="text-white/80 hover:text-white transition-colors p-2 hover:bg-white/10 rounded-lg"
-                      title="Sign Out"
-                    >
-                      <svg
-                        className="w-5 h-5"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-                        />
-                      </svg>
-                    </button>
                     {pathname === "/" && (
                       <>
                         <div className="h-8 w-px bg-white/20"></div>
@@ -300,26 +274,6 @@ export default function Navbar({ setShowLogin, setShowSignup }) {
                           🛡️ Admin Panel
                         </Link>
                       )}
-
-                      <button
-                        onClick={async () => {
-                          try {
-                            const result = await signOut();
-                            if (!result.error) {
-                              setMobileMenuOpen(false);
-                              window.location.reload();
-                            } else {
-                              setMobileMenuOpen(false);
-                            }
-                          } catch (error) {
-                            // Silent error handling for security
-                            setMobileMenuOpen(false);
-                          }
-                        }}
-                        className="block w-full text-left px-3 py-2 text-red-400 hover:text-red-300 transition-colors cursor-pointer"
-                      >
-                        Sign Out
-                      </button>
                     </>
                   ) : (
                     <div className="px-3 py-2 space-y-2">
