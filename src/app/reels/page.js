@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import LoginForm from "@/components/auth/LoginForm";
 import SignupForm from "@/components/auth/SignupForm";
@@ -75,6 +75,7 @@ const AVAILABLE_TAGS = [
 export default function ReelsPage() {
   const { user } = useAuth();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const [reels, setReels] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -120,6 +121,7 @@ export default function ReelsPage() {
   const [copiedReelId, setCopiedReelId] = useState(null);
   const [showUserProfileCard, setShowUserProfileCard] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
+  const [followingCount, setFollowingCount] = useState(0);
   const userProfileCardRef = useRef(null);
   const REELS_PER_PAGE = 20;
 
@@ -176,6 +178,7 @@ export default function ReelsPage() {
     const fetchUserStats = async () => {
       if (!selectedUser?.id) {
         setFollowersCount(0);
+        setFollowingCount(0);
         return;
       }
 
@@ -186,10 +189,18 @@ export default function ReelsPage() {
           .select("*", { count: "exact", head: true })
           .eq("following_id", selectedUser.id);
 
+        // Fetch following count
+        const { count: followingCount } = await supabase
+          .from("followers")
+          .select("*", { count: "exact", head: true })
+          .eq("follower_id", selectedUser.id);
+
         setFollowersCount(followersCount || 0);
+        setFollowingCount(followingCount || 0);
       } catch (error) {
         console.error("Error fetching user stats:", error);
         setFollowersCount(0);
+        setFollowingCount(0);
       }
     };
 
@@ -2318,7 +2329,7 @@ export default function ReelsPage() {
                       style={{
                         display: "flex",
                         justifyContent: "center",
-                        gap: "40px",
+                        gap: "32px",
                       }}
                     >
                       <div style={{ textAlign: "center" }}>
@@ -2361,6 +2372,27 @@ export default function ReelsPage() {
                           }}
                         >
                           Followers
+                        </div>
+                      </div>
+                      <div style={{ textAlign: "center" }}>
+                        <div
+                          style={{
+                            color: "#6366f1",
+                            fontWeight: "700",
+                            fontSize: "18px",
+                            marginBottom: "4px",
+                          }}
+                        >
+                          {followingCount}
+                        </div>
+                        <div
+                          style={{
+                            fontSize: "13px",
+                            color: "#6b7280",
+                            fontWeight: "400",
+                          }}
+                        >
+                          Following
                         </div>
                       </div>
                     </div>
@@ -2502,6 +2534,8 @@ export default function ReelsPage() {
           onClick={() => {
             setShowReelViewerModal(false);
             setSelectedReelForViewer(null);
+            // Clear URL parameters
+            router.push("/reels", { scroll: false });
           }}
         >
           <div
@@ -2513,6 +2547,8 @@ export default function ReelsPage() {
               onClick={() => {
                 setShowReelViewerModal(false);
                 setSelectedReelForViewer(null);
+                // Clear URL parameters
+                router.push("/reels", { scroll: false });
               }}
               className="absolute top-4 right-4 z-10 w-10 h-10 bg-black/50 hover:bg-black/70 rounded-full flex items-center justify-center text-white transition-colors"
             >

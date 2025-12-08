@@ -2550,10 +2550,27 @@ export default function ProfilePage() {
               ></div>
 
               {/* Abstract Background Pattern */}
-              <div className="absolute inset-0 opacity-30">
-                <div className="absolute top-0 right-0 w-full h-full">
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  opacity: 0.3,
+                }}
+              >
+                <div
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    right: 0,
+                    width: "100%",
+                    height: "100%",
+                  }}
+                >
                   <svg
-                    className="w-full h-full"
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                    }}
                     viewBox="0 0 800 450"
                     fill="none"
                     xmlns="http://www.w3.org/2000/svg"
@@ -2655,15 +2672,44 @@ export default function ProfilePage() {
               </div>
 
               {/* Content */}
-              <div className="relative h-full p-2 sm:p-4 flex flex-col justify-between">
+              <div
+                style={{
+                  position: "relative",
+                  height: "100%",
+                  padding: window.innerWidth < 640 ? "0.5rem" : "1rem",
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "space-between",
+                }}
+              >
                 {/* Top Section */}
-                <div className="flex items-start justify-between gap-1 sm:gap-2">
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "flex-start",
+                    justifyContent: "space-between",
+                    gap: window.innerWidth < 640 ? "0.25rem" : "0.5rem",
+                  }}
+                >
                   {/* Avatar and Info */}
-                  <div className="flex items-center gap-2 sm:gap-3">
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: window.innerWidth < 640 ? "0.5rem" : "0.75rem",
+                    }}
+                  >
                     <div
-                      className="relative w-12 h-12 sm:w-20 sm:h-20 aspect-square rounded-full border-2 sm:border-4 overflow-hidden shadow-2xl"
                       style={{
+                        position: "relative",
+                        width: window.innerWidth < 640 ? "3rem" : "5rem",
+                        height: window.innerWidth < 640 ? "3rem" : "5rem",
+                        aspectRatio: "1",
+                        borderRadius: "50%",
+                        borderWidth: window.innerWidth < 640 ? "2px" : "4px",
                         borderColor: "#22d3ee",
+                        overflow: "hidden",
+                        boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
                       }}
                     >
                       {user?.photoURL ? (
@@ -2700,8 +2746,13 @@ export default function ProfilePage() {
                     </div>
                     <div>
                       <h3
-                        className="text-lg sm:text-3xl font-black text-white mb-0.5"
                         style={{
+                          fontSize:
+                            window.innerWidth < 640 ? "1.125rem" : "1.875rem",
+                          fontWeight: "900",
+                          color: "white",
+                          marginBottom:
+                            window.innerWidth < 640 ? "0.125rem" : "0.25rem",
                           filter:
                             "drop-shadow(0 25px 25px rgba(0, 0, 0, 0.15))",
                         }}
@@ -2712,8 +2763,11 @@ export default function ProfilePage() {
                       </h3>
                       {username && (
                         <p
-                          className="text-xs sm:text-lg font-semibold tracking-wide"
                           style={{
+                            fontSize:
+                              window.innerWidth < 640 ? "0.75rem" : "1.125rem",
+                            fontWeight: "600",
+                            letterSpacing: "0.025em",
                             color: "rgba(165, 243, 252, 0.9)",
                           }}
                         >
@@ -2721,8 +2775,13 @@ export default function ProfilePage() {
                         </p>
                       )}
                       <p
-                        className="text-[10px] sm:text-sm font-medium italic mt-0.5 sm:mt-1"
                         style={{
+                          fontSize:
+                            window.innerWidth < 640 ? "0.625rem" : "0.875rem",
+                          fontWeight: "500",
+                          fontStyle: "italic",
+                          marginTop:
+                            window.innerWidth < 640 ? "0.125rem" : "0.25rem",
                           color: "rgba(233, 213, 255, 0.7)",
                         }}
                       >
@@ -2732,7 +2791,14 @@ export default function ProfilePage() {
                   </div>
 
                   {/* Badge and QR Code */}
-                  <div className="flex items-start gap-1 sm:gap-2 flex-shrink-0">
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "flex-start",
+                      gap: window.innerWidth < 640 ? "0.25rem" : "0.5rem",
+                      flexShrink: 0,
+                    }}
+                  >
                     {/* Badge */}
                     {(() => {
                       const reelsCount = userReels.length;
@@ -2769,21 +2835,68 @@ export default function ProfilePage() {
 
                       return (
                         <div
-                          className="px-1.5 sm:px-3 py-1 sm:py-2 rounded-lg sm:rounded-xl shadow-2xl border sm:border-2"
                           style={{
+                            padding:
+                              window.innerWidth < 640
+                                ? "0.375rem 0.375rem"
+                                : "0.5rem 0.75rem",
+                            borderRadius:
+                              window.innerWidth < 640 ? "0.5rem" : "0.75rem",
+                            boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+                            borderWidth:
+                              window.innerWidth < 640 ? "1px" : "2px",
                             background: bgGradient,
                             borderColor: "rgba(255, 255, 255, 0.2)",
                           }}
                         >
-                          <div className="flex items-center gap-0.5 sm:gap-1.5">
-                            <span className="text-sm sm:text-2xl drop-shadow-lg">
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap:
+                                window.innerWidth < 640
+                                  ? "0.125rem"
+                                  : "0.375rem",
+                            }}
+                          >
+                            <span
+                              style={{
+                                fontSize:
+                                  window.innerWidth < 640
+                                    ? "0.875rem"
+                                    : "1.5rem",
+                                filter:
+                                  "drop-shadow(0 10px 8px rgba(0, 0, 0, 0.04))",
+                              }}
+                            >
                               {emoji}
                             </span>
                             <div>
-                              <div className="text-white font-black text-[10px] sm:text-sm leading-tight drop-shadow-md">
+                              <div
+                                style={{
+                                  color: "white",
+                                  fontWeight: "900",
+                                  fontSize:
+                                    window.innerWidth < 640
+                                      ? "0.625rem"
+                                      : "0.875rem",
+                                  lineHeight: "1.25",
+                                  filter:
+                                    "drop-shadow(0 4px 3px rgba(0, 0, 0, 0.07))",
+                                }}
+                              >
                                 {tier}
                               </div>
-                              <div className="text-white/95 font-bold text-[8px] sm:text-xs">
+                              <div
+                                style={{
+                                  color: "rgba(255, 255, 255, 0.95)",
+                                  fontWeight: "700",
+                                  fontSize:
+                                    window.innerWidth < 640
+                                      ? "0.5rem"
+                                      : "0.75rem",
+                                }}
+                              >
                                 Creator
                               </div>
                             </div>
@@ -2795,9 +2908,13 @@ export default function ProfilePage() {
                     {/* QR Code */}
                     {username && (
                       <div
-                        className="bg-white p-1 sm:p-2 rounded-lg sm:rounded-xl shadow-2xl ring-1 sm:ring-2"
                         style={{
-                          ringColor: "rgba(192, 132, 252, 0.5)",
+                          background: "white",
+                          padding:
+                            window.innerWidth < 640 ? "0.25rem" : "0.5rem",
+                          borderRadius:
+                            window.innerWidth < 640 ? "0.5rem" : "0.75rem",
+                          boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
                           borderWidth: "1px",
                           borderColor: "rgba(192, 132, 252, 0.5)",
                         }}
@@ -2818,100 +2935,224 @@ export default function ProfilePage() {
                 </div>
 
                 {/* Stats Section */}
-                <div className="grid grid-cols-3 gap-1 sm:gap-2">
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(3, 1fr)",
+                    gap: window.innerWidth < 640 ? "0.25rem" : "0.5rem",
+                  }}
+                >
                   <div
-                    className="backdrop-blur-xl rounded-lg sm:rounded-xl p-1.5 sm:p-3 text-center border shadow-2xl"
                     style={{
+                      backdropFilter: "blur(24px)",
+                      borderRadius:
+                        window.innerWidth < 640 ? "0.5rem" : "0.75rem",
+                      padding: window.innerWidth < 640 ? "0.375rem" : "0.75rem",
+                      textAlign: "center",
+                      borderWidth: "1px",
+                      boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
                       background: "rgba(255, 255, 255, 0.1)",
                       borderColor: "rgba(255, 255, 255, 0.2)",
                     }}
                   >
                     <div
-                      className="text-lg sm:text-3xl font-black"
-                      style={{ color: "#67e8f9" }}
+                      style={{
+                        fontSize:
+                          window.innerWidth < 640 ? "1.125rem" : "1.875rem",
+                        fontWeight: "900",
+                        color: "#67e8f9",
+                      }}
                     >
                       {followersCount}
                     </div>
-                    <div className="text-[8px] sm:text-xs font-bold text-white/80 mt-0.5">
+                    <div
+                      style={{
+                        fontSize:
+                          window.innerWidth < 640 ? "0.5rem" : "0.75rem",
+                        fontWeight: "700",
+                        color: "rgba(255, 255, 255, 0.8)",
+                        marginTop: "0.125rem",
+                      }}
+                    >
                       Followers
                     </div>
                   </div>
                   <div
-                    className="backdrop-blur-xl rounded-lg sm:rounded-xl p-1.5 sm:p-3 text-center border shadow-2xl"
                     style={{
+                      backdropFilter: "blur(24px)",
+                      borderRadius:
+                        window.innerWidth < 640 ? "0.5rem" : "0.75rem",
+                      padding: window.innerWidth < 640 ? "0.375rem" : "0.75rem",
+                      textAlign: "center",
+                      borderWidth: "1px",
+                      boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
                       background: "rgba(255, 255, 255, 0.1)",
                       borderColor: "rgba(255, 255, 255, 0.2)",
                     }}
                   >
                     <div
-                      className="text-lg sm:text-3xl font-black"
-                      style={{ color: "#d8b4fe" }}
+                      style={{
+                        fontSize:
+                          window.innerWidth < 640 ? "1.125rem" : "1.875rem",
+                        fontWeight: "900",
+                        color: "#d8b4fe",
+                      }}
                     >
                       {followingCount}
                     </div>
-                    <div className="text-[8px] sm:text-xs font-bold text-white/80 mt-0.5">
+                    <div
+                      style={{
+                        fontSize:
+                          window.innerWidth < 640 ? "0.5rem" : "0.75rem",
+                        fontWeight: "700",
+                        color: "rgba(255, 255, 255, 0.8)",
+                        marginTop: "0.125rem",
+                      }}
+                    >
                       Following
                     </div>
                   </div>
                   <div
-                    className="backdrop-blur-xl rounded-lg sm:rounded-xl p-1.5 sm:p-3 text-center border shadow-2xl"
                     style={{
+                      backdropFilter: "blur(24px)",
+                      borderRadius:
+                        window.innerWidth < 640 ? "0.5rem" : "0.75rem",
+                      padding: window.innerWidth < 640 ? "0.375rem" : "0.75rem",
+                      textAlign: "center",
+                      borderWidth: "1px",
+                      boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
                       background: "rgba(255, 255, 255, 0.1)",
                       borderColor: "rgba(255, 255, 255, 0.2)",
                     }}
                   >
                     <div
-                      className="text-lg sm:text-3xl font-black"
-                      style={{ color: "#f9a8d4" }}
+                      style={{
+                        fontSize:
+                          window.innerWidth < 640 ? "1.125rem" : "1.875rem",
+                        fontWeight: "900",
+                        color: "#f9a8d4",
+                      }}
                     >
                       {userReels.length}
                     </div>
-                    <div className="text-[8px] sm:text-xs font-bold text-white/80 mt-0.5">
+                    <div
+                      style={{
+                        fontSize:
+                          window.innerWidth < 640 ? "0.5rem" : "0.75rem",
+                        fontWeight: "700",
+                        color: "rgba(255, 255, 255, 0.8)",
+                        marginTop: "0.125rem",
+                      }}
+                    >
                       Reels
                     </div>
                   </div>
                 </div>
 
                 {/* Bottom Section */}
-                <div className="flex items-center justify-between gap-1 sm:gap-2">
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: window.innerWidth < 640 ? "0.25rem" : "0.5rem",
+                  }}
+                >
                   <div
-                    className="flex items-center gap-1.5 sm:gap-2 backdrop-blur-xl px-2.5 sm:px-4 py-1.5 sm:py-2.5 rounded-lg sm:rounded-xl border shadow-2xl"
                     style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: window.innerWidth < 640 ? "0.375rem" : "0.5rem",
+                      backdropFilter: "blur(24px)",
+                      padding:
+                        window.innerWidth < 640
+                          ? "0.375rem 0.625rem"
+                          : "0.625rem 1rem",
+                      borderRadius:
+                        window.innerWidth < 640 ? "0.5rem" : "0.75rem",
+                      borderWidth: "1px",
+                      boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
                       background: "rgba(0, 0, 0, 0.4)",
                       borderColor: "rgba(255, 255, 255, 0.2)",
                     }}
                   >
                     <div
-                      className="w-6 h-6 sm:w-8 sm:h-8 rounded-md sm:rounded-lg flex items-center justify-center text-white font-black text-xs sm:text-base shadow-lg"
                       style={{
+                        width: window.innerWidth < 640 ? "1.5rem" : "2rem",
+                        height: window.innerWidth < 640 ? "1.5rem" : "2rem",
+                        borderRadius:
+                          window.innerWidth < 640 ? "0.375rem" : "0.5rem",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        color: "white",
+                        fontWeight: "900",
+                        fontSize: window.innerWidth < 640 ? "0.75rem" : "1rem",
+                        boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)",
                         background:
                           "linear-gradient(to bottom right, #a855f7, #ec4899)",
                       }}
                     >
                       E
                     </div>
-                    <span className="text-white font-bold text-xs sm:text-base drop-shadow-lg">
+                    <span
+                      style={{
+                        color: "white",
+                        fontWeight: "700",
+                        fontSize: window.innerWidth < 640 ? "0.75rem" : "1rem",
+                        filter: "drop-shadow(0 10px 8px rgba(0, 0, 0, 0.04))",
+                      }}
+                    >
                       EventHub
                     </span>
                   </div>
                   {username && (
                     <div
-                      className="backdrop-blur-xl px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl border shadow-2xl"
                       style={{
+                        backdropFilter: "blur(24px)",
+                        padding:
+                          window.innerWidth < 640
+                            ? "0.375rem 0.5rem"
+                            : "0.5rem 0.75rem",
+                        borderRadius:
+                          window.innerWidth < 640 ? "0.5rem" : "0.75rem",
+                        borderWidth: "1px",
+                        boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
                         background:
                           "linear-gradient(to right, rgba(34, 197, 94, 0.2), rgba(16, 185, 129, 0.2))",
                         borderColor: "rgba(74, 222, 128, 0.3)",
                       }}
                     >
-                      <div className="flex items-center gap-1 sm:gap-1.5">
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: window.innerWidth < 640 ? "0.25rem" : "0.375rem",
+                        }}
+                      >
                         <div
-                          className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full animate-pulse shadow-lg"
                           style={{
-                            background: "#4ade80",
+                            width:
+                              window.innerWidth < 640 ? "0.25rem" : "0.375rem",
+                            height:
+                              window.innerWidth < 640 ? "0.25rem" : "0.375rem",
+                            borderRadius: "50%",
+                            animation:
+                              "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
                             boxShadow: "0 0 10px rgba(74, 222, 128, 0.8)",
+                            background: "#4ade80",
                           }}
                         ></div>
-                        <span className="text-white/90 font-semibold text-[9px] sm:text-xs drop-shadow-lg">
+                        <span
+                          style={{
+                            color: "rgba(255, 255, 255, 0.9)",
+                            fontWeight: "600",
+                            fontSize:
+                              window.innerWidth < 640 ? "0.5625rem" : "0.75rem",
+                            filter:
+                              "drop-shadow(0 10px 8px rgba(0, 0, 0, 0.04))",
+                          }}
+                        >
                           eventhubx.site/u/{username}
                         </span>
                       </div>
