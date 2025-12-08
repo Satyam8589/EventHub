@@ -551,14 +551,14 @@ export default function ReelsPage() {
 
           if (targetReel) {
             setSelectedReelForViewer(targetReel);
-            setShowReelViewer(true);
+            setShowReelViewerModal(true);
           } else {
             // Fetch the specific reel if not in current list
             const response = await fetch(`/api/reels/${reelId}`);
             if (response.ok) {
               const reelData = await response.json();
               setSelectedReelForViewer(reelData);
-              setShowReelViewer(true);
+              setShowReelViewerModal(true);
             }
           }
         } catch (error) {
