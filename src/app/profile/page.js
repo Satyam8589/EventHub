@@ -264,7 +264,10 @@ export default function ProfilePage() {
   const fetchFollowersList = async () => {
     if (!user) return;
 
+    setFollowersList([]); // Clear previous data
     setLoadingFollowers(true);
+    setShowFollowersModal(true); // Show modal immediately
+
     try {
       const response = await fetch(
         `/api/followers?userId=${user.uid}&type=followers`
@@ -273,7 +276,6 @@ export default function ProfilePage() {
 
       if (response.ok) {
         setFollowersList(data.users || []);
-        setShowFollowersModal(true);
       }
     } catch (error) {
       console.error("Error fetching followers list:", error);
@@ -286,7 +288,10 @@ export default function ProfilePage() {
   const fetchFollowingList = async () => {
     if (!user) return;
 
+    setFollowingList([]); // Clear previous data
     setLoadingFollowers(true);
+    setShowFollowingModal(true); // Show modal immediately
+
     try {
       const response = await fetch(
         `/api/followers?userId=${user.uid}&type=following`
@@ -295,7 +300,6 @@ export default function ProfilePage() {
 
       if (response.ok) {
         setFollowingList(data.users || []);
-        setShowFollowingModal(true);
       }
     } catch (error) {
       console.error("Error fetching following list:", error);
@@ -366,12 +370,19 @@ export default function ProfilePage() {
     return trimmedText.slice(0, charLimit) + "...";
   };
 
+  // Fetch reels on initial page load
+  useEffect(() => {
+    if (user) {
+      fetchUserReels();
+    }
+  }, [user]);
+
   // Fetch reels when My Reels tab is active
   useEffect(() => {
     if (activeTab === "myreels") {
       fetchUserReels();
     }
-  }, [activeTab, user]);
+  }, [activeTab]);
 
   const openTicketModal = (booking) => {
     setSelectedTicket(booking);
