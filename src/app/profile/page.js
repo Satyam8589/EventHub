@@ -751,12 +751,20 @@ export default function ProfilePage() {
                 return (
                   <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-black/40 to-black/20 border border-white/20 rounded-full mb-4">
                     <span className="text-lg">{emoji}</span>
-                    <span className={`font-semibold text-sm ${textColor}`}>
-                      {tier}
-                    </span>
-                    <span className="text-white/60 text-xs">
-                      ({reelsCount} reels)
-                    </span>
+                    {reelsCount === 0 ? (
+                      <span className="font-medium text-xs text-yellow-400/90">
+                        Post your moments to get your exclusive badges
+                      </span>
+                    ) : (
+                      <>
+                        <span className={`font-semibold text-sm ${textColor}`}>
+                          {tier}
+                        </span>
+                        <span className="text-white/60 text-xs">
+                          ({reelsCount} reels)
+                        </span>
+                      </>
+                    )}
                   </div>
                 );
               })()}
@@ -786,6 +794,28 @@ export default function ProfilePage() {
                     {userReels.length}
                   </div>
                   <div className="text-sm text-white/60">Total Reels</div>
+                  {getBadgeForReelCount(userReels.length) && (
+                    <div className="mt-1.5">
+                      <div className="text-2xl">
+                        {getBadgeForReelCount(userReels.length).emoji}
+                      </div>
+                      {userReels.length === 0 ? (
+                        <div className="text-xs text-yellow-400/90 mt-0.5 px-1 leading-relaxed">
+                          Post your moments to get your exclusive badges
+                        </div>
+                      ) : (
+                        <>
+                          <div className="text-xs text-white/70 mt-0.5">
+                            {getBadgeForReelCount(userReels.length).name}{" "}
+                            Creator
+                          </div>
+                          <div className="text-xs text-white/50">
+                            ({userReels.length} reels)
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
