@@ -23,6 +23,33 @@ const getVideoMimeType = (url) => {
   return mimeTypes[extension] || "video/mp4";
 };
 
+// Function to get badge based on reel count
+const getBadgeForReelCount = (count) => {
+  if (count >= 300)
+    return { emoji: "💎", name: "Diamond", color: "from-cyan-400 to-blue-500" };
+  if (count >= 200)
+    return {
+      emoji: "🏆",
+      name: "Platinum",
+      color: "from-gray-300 to-gray-500",
+    };
+  if (count >= 100)
+    return {
+      emoji: "🥇",
+      name: "Gold",
+      color: "from-yellow-400 to-yellow-600",
+    };
+  if (count >= 50)
+    return { emoji: "🥈", name: "Silver", color: "from-gray-400 to-gray-600" };
+  if (count >= 1)
+    return {
+      emoji: "🥉",
+      name: "Bronze",
+      color: "from-orange-400 to-orange-600",
+    };
+  return null;
+};
+
 // These should match your Instagram hashtags in .env.local
 const AVAILABLE_TAGS = [
   "all",
@@ -72,6 +99,7 @@ export default function ReelsPage() {
   const [usernameInput, setUsernameInput] = useState("");
   const [savingUsername, setSavingUsername] = useState(false);
   const [usernameError, setUsernameError] = useState("");
+  const [userBadges, setUserBadges] = useState(new Map());
   const REELS_PER_PAGE = 20;
 
   // Fetch reels from database with pagination
@@ -108,6 +136,28 @@ export default function ReelsPage() {
 
           // Check if there are more reels to load
           setHasMore(newReels.length === REELS_PER_PAGE);
+
+          // Fetch badge information for each unique user
+          const uniqueUserIds = [
+            ...new Set(newReels.map((reel) => reel.user_id)),
+          ];
+          for (const userId of uniqueUserIds) {
+            if (!userBadges.has(userId)) {
+              try {
+                const badgeResponse = await fetch(
+                  `/api/reels?userId=${userId}&limit=1000`
+                );
+                const badgeData = await badgeResponse.json();
+                const reelCount = badgeData.reels?.length || 0;
+                const badge = getBadgeForReelCount(reelCount);
+                setUserBadges((prev) =>
+                  new Map(prev).set(userId, { badge, count: reelCount })
+                );
+              } catch (error) {
+                console.error("Error fetching user badge:", error);
+              }
+            }
+          }
         }
       } catch (error) {
         console.error("Error fetching reels:", error);
@@ -692,7 +742,7 @@ export default function ReelsPage() {
                               "U"}
                           </div>
                         )}
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <button
                             onClick={async (e) => {
                               e.stopPropagation();
@@ -724,6 +774,22 @@ export default function ReelsPage() {
                               reel.users?.email?.split("@")[0] ||
                               "user"}
                           </button>
+
+                          {/* User Badge */}
+                          {userBadges.has(reel.user_id) &&
+                            userBadges.get(reel.user_id).badge && (
+                              <span
+                                className="text-base"
+                                title={`${
+                                  userBadges.get(reel.user_id).badge.name
+                                } Creator - ${
+                                  userBadges.get(reel.user_id).count
+                                } reels`}
+                              >
+                                {userBadges.get(reel.user_id).badge.emoji}
+                              </span>
+                            )}
+
                           <span className="text-gray-300 text-xs">•</span>
                           <p className="text-gray-300 text-xs drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">
                             {new Date(reel.created_at).toLocaleDateString(
@@ -1168,13 +1234,28 @@ export default function ReelsPage() {
                       "U"}
                   </div>
                 )}
-                <div>
-                  <h2 className="text-white text-2xl font-bold">
-                    @
-                    {selectedUser.username ||
-                      selectedUser.email?.split("@")[0] ||
-                      "user"}
-                  </h2>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="text-white text-2xl font-bold">
+                      @
+                      {selectedUser.username ||
+                        selectedUser.email?.split("@")[0] ||
+                        "user"}
+                    </h2>
+                    {/* User Badge in Modal */}
+                    {userReels.length > 0 &&
+                      (() => {
+                        const badge = getBadgeForReelCount(userReels.length);
+                        return badge ? (
+                          <span
+                            className="text-xl"
+                            title={`${badge.name} Creator - ${userReels.length} reels`}
+                          >
+                            {badge.emoji}
+                          </span>
+                        ) : null;
+                      })()}
+                  </div>
                   <p className="text-white/80 text-sm mt-1">
                     {userReels.length}{" "}
                     {userReels.length === 1 ? "Reel" : "Reels"}
