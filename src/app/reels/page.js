@@ -100,6 +100,8 @@ export default function ReelsPage() {
   const [savingUsername, setSavingUsername] = useState(false);
   const [usernameError, setUsernameError] = useState("");
   const [userBadges, setUserBadges] = useState(new Map());
+  const [followingUsers, setFollowingUsers] = useState(new Set());
+  const [followLoading, setFollowLoading] = useState(new Set());
   const REELS_PER_PAGE = 20;
 
   // Fetch reels from database with pagination
@@ -318,6 +320,30 @@ export default function ReelsPage() {
     };
 
     fetchLikedReels();
+  }, [user]);
+
+  // Fetch user's following list
+  useEffect(() => {
+    const fetchFollowing = async () => {
+      if (!user) {
+        setFollowingUsers(new Set());
+        return;
+      }
+
+      try {
+        const response = await fetch(
+          `/api/followers?userId=${user.uid}&type=following`
+        );
+        const data = await response.json();
+        if (data.users) {
+          setFollowingUsers(new Set(data.users.map((u) => u.id)));
+        }
+      } catch (error) {
+        console.error("Error fetching following:", error);
+      }
+    };
+
+    fetchFollowing();
   }, [user]);
 
   // Handle scroll/swipe navigation
@@ -789,6 +815,98 @@ export default function ReelsPage() {
                                 {userBadges.get(reel.user_id).badge.emoji}
                               </span>
                             )}
+
+                          {/* Follow Button - Only show if not own reel */}
+                          {user && reel.user_id !== user.uid && (
+                            <button
+                              onClick={async (e) => {
+                                e.stopPropagation();
+
+                                // Check if user is logged in
+                                if (!user) {
+                                  setShowLogin(true);
+                                  return;
+                                }
+
+                                // Check if user has set username
+                                if (!currentUserUsername) {
+                                  setShowUsernamePrompt(true);
+                                  return;
+                                }
+
+                                const isFollowing = followingUsers.has(
+                                  reel.user_id
+                                );
+
+                                // Add to loading state
+                                setFollowLoading((prev) =>
+                                  new Set(prev).add(reel.user_id)
+                                );
+
+                                try {
+                                  if (isFollowing) {
+                                    // Unfollow
+                                    const response = await fetch(
+                                      `/api/followers?followerId=${user.uid}&followingId=${reel.user_id}`,
+                                      { method: "DELETE" }
+                                    );
+
+                                    if (response.ok) {
+                                      setFollowingUsers((prev) => {
+                                        const newSet = new Set(prev);
+                                        newSet.delete(reel.user_id);
+                                        return newSet;
+                                      });
+                                    }
+                                  } else {
+                                    // Follow
+                                    const response = await fetch(
+                                      "/api/followers",
+                                      {
+                                        method: "POST",
+                                        headers: {
+                                          "Content-Type": "application/json",
+                                        },
+                                        body: JSON.stringify({
+                                          followerId: user.uid,
+                                          followingId: reel.user_id,
+                                        }),
+                                      }
+                                    );
+
+                                    if (response.ok) {
+                                      setFollowingUsers((prev) =>
+                                        new Set(prev).add(reel.user_id)
+                                      );
+                                    }
+                                  }
+                                } catch (error) {
+                                  console.error(
+                                    "Error toggling follow:",
+                                    error
+                                  );
+                                } finally {
+                                  setFollowLoading((prev) => {
+                                    const newSet = new Set(prev);
+                                    newSet.delete(reel.user_id);
+                                    return newSet;
+                                  });
+                                }
+                              }}
+                              disabled={followLoading.has(reel.user_id)}
+                              className={`px-3 py-1 rounded-full text-[10px] font-semibold transition-all ${
+                                followingUsers.has(reel.user_id)
+                                  ? "bg-white/20 text-white hover:bg-white/30"
+                                  : "bg-white text-black hover:bg-white/90"
+                              } disabled:opacity-50`}
+                            >
+                              {followLoading.has(reel.user_id)
+                                ? "..."
+                                : followingUsers.has(reel.user_id)
+                                ? "Following"
+                                : "Follow"}
+                            </button>
+                          )}
 
                           <span className="text-gray-300 text-xs">•</span>
                           <p className="text-gray-300 text-xs drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">

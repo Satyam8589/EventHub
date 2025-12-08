@@ -35,6 +35,13 @@ export default function ProfilePage() {
   const [selectedReel, setSelectedReel] = useState(null);
   const [showCommentsModal, setShowCommentsModal] = useState(false);
   const [selectedReelForComments, setSelectedReelForComments] = useState(null);
+  const [followersCount, setFollowersCount] = useState(0);
+  const [followingCount, setFollowingCount] = useState(0);
+  const [showFollowersModal, setShowFollowersModal] = useState(false);
+  const [showFollowingModal, setShowFollowingModal] = useState(false);
+  const [followersList, setFollowersList] = useState([]);
+  const [followingList, setFollowingList] = useState([]);
+  const [loadingFollowers, setLoadingFollowers] = useState(false);
 
   const { user, loading: authLoading, signOut } = useAuth();
   const router = useRouter();
@@ -185,6 +192,27 @@ export default function ProfilePage() {
     fetchUsername();
   }, [user]);
 
+  // Fetch followers and following count
+  useEffect(() => {
+    const fetchFollowCounts = async () => {
+      if (!user) return;
+
+      try {
+        const response = await fetch(`/api/followers?userId=${user.uid}`);
+        const data = await response.json();
+
+        if (response.ok) {
+          setFollowersCount(data.followersCount || 0);
+          setFollowingCount(data.followingCount || 0);
+        }
+      } catch (error) {
+        console.error("Error fetching follow counts:", error);
+      }
+    };
+
+    fetchFollowCounts();
+  }, [user]);
+
   const saveUsername = async () => {
     if (!usernameInput.trim()) {
       setUsernameError("Username cannot be empty");
@@ -229,6 +257,50 @@ export default function ProfilePage() {
       setUsernameError("Failed to save username. Please try again.");
     } finally {
       setUsernameSaving(false);
+    }
+  };
+
+  // Fetch followers list
+  const fetchFollowersList = async () => {
+    if (!user) return;
+
+    setLoadingFollowers(true);
+    try {
+      const response = await fetch(
+        `/api/followers?userId=${user.uid}&type=followers`
+      );
+      const data = await response.json();
+
+      if (response.ok) {
+        setFollowersList(data.users || []);
+        setShowFollowersModal(true);
+      }
+    } catch (error) {
+      console.error("Error fetching followers list:", error);
+    } finally {
+      setLoadingFollowers(false);
+    }
+  };
+
+  // Fetch following list
+  const fetchFollowingList = async () => {
+    if (!user) return;
+
+    setLoadingFollowers(true);
+    try {
+      const response = await fetch(
+        `/api/followers?userId=${user.uid}&type=following`
+      );
+      const data = await response.json();
+
+      if (response.ok) {
+        setFollowingList(data.users || []);
+        setShowFollowingModal(true);
+      }
+    } catch (error) {
+      console.error("Error fetching following list:", error);
+    } finally {
+      setLoadingFollowers(false);
     }
   };
 
@@ -617,23 +689,29 @@ export default function ProfilePage() {
 
               {/* User Stats */}
               <div className="grid grid-cols-3 gap-4 max-w-md mx-auto md:mx-0">
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-blue-400">
-                    {bookingStats.total}
+                <button
+                  onClick={fetchFollowersList}
+                  className="text-center hover:bg-white/5 rounded-lg p-2 transition-all cursor-pointer"
+                >
+                  <div className="text-2xl font-bold text-cyan-400">
+                    {followersCount}
                   </div>
-                  <div className="text-sm text-white/60">Total Events</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-green-400">
-                    {bookingStats.upcoming}
+                  <div className="text-sm text-white/60">Followers</div>
+                </button>
+                <button
+                  onClick={fetchFollowingList}
+                  className="text-center hover:bg-white/5 rounded-lg p-2 transition-all cursor-pointer"
+                >
+                  <div className="text-2xl font-bold text-indigo-400">
+                    {followingCount}
                   </div>
-                  <div className="text-sm text-white/60">Upcoming</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-gray-400">
-                    {bookingStats.completed}
+                  <div className="text-sm text-white/60">Following</div>
+                </button>
+                <div className="text-center p-2">
+                  <div className="text-2xl font-bold text-pink-400">
+                    {userReels.length}
                   </div>
-                  <div className="text-sm text-white/60">Completed</div>
+                  <div className="text-sm text-white/60">Total Reels</div>
                 </div>
               </div>
             </div>
@@ -755,12 +833,32 @@ export default function ProfilePage() {
 
                     <div className="bg-green-600/20 border border-green-500/30 rounded-lg p-4">
                       <h3 className="text-green-400 font-semibold mb-2 text-sm">
-                        Total Bookings
+                        Total Events
                       </h3>
                       <p className="text-white text-xl font-bold">
                         {bookingStats.total}
                       </p>
                       <p className="text-white/60 text-xs">Events attended</p>
+                    </div>
+
+                    <div className="bg-yellow-600/20 border border-yellow-500/30 rounded-lg p-4">
+                      <h3 className="text-yellow-400 font-semibold mb-2 text-sm">
+                        Upcoming
+                      </h3>
+                      <p className="text-white text-xl font-bold">
+                        {bookingStats.upcoming}
+                      </p>
+                      <p className="text-white/60 text-xs">Events coming</p>
+                    </div>
+
+                    <div className="bg-emerald-600/20 border border-emerald-500/30 rounded-lg p-4">
+                      <h3 className="text-emerald-400 font-semibold mb-2 text-sm">
+                        Completed
+                      </h3>
+                      <p className="text-white text-xl font-bold">
+                        {bookingStats.completed}
+                      </p>
+                      <p className="text-white/60 text-xs">Events finished</p>
                     </div>
 
                     <div className="bg-purple-600/20 border border-purple-500/30 rounded-lg p-4">
@@ -771,16 +869,6 @@ export default function ProfilePage() {
                         {user.role || "Event Attendee"}
                       </p>
                       <p className="text-white/60 text-xs">Account type</p>
-                    </div>
-
-                    <div className="bg-pink-600/20 border border-pink-500/30 rounded-lg p-4">
-                      <h3 className="text-pink-400 font-semibold mb-2 text-sm">
-                        Total Reels
-                      </h3>
-                      <p className="text-white text-xl font-bold">
-                        {userReels.length}
-                      </p>
-                      <p className="text-white/60 text-xs">Reels posted</p>
                     </div>
                   </div>
 
@@ -1599,6 +1687,168 @@ export default function ProfilePage() {
           currentUser={user}
           reelOwnerId={selectedReelForComments.user_id}
         />
+      )}
+
+      {/* Followers Modal */}
+      {showFollowersModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl p-6 max-w-md w-full max-h-[80vh] flex flex-col border border-white/10 shadow-2xl">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-4 pb-4 border-b border-white/10">
+              <h3 className="text-xl font-bold text-white">Followers</h3>
+              <button
+                onClick={() => setShowFollowersModal(false)}
+                className="text-white/60 hover:text-white transition-colors"
+              >
+                <svg
+                  className="w-6 h-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+
+            {/* Loading State */}
+            {loadingFollowers && (
+              <div className="flex justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-400"></div>
+              </div>
+            )}
+
+            {/* Users List */}
+            {!loadingFollowers && (
+              <div className="overflow-y-auto flex-1 space-y-3">
+                {followersList.length === 0 ? (
+                  <p className="text-white/60 text-center py-8">
+                    No followers yet
+                  </p>
+                ) : (
+                  followersList.map((follower) => (
+                    <div
+                      key={follower.id}
+                      className="flex items-center gap-3 p-3 rounded-lg hover:bg-white/5 transition-colors"
+                    >
+                      {follower.photoURL ? (
+                        <img
+                          src={follower.photoURL}
+                          alt={follower.username || "User"}
+                          className="w-12 h-12 rounded-full object-cover border-2 border-cyan-400/50"
+                          onError={(e) => {
+                            e.target.style.display = "none";
+                            e.target.nextSibling.style.display = "flex";
+                          }}
+                        />
+                      ) : null}
+                      <div
+                        className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-white font-bold text-lg border-2 border-cyan-400/50"
+                        style={{ display: follower.photoURL ? "none" : "flex" }}
+                      >
+                        {(follower.username ||
+                          follower.email ||
+                          "U")[0].toUpperCase()}
+                      </div>
+                      <div>
+                        <div className="text-white font-semibold">
+                          {follower.username || "Anonymous"}
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Following Modal */}
+      {showFollowingModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl p-6 max-w-md w-full max-h-[80vh] flex flex-col border border-white/10 shadow-2xl">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-4 pb-4 border-b border-white/10">
+              <h3 className="text-xl font-bold text-white">Following</h3>
+              <button
+                onClick={() => setShowFollowingModal(false)}
+                className="text-white/60 hover:text-white transition-colors"
+              >
+                <svg
+                  className="w-6 h-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+
+            {/* Loading State */}
+            {loadingFollowers && (
+              <div className="flex justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-400"></div>
+              </div>
+            )}
+
+            {/* Users List */}
+            {!loadingFollowers && (
+              <div className="overflow-y-auto flex-1 space-y-3">
+                {followingList.length === 0 ? (
+                  <p className="text-white/60 text-center py-8">
+                    Not following anyone yet
+                  </p>
+                ) : (
+                  followingList.map((following) => (
+                    <div
+                      key={following.id}
+                      className="flex items-center gap-3 p-3 rounded-lg hover:bg-white/5 transition-colors"
+                    >
+                      {following.photoURL ? (
+                        <img
+                          src={following.photoURL}
+                          alt={following.username || "User"}
+                          className="w-12 h-12 rounded-full object-cover border-2 border-indigo-400/50"
+                          onError={(e) => {
+                            e.target.style.display = "none";
+                            e.target.nextSibling.style.display = "flex";
+                          }}
+                        />
+                      ) : null}
+                      <div
+                        className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg border-2 border-indigo-400/50"
+                        style={{
+                          display: following.photoURL ? "none" : "flex",
+                        }}
+                      >
+                        {(following.username ||
+                          following.email ||
+                          "U")[0].toUpperCase()}
+                      </div>
+                      <div>
+                        <div className="text-white font-semibold">
+                          {following.username || "Anonymous"}
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { sendPushNotificationToMultiple } from "@/lib/pushNotification";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -52,15 +53,20 @@ export async function GET(request) {
 
         return {
           ...reel,
-          users: user || { id: reel.user_id, email: "Unknown", name: "Anonymous", username: null },
+          users: user || {
+            id: reel.user_id,
+            email: "Unknown",
+            name: "Anonymous",
+            username: null,
+          },
         };
       })
     );
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       reels: reelsWithUsers,
       source: "database",
-      count: reelsWithUsers.length
+      count: reelsWithUsers.length,
     });
   } catch (error) {
     console.error("Error in GET /api/reels:", error);
@@ -114,12 +120,65 @@ export async function POST(request) {
       .eq("id", reel.user_id)
       .single();
 
-    return NextResponse.json({ 
-      reel: {
-        ...reel,
-        users: user || { id: reel.user_id, email: "Unknown", name: "Anonymous", username: null }
+    // Send push notifications to followers
+    try {
+      // Get all followers of the user who posted the reel
+      const { data: followers } = await supabase
+        .from("followers")
+        .select("follower_id")
+        .eq("following_id", userId);
+
+      if (followers && followers.length > 0) {
+        // Get push subscriptions for all followers
+        const followerIds = followers.map((f) => f.follower_id);
+        const { data: subscriptions } = await supabase
+          .from("push_subscriptions")
+          .select("subscription")
+          .in("user_id", followerIds);
+
+        if (subscriptions && subscriptions.length > 0) {
+          // Send push notification to all followers
+          const username = user?.username || user?.name || "A user";
+          await sendPushNotificationToMultiple(
+            subscriptions.map((s) => s.subscription),
+            {
+              title: "New Reel Posted! 🎬",
+              message: `${username} just posted a new reel: ${title}`,
+              icon: user?.avatar || "/icon-192.png",
+              badge: "/icon-192.png",
+              tag: `new-reel-${reel.id}`,
+              data: {
+                type: "new_reel",
+                reelId: reel.id,
+                userId: userId,
+                url: "/reels",
+              },
+            }
+          );
+        }
       }
-    }, { status: 201 });
+    } catch (notificationError) {
+      console.error(
+        "Error sending notifications to followers:",
+        notificationError
+      );
+      // Don't fail the request if notifications fail
+    }
+
+    return NextResponse.json(
+      {
+        reel: {
+          ...reel,
+          users: user || {
+            id: reel.user_id,
+            email: "Unknown",
+            name: "Anonymous",
+            username: null,
+          },
+        },
+      },
+      { status: 201 }
+    );
   } catch (error) {
     console.error("Error in POST /api/reels:", error);
     return NextResponse.json(
