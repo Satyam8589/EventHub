@@ -38,13 +38,13 @@ export async function GET(request, context) {
       (comments || []).map(async (comment) => {
         const { data: user } = await supabase
           .from("users")
-          .select("id, email, name, username")
+          .select("id, email, name, username, avatar")
           .eq("id", comment.user_id)
           .single();
 
         return {
           ...comment,
-          users: user || { id: comment.user_id, email: "Unknown", name: "Anonymous", username: null },
+          users: user || { id: comment.user_id, email: "Unknown", name: "Anonymous", username: null, avatar: null },
         };
       })
     );
@@ -112,14 +112,14 @@ export async function POST(request, context) {
     // Fetch user data
     const { data: user } = await supabase
       .from("users")
-      .select("id, email, name, username")
+      .select("id, email, name, username, avatar")
       .eq("id", newComment.user_id)
       .single();
 
     return NextResponse.json({ 
       comment: {
         ...newComment,
-        users: user || { id: newComment.user_id, email: "Unknown", name: "Anonymous", username: null }
+        users: user || { id: newComment.user_id, email: "Unknown", name: "Anonymous", username: null, avatar: null }
       }
     }, { status: 201 });
   } catch (error) {

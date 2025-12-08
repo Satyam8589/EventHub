@@ -102,6 +102,15 @@ export default function ReelsPage() {
   const [userBadges, setUserBadges] = useState(new Map());
   const [followingUsers, setFollowingUsers] = useState(new Set());
   const [followLoading, setFollowLoading] = useState(new Set());
+  const [showSearchModal, setShowSearchModal] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [showReelViewerModal, setShowReelViewerModal] = useState(false);
+  const [selectedReelForViewer, setSelectedReelForViewer] = useState(null);
+  const [showLikeAnimation, setShowLikeAnimation] = useState({});
+  const lastTapTime = useRef({});
+  const isDoubleTapProcessing = useRef({});
   const REELS_PER_PAGE = 20;
 
   // Fetch reels from database with pagination
@@ -346,6 +355,149 @@ export default function ReelsPage() {
     fetchFollowing();
   }, [user]);
 
+  // Search users by username
+  const handleSearch = async (query) => {
+    if (!query.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    setSearchLoading(true);
+    try {
+      const response = await fetch(
+        `/api/users/search?query=${encodeURIComponent(query)}`
+      );
+      const data = await response.json();
+      if (response.ok) {
+        setSearchResults(data.users || []);
+      } else {
+        setSearchResults([]);
+      }
+    } catch (error) {
+      console.error("Error searching users:", error);
+      setSearchResults([]);
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+
+  // View user's reels from search
+  const viewUserReelsFromSearch = async (userData) => {
+    setSelectedUser(userData);
+    setLoadingUserReels(true);
+    setShowSearchModal(false);
+
+    try {
+      const response = await fetch(`/api/reels?userId=${userData.id}`);
+      const data = await response.json();
+      if (response.ok) {
+        setUserReels(data.reels || []);
+        setShowUserModal(true);
+      }
+    } catch (error) {
+      console.error("Error fetching user reels:", error);
+      setUserReels([]);
+    } finally {
+      setLoadingUserReels(false);
+    }
+  };
+
+  // Pause background reel when modal is open
+  useEffect(() => {
+    const currentVideo = document.querySelector(
+      `video[data-index="${currentIndex}"]`
+    );
+
+    if (showReelViewerModal || showUserModal || showSearchModal) {
+      // Pause the current background video when any modal is open
+      if (currentVideo) {
+        currentVideo.pause();
+      }
+    } else {
+      // Resume playing when modals are closed
+      if (currentVideo) {
+        currentVideo.play().catch((err) => {
+          console.log("Auto-play prevented:", err);
+        });
+      }
+    }
+  }, [showReelViewerModal, showUserModal, showSearchModal, currentIndex]);
+
+  // Handle double tap/click to like
+  const handleDoubleTapLike = async (reelId) => {
+    if (!user) {
+      setShowLogin(true);
+      return;
+    }
+
+    const isAlreadyLiked = likedReels.has(reelId);
+    
+    // Show animation
+    setShowLikeAnimation((prev) => ({ ...prev, [reelId]: true }));
+    setTimeout(() => {
+      setShowLikeAnimation((prev) => ({ ...prev, [reelId]: false }));
+    }, 1000);
+
+    // If already liked, don't unlike on double tap
+    if (isAlreadyLiked) {
+      return;
+    }
+
+    // Add to liked reels immediately for UI feedback
+    setLikedReels((prev) => new Set(prev).add(reelId));
+
+    // Update like count in UI
+    setReels((prev) =>
+      prev.map((r) =>
+        r.id === reelId
+          ? { ...r, likes_count: (r.likes_count || 0) + 1 }
+          : r
+      )
+    );
+
+    // Make API call
+    try {
+      const response = await fetch(`/api/reels/${reelId}/like`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: user.uid,
+        }),
+      });
+
+      if (!response.ok) {
+        // Revert on error
+        setLikedReels((prev) => {
+          const newSet = new Set(prev);
+          newSet.delete(reelId);
+          return newSet;
+        });
+        setReels((prev) =>
+          prev.map((r) =>
+            r.id === reelId
+              ? { ...r, likes_count: (r.likes_count || 1) - 1 }
+              : r
+          )
+        );
+      }
+    } catch (error) {
+      console.error("Error liking reel:", error);
+      // Revert on error
+      setLikedReels((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(reelId);
+        return newSet;
+      });
+      setReels((prev) =>
+        prev.map((r) =>
+          r.id === reelId
+            ? { ...r, likes_count: (r.likes_count || 1) - 1 }
+            : r
+        )
+      );
+    }
+  };
+
   // Handle scroll/swipe navigation
   const scrollToReel = useCallback(
     (index) => {
@@ -505,15 +657,36 @@ export default function ReelsPage() {
             <Navbar setShowLogin={setShowLogin} setShowSignup={setShowSignup} />
           </div>
 
-          {/* Upload Reel Button - Only show when user is logged in */}
+          {/* Search and Upload Buttons - Only show when user is logged in */}
           {user && (
-            <button
-              onClick={handleUploadClick}
-              className="absolute top-3 right-4 w-8 h-8 bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 rounded-full flex items-center justify-center text-white text-xl font-bold shadow-lg hover:scale-110 transition-all z-10"
-              title="Upload Reel"
-            >
-              +
-            </button>
+            <>
+              <button
+                onClick={() => setShowSearchModal(true)}
+                className="absolute top-3 right-16 w-8 h-8 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 rounded-full flex items-center justify-center text-white shadow-lg hover:scale-110 transition-all z-10"
+                title="Find Users"
+              >
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                  />
+                </svg>
+              </button>
+              <button
+                onClick={handleUploadClick}
+                className="absolute top-3 right-4 w-8 h-8 bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 rounded-full flex items-center justify-center text-white text-xl font-bold shadow-lg hover:scale-110 transition-all z-10"
+                title="Upload Reel"
+              >
+                +
+              </button>
+            </>
           )}
         </div>
       </div>
@@ -644,6 +817,7 @@ export default function ReelsPage() {
                   {/* Main Image/Video */}
                   {reel.media_type === "video" ? (
                     <video
+                      data-index={index}
                       ref={(el) => {
                         if (el && index === currentIndex) {
                           // Add error listener
@@ -664,13 +838,36 @@ export default function ReelsPage() {
                         }
                       }}
                       onClick={(e) => {
-                        const video = e.target;
-                        if (video.paused) {
-                          video
-                            .play()
-                            .catch((err) => console.log("Play error:", err));
+                        const now = Date.now();
+                        const reelId = reel.id;
+                        const lastTap = lastTapTime.current[reelId] || 0;
+                        const timeSinceLastTap = now - lastTap;
+
+                        // Ignore clicks that happen right after a double-tap
+                        if (isDoubleTapProcessing.current[reelId]) {
+                          return;
+                        }
+
+                        if (timeSinceLastTap < 300 && timeSinceLastTap > 0) {
+                          // Double tap detected
+                          handleDoubleTapLike(reelId);
+                          lastTapTime.current[reelId] = 0;
+                          // Set flag to prevent next click from processing
+                          isDoubleTapProcessing.current[reelId] = true;
+                          setTimeout(() => {
+                            isDoubleTapProcessing.current[reelId] = false;
+                          }, 400);
                         } else {
-                          video.pause();
+                          // Single tap - play/pause video
+                          const video = e.target;
+                          if (video.paused) {
+                            video
+                              .play()
+                              .catch((err) => console.log("Play error:", err));
+                          } else {
+                            video.pause();
+                          }
+                          lastTapTime.current[reelId] = now;
                         }
                       }}
                       onError={(e) => {
@@ -700,8 +897,48 @@ export default function ReelsPage() {
                     <img
                       src={reel.media_url}
                       alt={reel.title}
-                      className="w-full h-full object-contain"
+                      className="w-full h-full object-contain cursor-pointer"
+                      onClick={(e) => {
+                        const now = Date.now();
+                        const reelId = reel.id;
+                        const lastTap = lastTapTime.current[reelId] || 0;
+                        const timeSinceLastTap = now - lastTap;
+
+                        // Ignore clicks that happen right after a double-tap
+                        if (isDoubleTapProcessing.current[reelId]) {
+                          return;
+                        }
+
+                        if (timeSinceLastTap < 300 && timeSinceLastTap > 0) {
+                          // Double tap detected
+                          handleDoubleTapLike(reelId);
+                          lastTapTime.current[reelId] = 0;
+                          // Set flag to prevent next click from processing
+                          isDoubleTapProcessing.current[reelId] = true;
+                          setTimeout(() => {
+                            isDoubleTapProcessing.current[reelId] = false;
+                          }, 400);
+                        } else {
+                          // Single tap - just record the tap time
+                          lastTapTime.current[reelId] = now;
+                        }
+                      }}
                     />
+                  )}
+
+                  {/* Like Animation Heart */}
+                  {showLikeAnimation[reel.id] && (
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
+                      <div className="animate-like-burst">
+                        <svg
+                          className="w-32 h-32 text-white drop-shadow-2xl"
+                          fill="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                        </svg>
+                      </div>
+                    </div>
                   )}
 
                   {/* Gradient Overlays */}
@@ -925,6 +1162,11 @@ export default function ReelsPage() {
                     {/* Like Button */}
                     <button
                       onClick={async () => {
+                        // Ignore clicks during double-tap processing
+                        if (isDoubleTapProcessing.current[reel.id]) {
+                          return;
+                        }
+
                         // Check if user is logged in
                         if (!user) {
                           setShowLogin(true);
@@ -1285,6 +1527,161 @@ export default function ReelsPage() {
         </div>
       )}
 
+      {/* Search Users Modal */}
+      {showSearchModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+          onClick={() => {
+            setShowSearchModal(false);
+            setSearchQuery("");
+            setSearchResults([]);
+          }}
+        >
+          <div
+            className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl p-6 max-w-md w-full max-h-[80vh] flex flex-col border border-white/10 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between mb-4 pb-4 border-b border-white/10">
+              <h3 className="text-xl font-bold text-white">Find Users</h3>
+              <button
+                onClick={() => {
+                  setShowSearchModal(false);
+                  setSearchQuery("");
+                  setSearchResults([]);
+                }}
+                className="text-white/60 hover:text-white transition-colors"
+              >
+                <svg
+                  className="w-6 h-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+
+            {/* Search Input */}
+            <div className="mb-4">
+              <div className="relative">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    handleSearch(e.target.value);
+                  }}
+                  placeholder="Search by username..."
+                  className="w-full bg-white/10 text-white placeholder-white/50 px-4 py-3 pl-10 rounded-lg border border-white/20 focus:border-cyan-400 focus:outline-none transition-colors"
+                  autoFocus
+                />
+                <svg
+                  className="absolute left-3 top-3.5 w-5 h-5 text-white/50"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                  />
+                </svg>
+              </div>
+            </div>
+
+            {/* Search Results */}
+            <div className="overflow-y-auto flex-1">
+              {searchLoading ? (
+                <div className="flex justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-400"></div>
+                </div>
+              ) : searchQuery && searchResults.length === 0 ? (
+                <p className="text-white/60 text-center py-8">No users found</p>
+              ) : searchResults.length > 0 ? (
+                <div className="space-y-2">
+                  {searchResults.map((user) => (
+                    <button
+                      key={user.id}
+                      onClick={() => viewUserReelsFromSearch(user)}
+                      className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-white/10 transition-colors"
+                    >
+                      {user.avatar ? (
+                        <img
+                          src={user.avatar}
+                          alt={user.username || "User"}
+                          className="w-12 h-12 rounded-full object-cover border-2 border-cyan-400/50"
+                          onError={(e) => {
+                            e.target.style.display = "none";
+                            e.target.nextSibling.style.display = "flex";
+                          }}
+                        />
+                      ) : null}
+                      <div
+                        className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-white font-bold text-lg border-2 border-cyan-400/50"
+                        style={{ display: user.avatar ? "none" : "flex" }}
+                      >
+                        {(user.username || user.email || "U")[0].toUpperCase()}
+                      </div>
+                      <div className="flex-1 text-left">
+                        <div className="text-white font-semibold">
+                          {user.username || "Anonymous"}
+                        </div>
+                        {user.name && (
+                          <div className="text-white/60 text-sm">
+                            {user.name}
+                          </div>
+                        )}
+                      </div>
+                      <svg
+                        className="w-5 h-5 text-white/40"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M9 5l7 7-7 7"
+                        />
+                      </svg>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <svg
+                    className="w-16 h-16 mx-auto text-white/20 mb-3"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                    />
+                  </svg>
+                  <p className="text-white/60 text-sm">
+                    Search for users by their username
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Upload Reel Modal */}
       {showUploadModal && (
         <UploadReelModal
@@ -1399,15 +1796,8 @@ export default function ReelsPage() {
                       key={reel.id}
                       className="group cursor-pointer"
                       onClick={() => {
-                        // Close user modal and scroll to this reel in main view
-                        setShowUserModal(false);
-                        setSelectedUser(null);
-                        const reelIndex = reels.findIndex(
-                          (r) => r.id === reel.id
-                        );
-                        if (reelIndex !== -1) {
-                          scrollToReel(reelIndex);
-                        }
+                        setSelectedReelForViewer(reel);
+                        setShowReelViewerModal(true);
                       }}
                     >
                       <div className="relative aspect-[9/16] rounded-lg overflow-hidden bg-black">
@@ -1447,6 +1837,165 @@ export default function ReelsPage() {
                   ))}
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reel Viewer Modal */}
+      {showReelViewerModal && selectedReelForViewer && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/95 backdrop-blur-sm p-4"
+          onClick={() => {
+            setShowReelViewerModal(false);
+            setSelectedReelForViewer(null);
+          }}
+        >
+          <div
+            className="relative w-full max-w-md max-h-[90vh] bg-gradient-to-br from-gray-900 to-black rounded-2xl overflow-hidden shadow-2xl border border-white/10"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Close Button */}
+            <button
+              onClick={() => {
+                setShowReelViewerModal(false);
+                setSelectedReelForViewer(null);
+              }}
+              className="absolute top-4 right-4 z-10 w-10 h-10 bg-black/50 hover:bg-black/70 rounded-full flex items-center justify-center text-white transition-colors"
+            >
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+
+            {/* Reel Content */}
+            <div className="relative aspect-[9/16] bg-black">
+              {selectedReelForViewer.media_type === "video" ? (
+                <video
+                  className="w-full h-full object-contain"
+                  controls
+                  autoPlay
+                  loop
+                  playsInline
+                >
+                  <source
+                    src={selectedReelForViewer.media_url}
+                    type={getVideoMimeType(selectedReelForViewer.media_url)}
+                  />
+                </video>
+              ) : (
+                <img
+                  src={selectedReelForViewer.media_url}
+                  alt={selectedReelForViewer.title}
+                  className="w-full h-full object-contain"
+                />
+              )}
+
+              {/* Reel Info Overlay */}
+              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent p-4">
+                <h3 className="text-white font-bold text-lg mb-1">
+                  {selectedReelForViewer.title}
+                </h3>
+                {selectedReelForViewer.description && (
+                  <p className="text-white/80 text-sm mb-2 line-clamp-2">
+                    {selectedReelForViewer.description}
+                  </p>
+                )}
+                <div className="flex items-center gap-4 text-white/80 text-sm">
+                  <span>❤️ {selectedReelForViewer.likes_count || 0}</span>
+                  <span>💬 {selectedReelForViewer.comments_count || 0}</span>
+                  <span>👁️ {selectedReelForViewer.views_count || 0}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="p-4 bg-black/50 border-t border-white/10 flex gap-2">
+              <button
+                onClick={async () => {
+                  if (!user) {
+                    setShowLogin(true);
+                    return;
+                  }
+
+                  const isLiked = likedReels.has(selectedReelForViewer.id);
+                  const newLikesCount = isLiked
+                    ? (selectedReelForViewer.likes_count || 1) - 1
+                    : (selectedReelForViewer.likes_count || 0) + 1;
+
+                  try {
+                    const response = await fetch("/api/reels/like", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        reelId: selectedReelForViewer.id,
+                        userId: user.uid,
+                      }),
+                    });
+
+                    if (response.ok) {
+                      setLikedReels((prev) => {
+                        const newSet = new Set(prev);
+                        if (isLiked) {
+                          newSet.delete(selectedReelForViewer.id);
+                        } else {
+                          newSet.add(selectedReelForViewer.id);
+                        }
+                        return newSet;
+                      });
+
+                      setSelectedReelForViewer((prev) => ({
+                        ...prev,
+                        likes_count: newLikesCount,
+                      }));
+
+                      setUserReels((prev) =>
+                        prev.map((r) =>
+                          r.id === selectedReelForViewer.id
+                            ? { ...r, likes_count: newLikesCount }
+                            : r
+                        )
+                      );
+                    }
+                  } catch (error) {
+                    console.error("Error toggling like:", error);
+                  }
+                }}
+                className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition-all ${
+                  likedReels.has(selectedReelForViewer.id)
+                    ? "bg-pink-500 text-white"
+                    : "bg-white/10 text-white hover:bg-white/20"
+                }`}
+              >
+                <span className="text-xl">
+                  {likedReels.has(selectedReelForViewer.id) ? "❤️" : "🤍"}
+                </span>
+                <span className="font-semibold">Like</span>
+              </button>
+              <button
+                onClick={() => {
+                  if (!user) {
+                    setShowLogin(true);
+                    return;
+                  }
+                  setSelectedReelForComments(selectedReelForViewer);
+                  setShowCommentsModal(true);
+                }}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-white/10 text-white hover:bg-white/20 transition-all"
+              >
+                <span className="text-xl">💬</span>
+                <span className="font-semibold">Comment</span>
+              </button>
             </div>
           </div>
         </div>
@@ -1516,6 +2065,32 @@ export default function ReelsPage() {
 
         .animate-like-bounce {
           animation: like-bounce 0.6s ease-out;
+        }
+
+        @keyframes like-burst {
+          0% {
+            transform: scale(0);
+            opacity: 0;
+          }
+          15% {
+            transform: scale(1.2);
+            opacity: 1;
+          }
+          30% {
+            transform: scale(0.95);
+          }
+          45%, 80% {
+            transform: scale(1);
+            opacity: 1;
+          }
+          100% {
+            transform: scale(0);
+            opacity: 0;
+          }
+        }
+
+        .animate-like-burst {
+          animation: like-burst 1s ease-out;
         }
       `}</style>
     </div>

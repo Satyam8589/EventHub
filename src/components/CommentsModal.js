@@ -178,7 +178,21 @@ export default function CommentsModal({
               {comments.map((comment) => (
                 <div key={comment.id} className="flex gap-3">
                   {/* Avatar */}
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                  {comment.users?.avatar ? (
+                    <img
+                      src={comment.users.avatar}
+                      alt={comment.users.username || "User"}
+                      className="w-8 h-8 rounded-full object-cover flex-shrink-0 border-2 border-white/20"
+                      onError={(e) => {
+                        e.target.style.display = "none";
+                        e.target.nextSibling.style.display = "flex";
+                      }}
+                    />
+                  ) : null}
+                  <div
+                    className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm flex-shrink-0"
+                    style={{ display: comment.users?.avatar ? "none" : "flex" }}
+                  >
                     {comment.users?.username?.[0]?.toUpperCase() || "U"}
                   </div>
 
