@@ -57,6 +57,7 @@ export default function ProfilePage() {
   const [copiedReelId, setCopiedReelId] = useState(null);
   const [showProfileCard, setShowProfileCard] = useState(false);
   const [cardCopied, setCardCopied] = useState(false);
+  const [showNoReelsPopup, setShowNoReelsPopup] = useState(false);
   const cardRef = useRef(null);
 
   const { user, loading: authLoading, signOut } = useAuth();
@@ -984,7 +985,14 @@ export default function ProfilePage() {
             {/* Actions */}
             <div className="flex flex-col space-y-2">
               <button
-                onClick={() => setShowProfileCard(true)}
+                onClick={() => {
+                  // Check if user has created any reels
+                  if (!userReels || userReels.length === 0) {
+                    setShowNoReelsPopup(true);
+                  } else {
+                    setShowProfileCard(true);
+                  }
+                }}
                 className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white px-4 py-2 rounded-lg transition-all text-center font-medium shadow-lg hover:scale-105 transform"
               >
                 🎴 Create Profile Card
@@ -3278,6 +3286,71 @@ export default function ProfilePage() {
                   </>
                 )}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* No Reels Popup */}
+      {showNoReelsPopup && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-3xl p-8 max-w-md w-full shadow-2xl transform animate-scale-in">
+            {/* Decorative elements */}
+            <div className="absolute -top-10 -right-10 w-32 h-32 bg-purple-400/20 rounded-full blur-3xl"></div>
+            <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-pink-400/20 rounded-full blur-3xl"></div>
+
+            <div className="relative">
+              {/* Icon */}
+              <div className="flex justify-center mb-6">
+                <div className="relative">
+                  <div className="absolute inset-0 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full blur-xl opacity-50 animate-pulse"></div>
+                  <div className="relative bg-gradient-to-r from-purple-500 to-pink-500 w-24 h-24 rounded-full flex items-center justify-center">
+                    <svg
+                      className="w-12 h-12 text-white"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
+                      />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+
+              {/* Title */}
+              <h3 className="text-2xl font-bold text-center mb-3 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                Create Your Moments First! ✨
+              </h3>
+
+              {/* Message */}
+              <p className="text-gray-600 text-center mb-8 leading-relaxed">
+                Please create your moments to unlock your personalized profile
+                card. Share your story with the world! 🎬
+              </p>
+
+              {/* Buttons */}
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowNoReelsPopup(false)}
+                  className="flex-1 px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-xl font-semibold transition-all"
+                >
+                  Maybe Later
+                </button>
+                <button
+                  onClick={() => {
+                    setShowNoReelsPopup(false);
+                    setShowUploadModal(true);
+                  }}
+                  className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-xl font-semibold shadow-lg shadow-purple-500/50 transition-all transform hover:scale-105"
+                >
+                  Create Reel 🎥
+                </button>
+              </div>
             </div>
           </div>
         </div>
