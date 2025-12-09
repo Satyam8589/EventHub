@@ -6,7 +6,7 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-// GET - Get user's username
+// GET - Get user's username and instagram_id
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -21,16 +21,22 @@ export async function GET(request) {
 
     const { data: user, error } = await supabase
       .from("users")
-      .select("username")
+      .select("username, instagram_id")
       .eq("id", userId)
       .single();
 
     if (error) {
-      console.error("Error fetching username:", error);
-      return NextResponse.json({ username: null }, { status: 200 });
+      console.error("Error fetching user data:", error);
+      return NextResponse.json(
+        { username: null, instagram_id: null },
+        { status: 200 }
+      );
     }
 
-    return NextResponse.json({ username: user?.username || null });
+    return NextResponse.json({
+      username: user?.username || null,
+      instagram_id: user?.instagram_id || null,
+    });
   } catch (error) {
     console.error("Error in GET /api/username:", error);
     return NextResponse.json(
@@ -116,6 +122,64 @@ export async function POST(request) {
     });
   } catch (error) {
     console.error("Error in POST /api/username:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}
+
+// PATCH - Update Instagram ID
+export async function PATCH(request) {
+  try {
+    const body = await request.json();
+    const { userId, instagram_id } = body;
+
+    if (!userId) {
+      return NextResponse.json(
+        { error: "User ID is required" },
+        { status: 400 }
+      );
+    }
+
+    // Allow empty instagram_id to remove it
+    if (
+      instagram_id !== undefined &&
+      instagram_id !== null &&
+      instagram_id !== ""
+    ) {
+      // Validate instagram ID format (optional validation)
+      const instagramRegex = /^[a-z0-9._]{1,30}$/i;
+      if (!instagramRegex.test(instagram_id)) {
+        return NextResponse.json(
+          { error: "Invalid Instagram ID format" },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Update instagram_id
+    const { data: updatedUser, error } = await supabase
+      .from("users")
+      .update({ instagram_id: instagram_id || null })
+      .eq("id", userId)
+      .select("instagram_id")
+      .single();
+
+    if (error) {
+      console.error("Error updating instagram_id:", error);
+      return NextResponse.json(
+        { error: "Failed to update Instagram ID" },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      instagram_id: updatedUser.instagram_id,
+    });
+  } catch (error) {
+    console.error("Error in PATCH /api/username:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

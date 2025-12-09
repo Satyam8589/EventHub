@@ -2219,307 +2219,446 @@ export default function ReelsPage() {
                 position: "fixed",
                 left: "-9999px",
                 top: "-9999px",
-                width: "380px",
+                width: "400px",
                 pointerEvents: "none",
               }}
             >
               <div
                 style={{
-                  background:
-                    "linear-gradient(135deg, #ec4899 0%, #a855f7 50%, #6366f1 100%)",
-                  padding: "4px",
-                  borderRadius: "24px",
+                  position: "relative",
+                  background: "white",
+                  borderRadius: "2rem",
+                  overflow: "hidden",
+                  aspectRatio: "3/4.5",
                 }}
               >
-                {/* Card Content */}
+                {/* Red Header Background */}
                 <div
                   style={{
-                    background: "white",
-                    borderRadius: "20px",
-                    padding: "32px 24px",
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: "20%",
+                    background:
+                      "linear-gradient(135deg, #dc2626 0%, #ef4444 100%)",
+                    borderRadius: "2rem 2rem 0 0",
+                    display: "flex",
+                    alignItems: "flex-start",
+                    justifyContent: "center",
+                    paddingTop: "1rem",
                   }}
                 >
-                  {/* User Avatar */}
                   <div
                     style={{
                       display: "flex",
-                      justifyContent: "center",
-                      marginBottom: "20px",
+                      alignItems: "center",
+                      gap: "0.5rem",
                     }}
                   >
-                    {selectedUser?.avatar ? (
-                      <div
-                        style={{
-                          background:
-                            "linear-gradient(135deg, #ec4899 0%, #a855f7 50%, #6366f1 100%)",
-                          padding: "3px",
-                          borderRadius: "50%",
-                          width: "108px",
-                          height: "108px",
-                        }}
+                    <svg width="24" height="24" viewBox="0 0 32 32" fill="none">
+                      <rect
+                        x="2"
+                        y="2"
+                        width="28"
+                        height="28"
+                        rx="6"
+                        fill="white"
+                      />
+                      <text
+                        x="16"
+                        y="23"
+                        fontSize="20"
+                        fontWeight="bold"
+                        fill="#dc2626"
+                        textAnchor="middle"
+                        fontFamily="Arial, sans-serif"
                       >
+                        E
+                      </text>
+                    </svg>
+                    <span
+                      style={{
+                        color: "white",
+                        fontSize: "1rem",
+                        fontWeight: "700",
+                        letterSpacing: "0.5px",
+                      }}
+                    >
+                      EventHubX
+                    </span>
+                  </div>
+                </div>
+
+                {/* Blur gradient at bottom of red header */}
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "16%",
+                    left: 0,
+                    right: 0,
+                    height: "8%",
+                    background:
+                      "linear-gradient(to bottom, rgba(239, 68, 68, 0.6), rgba(255, 255, 255, 0))",
+                    filter: "blur(8px)",
+                    pointerEvents: "none",
+                  }}
+                ></div>
+
+                {/* Content */}
+                <div
+                  style={{
+                    position: "relative",
+                    height: "100%",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    padding: "0.5rem 1.5rem 2rem 1.5rem",
+                  }}
+                >
+                  {/* Avatar - Positioned to overlap header */}
+                  <div
+                    style={{
+                      marginTop: "12%",
+                      marginBottom: "0.5rem",
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: "110px",
+                        height: "110px",
+                        borderRadius: "50%",
+                        border: "5px solid white",
+                        overflow: "hidden",
+                        boxShadow: "0 10px 40px rgba(0, 0, 0, 0.2)",
+                        background: "white",
+                      }}
+                    >
+                      {selectedUser?.avatar ? (
                         <img
                           src={selectedUser.avatar}
-                          alt={
-                            selectedUser.username || selectedUser.display_name
-                          }
+                          alt="Avatar"
                           style={{
-                            width: "102px",
-                            height: "102px",
-                            borderRadius: "50%",
+                            width: "100%",
+                            height: "100%",
                             objectFit: "cover",
-                            display: "block",
-                            background: "white",
                           }}
                           crossOrigin="anonymous"
                         />
-                      </div>
-                    ) : (
-                      <div
-                        style={{
-                          width: "108px",
-                          height: "108px",
-                          borderRadius: "50%",
-                          background:
-                            "linear-gradient(135deg, #ec4899 0%, #a855f7 50%, #6366f1 100%)",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          color: "white",
-                          fontWeight: "bold",
-                          fontSize: "42px",
-                        }}
-                      >
-                        {selectedUser?.username?.[0]?.toUpperCase() ||
-                          selectedUser?.display_name?.[0]?.toUpperCase() ||
-                          "U"}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* User Info */}
-                  <div style={{ textAlign: "center", marginBottom: "24px" }}>
-                    <h3
-                      style={{
-                        color: "#1f2937",
-                        fontWeight: "700",
-                        fontSize: "22px",
-                        marginBottom: "6px",
-                        wordWrap: "break-word",
-                      }}
-                    >
-                      {selectedUser?.display_name ||
-                        selectedUser?.username ||
-                        "User"}
-                    </h3>
-
-                    <p
-                      style={{
-                        color: "#6b7280",
-                        fontSize: "15px",
-                        marginBottom: "20px",
-                        wordWrap: "break-word",
-                      }}
-                    >
-                      @{selectedUser?.username || "username"}
-                    </p>
-
-                    {/* Stats */}
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "center",
-                        gap: "32px",
-                      }}
-                    >
-                      <div style={{ textAlign: "center" }}>
+                      ) : (
                         <div
                           style={{
-                            color: "#ec4899",
-                            fontWeight: "700",
-                            fontSize: "18px",
-                            marginBottom: "4px",
-                          }}
-                        >
-                          {userReels.length}
-                        </div>
-                        <div
-                          style={{
-                            fontSize: "13px",
-                            color: "#6b7280",
-                            fontWeight: "400",
-                          }}
-                        >
-                          Reels
-                        </div>
-                      </div>
-                      <div style={{ textAlign: "center" }}>
-                        <div
-                          style={{
-                            color: "#a855f7",
-                            fontWeight: "700",
-                            fontSize: "18px",
-                            marginBottom: "4px",
-                          }}
-                        >
-                          {followersCount}
-                        </div>
-                        <div
-                          style={{
-                            fontSize: "13px",
-                            color: "#6b7280",
-                            fontWeight: "400",
-                          }}
-                        >
-                          Followers
-                        </div>
-                      </div>
-                      <div style={{ textAlign: "center" }}>
-                        <div
-                          style={{
-                            color: "#6366f1",
-                            fontWeight: "700",
-                            fontSize: "18px",
-                            marginBottom: "4px",
-                          }}
-                        >
-                          {followingCount}
-                        </div>
-                        <div
-                          style={{
-                            fontSize: "13px",
-                            color: "#6b7280",
-                            fontWeight: "400",
-                          }}
-                        >
-                          Following
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Badge */}
-                  {userReels.length > 0 &&
-                    (() => {
-                      const badge = getBadgeForReelCount(userReels.length);
-                      return badge ? (
-                        <div
-                          style={{
-                            background: "#fef3f9",
-                            borderRadius: "12px",
-                            padding: "12px",
-                            marginBottom: "24px",
+                            width: "100%",
+                            height: "100%",
+                            background:
+                              "linear-gradient(135deg, #f97316, #ec4899, #9333ea)",
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
-                            gap: "8px",
+                            color: "white",
+                            fontSize: "3rem",
+                            fontWeight: "bold",
                           }}
                         >
-                          <span style={{ fontSize: "24px" }}>
-                            {badge.emoji}
-                          </span>
-                          <span
-                            style={{
-                              color: "#831843",
-                              fontWeight: "700",
-                              fontSize: "16px",
-                            }}
-                          >
-                            {badge.name} Creator
-                          </span>
+                          {(selectedUser?.username ||
+                            selectedUser?.display_name ||
+                            "U")[0].toUpperCase()}
                         </div>
-                      ) : null;
-                    })()}
+                      )}
+                    </div>
+                  </div>
 
-                  {/* QR Code */}
+                  {/* Name */}
+                  <h3
+                    style={{
+                      fontSize: "1.75rem",
+                      fontWeight: "800",
+                      color: "#1f2937",
+                      marginBottom: "0.25rem",
+                      textAlign: "center",
+                    }}
+                  >
+                    {selectedUser?.display_name ||
+                      selectedUser?.username ||
+                      "User"}
+                  </h3>
+
+                  {/* Profile Link */}
+                  {selectedUser?.username && (
+                    <p
+                      style={{
+                        fontSize: "0.875rem",
+                        color: "#dc2626",
+                        fontWeight: "600",
+                        marginBottom: "0.5rem",
+                        textAlign: "center",
+                      }}
+                    >
+                      <span style={{ marginRight: "0.25rem" }}>
+                        <svg
+                          width="14"
+                          height="14"
+                          viewBox="0 0 32 32"
+                          fill="none"
+                          style={{
+                            display: "inline-block",
+                            verticalAlign: "middle",
+                          }}
+                        >
+                          <rect
+                            x="4"
+                            y="4"
+                            width="24"
+                            height="24"
+                            rx="4"
+                            fill="#4F46E5"
+                          />
+                          <text
+                            x="16"
+                            y="22"
+                            fontSize="18"
+                            fontWeight="bold"
+                            fill="white"
+                            textAnchor="middle"
+                            fontFamily="Arial, sans-serif"
+                          >
+                            E
+                          </text>
+                        </svg>
+                      </span>
+                      eventhubx.site/u/{selectedUser.username}
+                    </p>
+                  )}
+
+                  {/* Instagram ID */}
+                  {selectedUser?.instagram_id && (
+                    <p
+                      style={{
+                        fontSize: "0.875rem",
+                        color: "#e91e63",
+                        fontWeight: "600",
+                        marginBottom: "0.5rem",
+                        textAlign: "center",
+                      }}
+                    >
+                      <span style={{ marginRight: "0.25rem" }}>
+                        <svg
+                          width="14"
+                          height="14"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          style={{
+                            display: "inline-block",
+                            verticalAlign: "middle",
+                          }}
+                        >
+                          <rect
+                            x="2"
+                            y="2"
+                            width="20"
+                            height="20"
+                            rx="5"
+                            stroke="#e91e63"
+                            strokeWidth="2"
+                          />
+                          <circle
+                            cx="12"
+                            cy="12"
+                            r="4"
+                            stroke="#e91e63"
+                            strokeWidth="2"
+                          />
+                          <circle cx="18" cy="6" r="1.5" fill="#e91e63" />
+                        </svg>
+                      </span>
+                      {selectedUser.instagram_id}
+                    </p>
+                  )}
+
+                  {/* Role/Title */}
+                  <p
+                    style={{
+                      fontSize: "1.125rem",
+                      fontWeight: "600",
+                      color: "#4b5563",
+                      marginBottom: "0.75rem",
+                      textAlign: "center",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.5rem",
+                      justifyContent: "center",
+                    }}
+                  >
+                    {(() => {
+                      const reelsCount = userReels.length;
+                      let icon, title;
+
+                      if (reelsCount >= 300) {
+                        icon = "💎💎";
+                        title = "Diamond Creator";
+                      } else if (reelsCount >= 200) {
+                        icon = "🏆";
+                        title = "Platinum Creator";
+                      } else if (reelsCount >= 100) {
+                        icon = "🥇";
+                        title = "Gold Creator";
+                      } else if (reelsCount >= 50) {
+                        icon = "🥈";
+                        title = "Silver Creator";
+                      } else if (reelsCount >= 1) {
+                        icon = "🥉";
+                        title = "Bronze Creator";
+                      } else {
+                        icon = "✨";
+                        title = "Content Creator";
+                      }
+
+                      return (
+                        <>
+                          <span style={{ fontSize: "1.5rem" }}>{icon}</span>
+                          {title}
+                        </>
+                      );
+                    })()}
+                  </p>
+
+                  {/* Bio/Description */}
+                  <p
+                    style={{
+                      fontSize: "0.875rem",
+                      color: "#6b7280",
+                      textAlign: "center",
+                      marginBottom: "1rem",
+                      lineHeight: "1.5",
+                      maxWidth: "300px",
+                    }}
+                  >
+                    Creating moments that matter ✨
+                    {selectedUser?.username && (
+                      <>
+                        <br />
+                        <span style={{ color: "#dc2626", fontWeight: "600" }}>
+                          @{selectedUser.username}
+                        </span>
+                      </>
+                    )}
+                  </p>
+
+                  {/* Stats Row */}
                   <div
                     style={{
                       display: "flex",
-                      justifyContent: "center",
-                      marginBottom: "24px",
+                      gap: "1.5rem",
+                      marginBottom: "0.75rem",
                     }}
                   >
-                    <QRCodeSVG
-                      value={`https://eventhubx.site/u/${
-                        selectedUser?.username || "user"
-                      }`}
-                      size={100}
-                      level="H"
-                      includeMargin={false}
-                      fgColor="#1f2937"
-                      bgColor="#ffffff"
-                    />
+                    <div style={{ textAlign: "center" }}>
+                      <div
+                        style={{
+                          fontSize: "1.5rem",
+                          fontWeight: "800",
+                          color: "#dc2626",
+                          marginBottom: "0.25rem",
+                        }}
+                      >
+                        {userReels.length}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: "0.75rem",
+                          color: "#9ca3af",
+                          fontWeight: "600",
+                          textTransform: "uppercase",
+                        }}
+                      >
+                        Reels
+                      </div>
+                    </div>
+                    <div style={{ textAlign: "center" }}>
+                      <div
+                        style={{
+                          fontSize: "1.5rem",
+                          fontWeight: "800",
+                          color: "#dc2626",
+                          marginBottom: "0.25rem",
+                        }}
+                      >
+                        {followersCount}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: "0.75rem",
+                          color: "#9ca3af",
+                          fontWeight: "600",
+                          textTransform: "uppercase",
+                        }}
+                      >
+                        Followers
+                      </div>
+                    </div>
+                    <div style={{ textAlign: "center" }}>
+                      <div
+                        style={{
+                          fontSize: "1.5rem",
+                          fontWeight: "800",
+                          color: "#dc2626",
+                          marginBottom: "0.25rem",
+                        }}
+                      >
+                        {followingCount}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: "0.75rem",
+                          color: "#9ca3af",
+                          fontWeight: "600",
+                          textTransform: "uppercase",
+                        }}
+                      >
+                        Following
+                      </div>
+                    </div>
                   </div>
 
-                  {/* EventHub Branding */}
-                  <div
-                    style={{
-                      textAlign: "center",
-                      paddingTop: "20px",
-                      borderTop: "1px solid #e5e7eb",
-                    }}
-                  >
+                  {/* QR Code with Link */}
+                  {selectedUser?.username && (
                     <div
                       style={{
                         display: "flex",
+                        flexDirection: "column",
                         alignItems: "center",
-                        justifyContent: "center",
-                        gap: "8px",
-                        marginBottom: "8px",
+                        gap: "0.5rem",
+                        marginBottom: "0",
                       }}
                     >
                       <div
                         style={{
-                          width: "36px",
-                          height: "36px",
-                          borderRadius: "8px",
-                          background:
-                            "linear-gradient(135deg, #ec4899 0%, #a855f7 100%)",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
+                          background: "white",
+                          padding: "0.75rem",
+                          borderRadius: "1rem",
+                          boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
+                          border: "2px solid #fecaca",
                         }}
                       >
-                        <span
-                          style={{
-                            color: "white",
-                            fontWeight: "bold",
-                            fontSize: "18px",
-                          }}
-                        >
-                          E
-                        </span>
+                        <QRCodeSVG
+                          value={`https://eventhubx.site/u/${selectedUser.username}`}
+                          size={80}
+                          level="H"
+                          includeMargin={false}
+                        />
                       </div>
-                      <span
+                      <p
                         style={{
-                          color: "#1f2937",
-                          fontWeight: "700",
-                          fontSize: "22px",
+                          fontSize: "0.6875rem",
+                          color: "#9ca3af",
+                          fontWeight: "500",
+                          textAlign: "center",
                         }}
                       >
-                        EventHub
-                      </span>
+                        Scan to visit profile
+                      </p>
                     </div>
-                    <p
-                      style={{
-                        color: "#374151",
-                        fontSize: "13px",
-                        marginBottom: "4px",
-                        fontWeight: "600",
-                      }}
-                    >
-                      eventhubx.site/u/{selectedUser?.username || "username"}
-                    </p>
-                    <p
-                      style={{
-                        color: "#9ca3af",
-                        fontSize: "12px",
-                        fontWeight: "400",
-                      }}
-                    >
-                      Scan to connect with me!
-                    </p>
-                  </div>
+                  )}
                 </div>
               </div>
             </div>

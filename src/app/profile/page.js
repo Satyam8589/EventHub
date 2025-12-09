@@ -28,6 +28,10 @@ export default function ProfilePage() {
   const [usernameInput, setUsernameInput] = useState("");
   const [usernameError, setUsernameError] = useState("");
   const [usernameSaving, setUsernameSaving] = useState(false);
+  const [instagramId, setInstagramId] = useState("");
+  const [instagramInput, setInstagramInput] = useState("");
+  const [instagramError, setInstagramError] = useState("");
+  const [instagramSaving, setInstagramSaving] = useState(false);
   const [userReels, setUserReels] = useState([]);
   const [reelsLoading, setReelsLoading] = useState(false);
   const [deletingReelId, setDeletingReelId] = useState(null);
@@ -183,7 +187,7 @@ export default function ProfilePage() {
     fetchBookings();
   }, [user]);
 
-  // Fetch username
+  // Fetch username and instagram ID
   useEffect(() => {
     const fetchUsername = async () => {
       if (!user) return;
@@ -195,6 +199,10 @@ export default function ProfilePage() {
         if (data.username) {
           setUsername(data.username);
           setUsernameInput(data.username);
+        }
+        if (data.instagram_id) {
+          setInstagramId(data.instagram_id);
+          setInstagramInput(data.instagram_id);
         }
       } catch (error) {
         console.error("Error fetching username:", error);
@@ -288,6 +296,54 @@ export default function ProfilePage() {
       setUsernameError("Failed to save username. Please try again.");
     } finally {
       setUsernameSaving(false);
+    }
+  };
+
+  const saveInstagramId = async () => {
+    if (!instagramInput.trim()) {
+      setInstagramError("Instagram ID cannot be empty");
+      return;
+    }
+
+    // Remove @ symbol if user added it
+    const cleanInstagramId = instagramInput.replace(/^@/, "");
+
+    // Validate format (Instagram usernames)
+    const instagramRegex = /^[a-z0-9._]{1,30}$/i;
+    if (!instagramRegex.test(cleanInstagramId)) {
+      setInstagramError("Invalid Instagram ID format");
+      return;
+    }
+
+    setInstagramSaving(true);
+    setInstagramError("");
+
+    try {
+      const response = await fetch("/api/username", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          userId: user.uid,
+          instagram_id: cleanInstagramId,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setInstagramId(data.instagram_id);
+        setInstagramInput(data.instagram_id);
+        setInstagramError("");
+      } else {
+        setInstagramError(data.error || "Failed to save Instagram ID");
+      }
+    } catch (error) {
+      console.error("Error saving Instagram ID:", error);
+      setInstagramError("Failed to save Instagram ID. Please try again.");
+    } finally {
+      setInstagramSaving(false);
     }
   };
 
@@ -1159,6 +1215,66 @@ export default function ProfilePage() {
                         )}
                       </div>
                     )}
+                  </div>
+
+                  {/* Instagram ID Section */}
+                  <div className="bg-gradient-to-r from-pink-600/20 to-red-600/20 border border-pink-500/30 rounded-lg p-6 mb-8">
+                    <div className="flex items-start justify-between mb-4">
+                      <div>
+                        <h3 className="text-pink-400 font-semibold text-lg mb-1 flex items-center gap-2">
+                          📷 Instagram ID (Optional)
+                        </h3>
+                        <p className="text-white/60 text-sm">
+                          Add your Instagram ID to display on your profile card
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <div>
+                        <input
+                          type="text"
+                          value={instagramInput}
+                          onChange={(e) => {
+                            setInstagramInput(e.target.value);
+                            setInstagramError("");
+                          }}
+                          placeholder="your_instagram_id"
+                          className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all"
+                          maxLength={30}
+                        />
+                        <p className="text-white/40 text-xs mt-1">
+                          Enter your Instagram username (without @)
+                        </p>
+                      </div>
+
+                      {instagramError && (
+                        <p className="text-red-400 text-sm">{instagramError}</p>
+                      )}
+
+                      <button
+                        onClick={saveInstagramId}
+                        disabled={instagramSaving}
+                        className="w-full bg-gradient-to-r from-pink-500 to-red-500 hover:from-pink-600 hover:to-red-600 text-white px-4 py-2 rounded-lg transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {instagramSaving
+                          ? "Saving..."
+                          : instagramId
+                          ? "Update Instagram ID"
+                          : "Add Instagram ID"}
+                      </button>
+
+                      {instagramId && (
+                        <div className="flex items-center gap-2 mt-2">
+                          <span className="text-white text-sm font-mono bg-white/10 px-3 py-1.5 rounded-lg">
+                            @{instagramId}
+                          </span>
+                          <span className="text-green-400 text-sm">
+                            ✓ Saved
+                          </span>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   {/* Recent Activity */}
@@ -2529,508 +2645,430 @@ export default function ProfilePage() {
               style={{
                 position: "relative",
                 width: "100%",
-                maxWidth: "48rem",
+                maxWidth:
+                  typeof window !== "undefined" && window.innerWidth < 640
+                    ? "280px"
+                    : "400px",
                 margin: "0 auto",
-                aspectRatio: "16/9",
-                borderRadius: "1rem",
+                aspectRatio:
+                  typeof window !== "undefined" && window.innerWidth < 640
+                    ? "3/5"
+                    : "3/4.5",
+                borderRadius:
+                  typeof window !== "undefined" && window.innerWidth < 640
+                    ? "1.5rem"
+                    : "2rem",
                 overflow: "hidden",
-                background:
-                  "linear-gradient(to bottom right, #312e81, #581c87, #831843)",
+                background: "white",
                 marginBottom: "1.5rem",
               }}
             >
-              {/* Animated Background Gradient */}
+              {/* Red Header Background */}
               <div
                 style={{
                   position: "absolute",
-                  inset: 0,
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height:
+                    typeof window !== "undefined" && window.innerWidth < 640
+                      ? "22%"
+                      : "20%",
                   background:
-                    "linear-gradient(to top right, rgba(37, 99, 235, 0.2), rgba(147, 51, 234, 0.2), rgba(236, 72, 153, 0.2))",
-                }}
-              ></div>
-
-              {/* Abstract Background Pattern */}
-              <div
-                style={{
-                  position: "absolute",
-                  inset: 0,
-                  opacity: 0.3,
+                    "linear-gradient(135deg, #dc2626 0%, #ef4444 100%)",
+                  borderRadius:
+                    typeof window !== "undefined" && window.innerWidth < 640
+                      ? "1.5rem 1.5rem 0 0"
+                      : "2rem 2rem 0 0",
+                  display: "flex",
+                  alignItems: "flex-start",
+                  justifyContent: "center",
+                  paddingTop:
+                    typeof window !== "undefined" && window.innerWidth < 640
+                      ? "0.75rem"
+                      : "1rem",
                 }}
               >
                 <div
                   style={{
-                    position: "absolute",
-                    top: 0,
-                    right: 0,
-                    width: "100%",
-                    height: "100%",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.5rem",
                   }}
                 >
                   <svg
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                    }}
-                    viewBox="0 0 800 450"
+                    width={
+                      typeof window !== "undefined" && window.innerWidth < 640
+                        ? "20"
+                        : "24"
+                    }
+                    height={
+                      typeof window !== "undefined" && window.innerWidth < 640
+                        ? "20"
+                        : "24"
+                    }
+                    viewBox="0 0 32 32"
                     fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
                   >
-                    <circle
-                      cx="100"
-                      cy="100"
-                      r="120"
-                      fill="url(#glow1)"
-                      opacity="0.4"
+                    <rect
+                      x="2"
+                      y="2"
+                      width="28"
+                      height="28"
+                      rx="6"
+                      fill="white"
                     />
-                    <circle
-                      cx="700"
-                      cy="80"
-                      r="100"
-                      fill="url(#glow2)"
-                      opacity="0.4"
-                    />
-                    <circle
-                      cx="650"
-                      cy="350"
-                      r="130"
-                      fill="url(#glow3)"
-                      opacity="0.4"
-                    />
-                    <circle
-                      cx="150"
-                      cy="380"
-                      r="90"
-                      fill="url(#glow4)"
-                      opacity="0.4"
-                    />
-                    <path
-                      d="M600 0C650 100 750 150 800 200V450H0V0C100 50 200 100 300 100C400 100 500 50 600 0Z"
-                      fill="url(#gradient1)"
-                      opacity="0.2"
-                    />
-                    <path
-                      d="M0 450C50 400 100 350 200 350C300 350 400 400 500 400C600 400 700 350 800 300V450H0Z"
-                      fill="url(#gradient2)"
-                      opacity="0.2"
-                    />
-                    <defs>
-                      <radialGradient id="glow1">
-                        <stop offset="0%" stopColor="#3B82F6" />
-                        <stop
-                          offset="100%"
-                          stopColor="#3B82F6"
-                          stopOpacity="0"
-                        />
-                      </radialGradient>
-                      <radialGradient id="glow2">
-                        <stop offset="0%" stopColor="#8B5CF6" />
-                        <stop
-                          offset="100%"
-                          stopColor="#8B5CF6"
-                          stopOpacity="0"
-                        />
-                      </radialGradient>
-                      <radialGradient id="glow3">
-                        <stop offset="0%" stopColor="#EC4899" />
-                        <stop
-                          offset="100%"
-                          stopColor="#EC4899"
-                          stopOpacity="0"
-                        />
-                      </radialGradient>
-                      <radialGradient id="glow4">
-                        <stop offset="0%" stopColor="#06B6D4" />
-                        <stop
-                          offset="100%"
-                          stopColor="#06B6D4"
-                          stopOpacity="0"
-                        />
-                      </radialGradient>
-                      <linearGradient
-                        id="gradient1"
-                        x1="0"
-                        y1="0"
-                        x2="800"
-                        y2="450"
-                      >
-                        <stop offset="0%" stopColor="#3B82F6" />
-                        <stop offset="100%" stopColor="#8B5CF6" />
-                      </linearGradient>
-                      <linearGradient
-                        id="gradient2"
-                        x1="0"
-                        y1="0"
-                        x2="800"
-                        y2="450"
-                      >
-                        <stop offset="0%" stopColor="#8B5CF6" />
-                        <stop offset="100%" stopColor="#EC4899" />
-                      </linearGradient>
-                    </defs>
+                    <text
+                      x="16"
+                      y="23"
+                      fontSize="20"
+                      fontWeight="bold"
+                      fill="#dc2626"
+                      textAnchor="middle"
+                      fontFamily="Arial, sans-serif"
+                    >
+                      E
+                    </text>
                   </svg>
+                  <span
+                    style={{
+                      color: "white",
+                      fontSize:
+                        typeof window !== "undefined" && window.innerWidth < 640
+                          ? "0.875rem"
+                          : "1rem",
+                      fontWeight: "700",
+                      letterSpacing: "0.5px",
+                    }}
+                  >
+                    EventHubX
+                  </span>
                 </div>
               </div>
+
+              {/* Blur gradient at bottom of red header */}
+              <div
+                style={{
+                  position: "absolute",
+                  top:
+                    typeof window !== "undefined" && window.innerWidth < 640
+                      ? "18%"
+                      : "16%",
+                  left: 0,
+                  right: 0,
+                  height:
+                    typeof window !== "undefined" && window.innerWidth < 640
+                      ? "6%"
+                      : "8%",
+                  background:
+                    "linear-gradient(to bottom, rgba(239, 68, 68, 0.6), rgba(255, 255, 255, 0))",
+                  filter: "blur(8px)",
+                  pointerEvents: "none",
+                }}
+              ></div>
 
               {/* Content */}
               <div
                 style={{
                   position: "relative",
                   height: "100%",
-                  padding: window.innerWidth < 640 ? "0.5rem" : "1rem",
                   display: "flex",
                   flexDirection: "column",
-                  justifyContent: "space-between",
+                  alignItems: "center",
+                  padding:
+                    typeof window !== "undefined" && window.innerWidth < 640
+                      ? "0.5rem 1rem 2rem 1rem"
+                      : "0.5rem 1.5rem 2rem 1.5rem",
                 }}
               >
-                {/* Top Section */}
+                {/* Avatar - Positioned to overlap header */}
                 <div
                   style={{
-                    display: "flex",
-                    alignItems: "flex-start",
-                    justifyContent: "space-between",
-                    gap: window.innerWidth < 640 ? "0.25rem" : "0.5rem",
+                    marginTop:
+                      typeof window !== "undefined" && window.innerWidth < 640
+                        ? "12%"
+                        : "12%",
+                    marginBottom: "0.5rem",
                   }}
                 >
-                  {/* Avatar and Info */}
                   <div
                     style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: window.innerWidth < 640 ? "0.5rem" : "0.75rem",
+                      width:
+                        typeof window !== "undefined" && window.innerWidth < 640
+                          ? "80px"
+                          : "110px",
+                      height:
+                        typeof window !== "undefined" && window.innerWidth < 640
+                          ? "80px"
+                          : "110px",
+                      borderRadius: "50%",
+                      border:
+                        typeof window !== "undefined" && window.innerWidth < 640
+                          ? "4px solid white"
+                          : "5px solid white",
+                      overflow: "hidden",
+                      boxShadow: "0 10px 40px rgba(0, 0, 0, 0.2)",
+                      background: "white",
                     }}
                   >
-                    <div
-                      style={{
-                        position: "relative",
-                        width: window.innerWidth < 640 ? "3rem" : "5rem",
-                        height: window.innerWidth < 640 ? "3rem" : "5rem",
-                        aspectRatio: "1",
-                        borderRadius: "50%",
-                        borderWidth: window.innerWidth < 640 ? "2px" : "4px",
-                        borderColor: "#22d3ee",
-                        overflow: "hidden",
-                        boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
-                      }}
-                    >
-                      {user?.photoURL ? (
-                        <img
-                          src={user.photoURL}
-                          alt="Avatar"
-                          style={{
-                            width: "100%",
-                            height: "100%",
-                            objectFit: "cover",
-                          }}
-                          crossOrigin="anonymous"
-                        />
-                      ) : (
-                        <div
-                          style={{
-                            width: "100%",
-                            height: "100%",
-                            background:
-                              "linear-gradient(to bottom right, #f97316, #ec4899, #9333ea)",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            color: "white",
-                            fontSize: "1.25rem",
-                            fontWeight: "bold",
-                          }}
-                        >
-                          {(user?.displayName ||
-                            user?.email ||
-                            "U")[0].toUpperCase()}
-                        </div>
-                      )}
-                    </div>
-                    <div>
-                      <h3
+                    {user?.photoURL ? (
+                      <img
+                        src={user.photoURL}
+                        alt="Avatar"
                         style={{
-                          fontSize:
-                            window.innerWidth < 640 ? "1.125rem" : "1.875rem",
-                          fontWeight: "900",
-                          color: "white",
-                          marginBottom:
-                            window.innerWidth < 640 ? "0.125rem" : "0.25rem",
-                          filter:
-                            "drop-shadow(0 25px 25px rgba(0, 0, 0, 0.15))",
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
                         }}
-                      >
-                        {user?.displayName ||
-                          user?.email?.split("@")[0] ||
-                          "User"}
-                      </h3>
-                      {username && (
-                        <p
-                          style={{
-                            fontSize:
-                              window.innerWidth < 640 ? "0.75rem" : "1.125rem",
-                            fontWeight: "600",
-                            letterSpacing: "0.025em",
-                            color: "rgba(165, 243, 252, 0.9)",
-                          }}
-                        >
-                          @{username}
-                        </p>
-                      )}
-                      <p
-                        style={{
-                          fontSize:
-                            window.innerWidth < 640 ? "0.625rem" : "0.875rem",
-                          fontWeight: "500",
-                          fontStyle: "italic",
-                          marginTop:
-                            window.innerWidth < 640 ? "0.125rem" : "0.25rem",
-                          color: "rgba(233, 213, 255, 0.7)",
-                        }}
-                      >
-                        Creating moments that matter ✨
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Badge and QR Code */}
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "flex-start",
-                      gap: window.innerWidth < 640 ? "0.25rem" : "0.5rem",
-                      flexShrink: 0,
-                    }}
-                  >
-                    {/* Badge */}
-                    {(() => {
-                      const reelsCount = userReels.length;
-                      let emoji, tier, bgGradient;
-
-                      if (reelsCount >= 300) {
-                        emoji = "💎";
-                        tier = "Diamond";
-                        bgGradient =
-                          "linear-gradient(to bottom right, #22d3ee, #3b82f6)";
-                      } else if (reelsCount >= 200) {
-                        emoji = "🏆";
-                        tier = "Platinum";
-                        bgGradient =
-                          "linear-gradient(to bottom right, #cbd5e1, #9ca3af)";
-                      } else if (reelsCount >= 100) {
-                        emoji = "🥇";
-                        tier = "Gold";
-                        bgGradient =
-                          "linear-gradient(to bottom right, #fbbf24, #f59e0b)";
-                      } else if (reelsCount >= 50) {
-                        emoji = "🥈";
-                        tier = "Silver";
-                        bgGradient =
-                          "linear-gradient(to bottom right, #d1d5db, #94a3b8)";
-                      } else if (reelsCount >= 1) {
-                        emoji = "🥉";
-                        tier = "Bronze";
-                        bgGradient =
-                          "linear-gradient(to bottom right, #fb923c, #f59e0b)";
-                      } else {
-                        return null;
-                      }
-
-                      return (
-                        <div
-                          style={{
-                            padding:
-                              window.innerWidth < 640
-                                ? "0.375rem 0.375rem"
-                                : "0.5rem 0.75rem",
-                            borderRadius:
-                              window.innerWidth < 640 ? "0.5rem" : "0.75rem",
-                            boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
-                            borderWidth:
-                              window.innerWidth < 640 ? "1px" : "2px",
-                            background: bgGradient,
-                            borderColor: "rgba(255, 255, 255, 0.2)",
-                          }}
-                        >
-                          <div
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap:
-                                window.innerWidth < 640
-                                  ? "0.125rem"
-                                  : "0.375rem",
-                            }}
-                          >
-                            <span
-                              style={{
-                                fontSize:
-                                  window.innerWidth < 640
-                                    ? "0.875rem"
-                                    : "1.5rem",
-                                filter:
-                                  "drop-shadow(0 10px 8px rgba(0, 0, 0, 0.04))",
-                              }}
-                            >
-                              {emoji}
-                            </span>
-                            <div>
-                              <div
-                                style={{
-                                  color: "white",
-                                  fontWeight: "900",
-                                  fontSize:
-                                    window.innerWidth < 640
-                                      ? "0.625rem"
-                                      : "0.875rem",
-                                  lineHeight: "1.25",
-                                  filter:
-                                    "drop-shadow(0 4px 3px rgba(0, 0, 0, 0.07))",
-                                }}
-                              >
-                                {tier}
-                              </div>
-                              <div
-                                style={{
-                                  color: "rgba(255, 255, 255, 0.95)",
-                                  fontWeight: "700",
-                                  fontSize:
-                                    window.innerWidth < 640
-                                      ? "0.5rem"
-                                      : "0.75rem",
-                                }}
-                              >
-                                Creator
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })()}
-
-                    {/* QR Code */}
-                    {username && (
+                        crossOrigin="anonymous"
+                      />
+                    ) : (
                       <div
                         style={{
-                          background: "white",
-                          padding:
-                            window.innerWidth < 640 ? "0.25rem" : "0.5rem",
-                          borderRadius:
-                            window.innerWidth < 640 ? "0.5rem" : "0.75rem",
-                          boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
-                          borderWidth: "1px",
-                          borderColor: "rgba(192, 132, 252, 0.5)",
+                          width: "100%",
+                          height: "100%",
+                          background:
+                            "linear-gradient(135deg, #f97316, #ec4899, #9333ea)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          color: "white",
+                          fontSize: "3rem",
+                          fontWeight: "bold",
                         }}
                       >
-                        <QRCodeSVG
-                          value={`${
-                            typeof window !== "undefined"
-                              ? window.location.origin
-                              : ""
-                          }/u/${username}`}
-                          size={window.innerWidth < 640 ? 50 : 70}
-                          level="H"
-                          includeMargin={false}
-                        />
+                        {(user?.displayName ||
+                          user?.email ||
+                          "U")[0].toUpperCase()}
                       </div>
                     )}
                   </div>
                 </div>
 
-                {/* Stats Section */}
-                <div
+                {/* Name */}
+                <h3
                   style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(3, 1fr)",
-                    gap: window.innerWidth < 640 ? "0.25rem" : "0.5rem",
+                    fontSize:
+                      typeof window !== "undefined" && window.innerWidth < 640
+                        ? "1.25rem"
+                        : "1.75rem",
+                    fontWeight: "800",
+                    color: "#1f2937",
+                    marginBottom: "0.25rem",
+                    textAlign: "center",
                   }}
                 >
-                  <div
+                  {user?.displayName || user?.email?.split("@")[0] || "User"}
+                </h3>
+
+                {/* Profile Link */}
+                {username && (
+                  <p
                     style={{
-                      backdropFilter: "blur(24px)",
-                      borderRadius:
-                        window.innerWidth < 640 ? "0.5rem" : "0.75rem",
-                      padding: window.innerWidth < 640 ? "0.375rem" : "0.75rem",
+                      fontSize:
+                        typeof window !== "undefined" && window.innerWidth < 640
+                          ? "0.75rem"
+                          : "0.875rem",
+                      color: "#dc2626",
+                      fontWeight: "600",
+                      marginBottom: "0.5rem",
                       textAlign: "center",
-                      borderWidth: "1px",
-                      boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
-                      background: "rgba(255, 255, 255, 0.1)",
-                      borderColor: "rgba(255, 255, 255, 0.2)",
                     }}
                   >
-                    <div
-                      style={{
-                        fontSize:
-                          window.innerWidth < 640 ? "1.125rem" : "1.875rem",
-                        fontWeight: "900",
-                        color: "#67e8f9",
-                      }}
-                    >
-                      {followersCount}
-                    </div>
-                    <div
-                      style={{
-                        fontSize:
-                          window.innerWidth < 640 ? "0.5rem" : "0.75rem",
-                        fontWeight: "700",
-                        color: "rgba(255, 255, 255, 0.8)",
-                        marginTop: "0.125rem",
-                      }}
-                    >
-                      Followers
-                    </div>
-                  </div>
-                  <div
+                    <span style={{ marginRight: "0.25rem" }}>
+                      <svg
+                        width="14"
+                        height="14"
+                        viewBox="0 0 32 32"
+                        fill="none"
+                        style={{
+                          display: "inline-block",
+                          verticalAlign: "middle",
+                        }}
+                      >
+                        <rect
+                          x="4"
+                          y="4"
+                          width="24"
+                          height="24"
+                          rx="4"
+                          fill="#4F46E5"
+                        />
+                        <text
+                          x="16"
+                          y="22"
+                          fontSize="18"
+                          fontWeight="bold"
+                          fill="white"
+                          textAnchor="middle"
+                          fontFamily="Arial, sans-serif"
+                        >
+                          E
+                        </text>
+                      </svg>
+                    </span>
+                    eventhubx.site/u/{username}
+                  </p>
+                )}
+
+                {/* Instagram ID */}
+                {instagramId && (
+                  <p
                     style={{
-                      backdropFilter: "blur(24px)",
-                      borderRadius:
-                        window.innerWidth < 640 ? "0.5rem" : "0.75rem",
-                      padding: window.innerWidth < 640 ? "0.375rem" : "0.75rem",
+                      fontSize:
+                        typeof window !== "undefined" && window.innerWidth < 640
+                          ? "0.75rem"
+                          : "0.875rem",
+                      color: "#e91e63",
+                      fontWeight: "600",
+                      marginBottom: "0.5rem",
                       textAlign: "center",
-                      borderWidth: "1px",
-                      boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
-                      background: "rgba(255, 255, 255, 0.1)",
-                      borderColor: "rgba(255, 255, 255, 0.2)",
                     }}
                   >
+                    <span style={{ marginRight: "0.25rem" }}>
+                      <svg
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        style={{
+                          display: "inline-block",
+                          verticalAlign: "middle",
+                        }}
+                      >
+                        <rect
+                          x="2"
+                          y="2"
+                          width="20"
+                          height="20"
+                          rx="5"
+                          stroke="#e91e63"
+                          strokeWidth="2"
+                        />
+                        <circle
+                          cx="12"
+                          cy="12"
+                          r="4"
+                          stroke="#e91e63"
+                          strokeWidth="2"
+                        />
+                        <circle cx="18" cy="6" r="1.5" fill="#e91e63" />
+                      </svg>
+                    </span>
+                    {instagramId}
+                  </p>
+                )}
+
+                {/* Role/Title */}
+                <p
+                  style={{
+                    fontSize:
+                      typeof window !== "undefined" && window.innerWidth < 640
+                        ? "0.875rem"
+                        : "1.125rem",
+                    fontWeight: "600",
+                    color: "#4b5563",
+                    marginBottom: "0.75rem",
+                    textAlign: "center",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.5rem",
+                    justifyContent: "center",
+                  }}
+                >
+                  {(() => {
+                    const reelsCount = userReels.length;
+                    let icon, title;
+
+                    if (reelsCount >= 300) {
+                      icon = "💎";
+                      title = "Diamond Creator";
+                    } else if (reelsCount >= 200) {
+                      icon = "🏆";
+                      title = "Platinum Creator";
+                    } else if (reelsCount >= 100) {
+                      icon = "🥇";
+                      title = "Gold Creator";
+                    } else if (reelsCount >= 50) {
+                      icon = "🥈";
+                      title = "Silver Creator";
+                    } else if (reelsCount >= 1) {
+                      icon = "🥉";
+                      title = "Bronze Creator";
+                    } else {
+                      icon = "✨";
+                      title = "Content Creator";
+                    }
+
+                    return (
+                      <>
+                        <span
+                          style={{
+                            fontSize:
+                              typeof window !== "undefined" &&
+                              window.innerWidth < 640
+                                ? "1.125rem"
+                                : "1.5rem",
+                          }}
+                        >
+                          {icon}
+                        </span>
+                        {title}
+                      </>
+                    );
+                  })()}
+                </p>
+
+                {/* Bio/Description */}
+                <p
+                  style={{
+                    fontSize:
+                      typeof window !== "undefined" && window.innerWidth < 640
+                        ? "0.75rem"
+                        : "0.875rem",
+                    color: "#6b7280",
+                    textAlign: "center",
+                    marginBottom: "1rem",
+                    lineHeight: "1.5",
+                    maxWidth:
+                      typeof window !== "undefined" && window.innerWidth < 640
+                        ? "220px"
+                        : "300px",
+                  }}
+                >
+                  Creating moments that matter ✨
+                  {username && (
+                    <>
+                      <br />
+                      <span style={{ color: "#dc2626", fontWeight: "600" }}>
+                        @{username}
+                      </span>
+                    </>
+                  )}
+                </p>
+
+                {/* Stats Row */}
+                <div
+                  style={{
+                    display: "flex",
+                    gap:
+                      typeof window !== "undefined" && window.innerWidth < 640
+                        ? "1rem"
+                        : "1.5rem",
+                    marginBottom: "0.75rem",
+                  }}
+                >
+                  <div style={{ textAlign: "center" }}>
                     <div
                       style={{
                         fontSize:
-                          window.innerWidth < 640 ? "1.125rem" : "1.875rem",
-                        fontWeight: "900",
-                        color: "#d8b4fe",
-                      }}
-                    >
-                      {followingCount}
-                    </div>
-                    <div
-                      style={{
-                        fontSize:
-                          window.innerWidth < 640 ? "0.5rem" : "0.75rem",
-                        fontWeight: "700",
-                        color: "rgba(255, 255, 255, 0.8)",
-                        marginTop: "0.125rem",
-                      }}
-                    >
-                      Following
-                    </div>
-                  </div>
-                  <div
-                    style={{
-                      backdropFilter: "blur(24px)",
-                      borderRadius:
-                        window.innerWidth < 640 ? "0.5rem" : "0.75rem",
-                      padding: window.innerWidth < 640 ? "0.375rem" : "0.75rem",
-                      textAlign: "center",
-                      borderWidth: "1px",
-                      boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
-                      background: "rgba(255, 255, 255, 0.1)",
-                      borderColor: "rgba(255, 255, 255, 0.2)",
-                    }}
-                  >
-                    <div
-                      style={{
-                        fontSize:
-                          window.innerWidth < 640 ? "1.125rem" : "1.875rem",
-                        fontWeight: "900",
-                        color: "#f9a8d4",
+                          typeof window !== "undefined" &&
+                          window.innerWidth < 640
+                            ? "1.125rem"
+                            : "1.5rem",
+                        fontWeight: "800",
+                        color: "#dc2626",
+                        marginBottom: "0.25rem",
                       }}
                     >
                       {userReels.length}
@@ -3038,127 +3076,140 @@ export default function ProfilePage() {
                     <div
                       style={{
                         fontSize:
-                          window.innerWidth < 640 ? "0.5rem" : "0.75rem",
-                        fontWeight: "700",
-                        color: "rgba(255, 255, 255, 0.8)",
-                        marginTop: "0.125rem",
+                          typeof window !== "undefined" &&
+                          window.innerWidth < 640
+                            ? "0.625rem"
+                            : "0.75rem",
+                        color: "#9ca3af",
+                        fontWeight: "600",
+                        textTransform: "uppercase",
                       }}
                     >
                       Reels
                     </div>
                   </div>
+                  <div style={{ textAlign: "center" }}>
+                    <div
+                      style={{
+                        fontSize:
+                          typeof window !== "undefined" &&
+                          window.innerWidth < 640
+                            ? "1.125rem"
+                            : "1.5rem",
+                        fontWeight: "800",
+                        color: "#dc2626",
+                        marginBottom: "0.25rem",
+                      }}
+                    >
+                      {followersCount}
+                    </div>
+                    <div
+                      style={{
+                        fontSize:
+                          typeof window !== "undefined" &&
+                          window.innerWidth < 640
+                            ? "0.625rem"
+                            : "0.75rem",
+                        color: "#9ca3af",
+                        fontWeight: "600",
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      Followers
+                    </div>
+                  </div>
+                  <div style={{ textAlign: "center" }}>
+                    <div
+                      style={{
+                        fontSize:
+                          typeof window !== "undefined" &&
+                          window.innerWidth < 640
+                            ? "1.125rem"
+                            : "1.5rem",
+                        fontWeight: "800",
+                        color: "#dc2626",
+                        marginBottom: "0.25rem",
+                      }}
+                    >
+                      {followingCount}
+                    </div>
+                    <div
+                      style={{
+                        fontSize:
+                          typeof window !== "undefined" &&
+                          window.innerWidth < 640
+                            ? "0.625rem"
+                            : "0.75rem",
+                        color: "#9ca3af",
+                        fontWeight: "600",
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      Following
+                    </div>
+                  </div>
                 </div>
 
-                {/* Bottom Section */}
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    gap: window.innerWidth < 640 ? "0.25rem" : "0.5rem",
-                  }}
-                >
+                {/* QR Code with Link */}
+                {username && (
                   <div
                     style={{
                       display: "flex",
+                      flexDirection: "column",
                       alignItems: "center",
-                      gap: window.innerWidth < 640 ? "0.375rem" : "0.5rem",
-                      backdropFilter: "blur(24px)",
-                      padding:
-                        window.innerWidth < 640
-                          ? "0.375rem 0.625rem"
-                          : "0.625rem 1rem",
-                      borderRadius:
-                        window.innerWidth < 640 ? "0.5rem" : "0.75rem",
-                      borderWidth: "1px",
-                      boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
-                      background: "rgba(0, 0, 0, 0.4)",
-                      borderColor: "rgba(255, 255, 255, 0.2)",
+                      gap: "0.5rem",
+                      marginBottom: "0",
                     }}
                   >
                     <div
                       style={{
-                        width: window.innerWidth < 640 ? "1.5rem" : "2rem",
-                        height: window.innerWidth < 640 ? "1.5rem" : "2rem",
-                        borderRadius:
-                          window.innerWidth < 640 ? "0.375rem" : "0.5rem",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        color: "white",
-                        fontWeight: "900",
-                        fontSize: window.innerWidth < 640 ? "0.75rem" : "1rem",
-                        boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)",
-                        background:
-                          "linear-gradient(to bottom right, #a855f7, #ec4899)",
-                      }}
-                    >
-                      E
-                    </div>
-                    <span
-                      style={{
-                        color: "white",
-                        fontWeight: "700",
-                        fontSize: window.innerWidth < 640 ? "0.75rem" : "1rem",
-                        filter: "drop-shadow(0 10px 8px rgba(0, 0, 0, 0.04))",
-                      }}
-                    >
-                      EventHub
-                    </span>
-                  </div>
-                  {username && (
-                    <div
-                      style={{
-                        backdropFilter: "blur(24px)",
+                        background: "white",
                         padding:
+                          typeof window !== "undefined" &&
                           window.innerWidth < 640
-                            ? "0.375rem 0.5rem"
-                            : "0.5rem 0.75rem",
+                            ? "0.5rem"
+                            : "0.75rem",
                         borderRadius:
-                          window.innerWidth < 640 ? "0.5rem" : "0.75rem",
-                        borderWidth: "1px",
-                        boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
-                        background:
-                          "linear-gradient(to right, rgba(34, 197, 94, 0.2), rgba(16, 185, 129, 0.2))",
-                        borderColor: "rgba(74, 222, 128, 0.3)",
+                          typeof window !== "undefined" &&
+                          window.innerWidth < 640
+                            ? "0.75rem"
+                            : "1rem",
+                        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
+                        border: "2px solid #fecaca",
                       }}
                     >
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: window.innerWidth < 640 ? "0.25rem" : "0.375rem",
-                        }}
-                      >
-                        <div
-                          style={{
-                            width:
-                              window.innerWidth < 640 ? "0.25rem" : "0.375rem",
-                            height:
-                              window.innerWidth < 640 ? "0.25rem" : "0.375rem",
-                            borderRadius: "50%",
-                            animation:
-                              "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
-                            boxShadow: "0 0 10px rgba(74, 222, 128, 0.8)",
-                            background: "#4ade80",
-                          }}
-                        ></div>
-                        <span
-                          style={{
-                            color: "rgba(255, 255, 255, 0.9)",
-                            fontWeight: "600",
-                            fontSize:
-                              window.innerWidth < 640 ? "0.5625rem" : "0.75rem",
-                            filter:
-                              "drop-shadow(0 10px 8px rgba(0, 0, 0, 0.04))",
-                          }}
-                        >
-                          eventhubx.site/u/{username}
-                        </span>
-                      </div>
+                      <QRCodeSVG
+                        value={`${
+                          typeof window !== "undefined"
+                            ? window.location.origin
+                            : ""
+                        }/u/${username}`}
+                        size={
+                          typeof window !== "undefined" &&
+                          window.innerWidth < 640
+                            ? 60
+                            : 80
+                        }
+                        level="H"
+                        includeMargin={false}
+                      />
                     </div>
-                  )}
-                </div>
+                    <p
+                      style={{
+                        fontSize:
+                          typeof window !== "undefined" &&
+                          window.innerWidth < 640
+                            ? "0.625rem"
+                            : "0.75rem",
+                        color: "#9ca3af",
+                        fontWeight: "500",
+                        textAlign: "center",
+                      }}
+                    >
+                      Scan to visit profile
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -3223,16 +3274,11 @@ export default function ProfilePage() {
                         d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
                       />
                     </svg>
-                    Copy Profile Link
+                    Copy Link
                   </>
                 )}
               </button>
             </div>
-
-            <p className="text-white/60 text-sm text-center mt-4">
-              Share your profile card on social media or download it to use
-              anywhere!
-            </p>
           </div>
         </div>
       )}
