@@ -38,6 +38,7 @@ export async function POST(request) {
       finalAmount,
       userDetails,
       discountCode,
+      customFieldResponse,
     } = body;
     // Validate required fields
     if (!userId || !eventId || !tickets || !totalAmount) {
@@ -226,6 +227,7 @@ export async function POST(request) {
         status: "CONFIRMED",
         paymentMethod: "free",
         paymentId: "FREE",
+        custom_field_response: customFieldResponse || null,
         ticketgeneratedat: nowIstIso,
         createdAt: nowIstIso,
         updatedAt: nowIstIso,
@@ -364,6 +366,7 @@ export async function POST(request) {
       paymentMethod: "razorpay",
       paymentId: `PENDING_${razorpayOrder.id}`,
       discountId: discountId || null,
+      custom_field_response: customFieldResponse || null,
       createdAt: nowIstIso,
       updatedAt: nowIstIso,
     };

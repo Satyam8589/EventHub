@@ -163,13 +163,30 @@ const EventCard = ({
             <span className="sm:hidden">Announce</span>
           </button>
           {isSuper && (
-            <button
-              onClick={() => onGenerateReport(event.id, event.title)}
-              disabled={reportGenerating[event.id]}
-              className="flex-1 bg-orange-600/20 text-white px-2 md:px-3 py-1.5 md:py-2 rounded-lg text-[10px] md:text-xs font-medium border border-orange-500/30 hover:bg-orange-600/30 transition-all text-center disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {reportGenerating[event.id] ? "Sending..." : "📊 Report"}
-            </button>
+            <>
+              <button
+                onClick={() => onGenerateReport(event.id, event.title)}
+                disabled={reportGenerating[event.id]}
+                className="flex-1 bg-orange-600/20 text-white px-2 md:px-3 py-1.5 md:py-2 rounded-lg text-[10px] md:text-xs font-medium border border-orange-500/30 hover:bg-orange-600/30 transition-all text-center disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {reportGenerating[event.id] ? "Sending..." : "📊 Report"}
+              </button>
+              <button
+                onClick={() => {
+                  const link = document.createElement("a");
+                  link.href = `/api/admin/events/${event.id}/download-participants`;
+                  link.download = `${event.title}_Participants.xlsx`;
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+                }}
+                className="flex-1 bg-teal-600/20 text-white px-2 md:px-3 py-1.5 md:py-2 rounded-lg text-[10px] md:text-xs font-medium border border-teal-500/30 hover:bg-teal-600/30 transition-all text-center flex items-center justify-center gap-1"
+                title="Download participants Excel"
+              >
+                <span className="hidden sm:inline">📥 Excel</span>
+                <span className="sm:hidden">📥</span>
+              </button>
+            </>
           )}
         </div>
       </div>

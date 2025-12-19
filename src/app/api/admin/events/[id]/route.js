@@ -88,14 +88,18 @@ export async function PUT(request, { params }) {
 
     const [y, m, d] = (date || "").split("-").map(Number);
     const [hh, mm] = (time || "00:00").split(":").map(Number);
-    const eventDateISO = new Date(Date.UTC(y, (m || 1) - 1, d || 1, (hh || 0) - 5, (mm || 0) - 30)).toISOString();
+    const eventDateISO = new Date(
+      Date.UTC(y, (m || 1) - 1, d || 1, (hh || 0) - 5, (mm || 0) - 30)
+    ).toISOString();
 
     // Handle endDate if provided
     let eventEndDateISO = null;
     if (endDate || endTime) {
       const [ey, em, ed] = (endDate || date || "").split("-").map(Number);
       const [ehh, emm] = (endTime || time || "00:00").split(":").map(Number);
-      eventEndDateISO = new Date(Date.UTC(ey, (em || 1) - 1, ed || 1, (ehh || 0) - 5, (emm || 0) - 30)).toISOString();
+      eventEndDateISO = new Date(
+        Date.UTC(ey, (em || 1) - 1, ed || 1, (ehh || 0) - 5, (emm || 0) - 30)
+      ).toISOString();
     }
 
     // Try to update with provided fields
@@ -111,6 +115,9 @@ export async function PUT(request, { params }) {
       price: parseFloat(price),
       featured: featured || false,
       booking_closed: booking_closed || false,
+      show_discount_field: body.show_discount_field !== false,
+      show_custom_field: body.show_custom_field || false,
+      custom_field_label: body.custom_field_label || null,
       organizerName,
       organizerEmail,
       organizerPhone,
@@ -138,24 +145,36 @@ export async function PUT(request, { params }) {
       if (updateError.message.includes("experienceHighlights")) {
         const { experienceHighlights, ...rest } = updateData;
         // Try snake_case first
-        const updateDataSnake = { ...rest, experience_highlights: experienceHighlights };
-        let { data: retryUpdatedEventSnake, error: retryUpdateErrorSnake } = await supabase
-          .from("events")
-          .update(updateDataSnake)
-          .eq("id", id)
-          .select()
-          .single();
-        updatedEvent = retryUpdatedEventSnake;
-        updateError = retryUpdateErrorSnake;
-        // If still missing, try lowercase
-        if (updateError && updateError.code === "PGRST204" && updateError.message.includes("experience_highlights")) {
-          const updateDataLower = { ...rest, experiencehighlights: experienceHighlights };
-          const { data: retryUpdatedEventLower, error: retryUpdateErrorLower } = await supabase
+        const updateDataSnake = {
+          ...rest,
+          experience_highlights: experienceHighlights,
+        };
+        let { data: retryUpdatedEventSnake, error: retryUpdateErrorSnake } =
+          await supabase
             .from("events")
-            .update(updateDataLower)
+            .update(updateDataSnake)
             .eq("id", id)
             .select()
             .single();
+        updatedEvent = retryUpdatedEventSnake;
+        updateError = retryUpdateErrorSnake;
+        // If still missing, try lowercase
+        if (
+          updateError &&
+          updateError.code === "PGRST204" &&
+          updateError.message.includes("experience_highlights")
+        ) {
+          const updateDataLower = {
+            ...rest,
+            experiencehighlights: experienceHighlights,
+          };
+          const { data: retryUpdatedEventLower, error: retryUpdateErrorLower } =
+            await supabase
+              .from("events")
+              .update(updateDataLower)
+              .eq("id", id)
+              .select()
+              .single();
           updatedEvent = retryUpdatedEventLower;
           updateError = retryUpdateErrorLower;
         }
@@ -181,12 +200,13 @@ export async function PUT(request, { params }) {
           experiencehighlights: ______,
           ...updateDataWithoutOptionalFields
         } = updateData;
-        const { data: retryUpdatedEvent, error: retryUpdateError } = await supabase
-          .from("events")
-          .update(updateDataWithoutOptionalFields)
-          .eq("id", id)
-          .select()
-          .single();
+        const { data: retryUpdatedEvent, error: retryUpdateError } =
+          await supabase
+            .from("events")
+            .update(updateDataWithoutOptionalFields)
+            .eq("id", id)
+            .select()
+            .single();
         updatedEvent = retryUpdatedEvent;
         updateError = retryUpdateError;
       }

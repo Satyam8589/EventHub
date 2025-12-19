@@ -30,6 +30,9 @@ export default function CreateEvent() {
     organizerEmail: "",
     organizerPhone: "",
     featured: false,
+    show_discount_field: true,
+    show_custom_field: false,
+    custom_field_label: "Additional Information",
     image: null,
   });
 
@@ -95,28 +98,28 @@ export default function CreateEvent() {
       // ✅ Convert IST date/time to UTC before sending to backend
       // The form inputs are in IST (user's local timezone)
       // We need to convert them to UTC for storage in the database
-      
+
       // Helper function to convert IST date/time to UTC ISO string
       const convertISTtoUTC = (dateStr, timeStr) => {
         if (!dateStr || !timeStr) return null;
-        
+
         // Parse the date and time strings
-        const [year, month, day] = dateStr.split('-').map(Number);
-        const [hours, minutes] = timeStr.split(':').map(Number);
-        
+        const [year, month, day] = dateStr.split("-").map(Number);
+        const [hours, minutes] = timeStr.split(":").map(Number);
+
         // Create a date object representing IST time
         // Note: JavaScript Date months are 0-indexed
         const istDate = new Date(year, month - 1, day, hours, minutes, 0);
-        
+
         // IST is UTC+5:30, so subtract 5 hours and 30 minutes to get UTC
         const utcDate = new Date(istDate.getTime() - (5 * 60 + 30) * 60 * 1000);
-        
+
         return utcDate.toISOString();
       };
 
       // Convert start date/time to UTC
       const startDateUTC = convertISTtoUTC(formData.date, formData.time);
-      
+
       // Convert end date/time to UTC if provided
       let endDateUTC = null;
       if (formData.endDate && formData.endTime) {
@@ -146,6 +149,11 @@ export default function CreateEvent() {
         organizerEmail: formData.organizerEmail,
         organizerPhone: formData.organizerPhone || null,
         featured: formData.featured,
+        show_discount_field: formData.show_discount_field,
+        show_custom_field: formData.show_custom_field,
+        custom_field_label: formData.show_custom_field
+          ? formData.custom_field_label
+          : null,
         imageUrl: finalImageUrl,
         experienceHighlights: (formData.experienceHighlightsRaw || "")
           .split("\n")
@@ -212,7 +220,9 @@ export default function CreateEvent() {
     price: formData.ticketPrice ? parseFloat(formData.ticketPrice) : 499,
     capacity: formData.maxAttendees ? parseInt(formData.maxAttendees) : 100,
     featured: !!formData.featured,
-    max_tickets_per_user: formData.max_tickets_per_user ? parseInt(formData.max_tickets_per_user) : null,
+    max_tickets_per_user: formData.max_tickets_per_user
+      ? parseInt(formData.max_tickets_per_user)
+      : null,
     _count: { bookings: 0 },
     isExpired: false,
   };
@@ -221,420 +231,508 @@ export default function CreateEvent() {
     <AdminLayout activeTab="events">
       <div className="space-y-6">
         <div className="bg-gradient-to-r from-blue-600/20 to-purple-600/20 backdrop-blur-md rounded-2xl border border-blue-500/30 p-6">
-          <h1 className="text-2xl font-bold text-white mb-2">Create New Event</h1>
-          <p className="text-blue-200">Fill in the details below to create a new event for your platform.</p>
+          <h1 className="text-2xl font-bold text-white mb-2">
+            Create New Event
+          </h1>
+          <p className="text-blue-200">
+            Fill in the details below to create a new event for your platform.
+          </p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
           <div className="lg:col-span-2 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 p-6">
             <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Event Image Upload */}
-            <div className="space-y-4">
-              <label className="block text-white font-medium">
-                Event Image
-              </label>
-              <div className="flex items-center space-x-6">
-                <div className="shrink-0 relative">
-                  {imagePreview ? (
-                    <div className="relative">
-                      <img
-                        className="h-32 w-32 object-cover rounded-xl border-2 border-white/20"
-                        src={imagePreview}
-                        alt="Event preview"
-                      />
-                      {uploadedImageUrl && (
-                        <div className="absolute -top-2 -right-2 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
-                          <span className="text-white text-xs">✓</span>
+              {/* Event Image Upload */}
+              <div className="space-y-4">
+                <label className="block text-white font-medium">
+                  Event Image
+                </label>
+                <div className="flex items-center space-x-6">
+                  <div className="shrink-0 relative">
+                    {imagePreview ? (
+                      <div className="relative">
+                        <img
+                          className="h-32 w-32 object-cover rounded-xl border-2 border-white/20"
+                          src={imagePreview}
+                          alt="Event preview"
+                        />
+                        {uploadedImageUrl && (
+                          <div className="absolute -top-2 -right-2 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                            <span className="text-white text-xs">✓</span>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="h-32 w-32 rounded-xl border-2 border-dashed border-white/30 flex items-center justify-center">
+                        <div className="text-center">
+                          <span className="text-3xl">🖼️</span>
+                          <p className="text-white/60 text-xs mt-1">No image</p>
                         </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="h-32 w-32 rounded-xl border-2 border-dashed border-white/30 flex items-center justify-center">
-                      <div className="text-center">
-                        <span className="text-3xl">🖼️</span>
-                        <p className="text-white/60 text-xs mt-1">No image</p>
                       </div>
-                    </div>
-                  )}
-                  {uploading && (
-                    <div className="absolute inset-0 bg-black/50 rounded-xl flex items-center justify-center">
-                      <div className="text-white text-xs">
-                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white mx-auto mb-1"></div>
-                        {progress > 0 && <div>{progress}%</div>}
+                    )}
+                    {uploading && (
+                      <div className="absolute inset-0 bg-black/50 rounded-xl flex items-center justify-center">
+                        <div className="text-white text-xs">
+                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white mx-auto mb-1"></div>
+                          {progress > 0 && <div>{progress}%</div>}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
+                  <div className="flex flex-col space-y-2">
+                    <label className="cursor-pointer">
+                      <span className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white px-4 py-2 rounded-lg transition-colors inline-block">
+                        {uploading ? "Uploading..." : "Choose Image"}
+                      </span>
+                      <input
+                        type="file"
+                        name="image"
+                        accept="image/*"
+                        onChange={handleInputChange}
+                        disabled={uploading}
+                        className="sr-only"
+                      />
+                    </label>
+                    {uploadedImageUrl && (
+                      <p className="text-green-400 text-xs">
+                        ✓ Image uploaded to Cloudinary
+                      </p>
+                    )}
+                    {formData.image && !uploadedImageUrl && (
+                      <p className="text-yellow-400 text-xs">
+                        Image ready for upload
+                      </p>
+                    )}
+                  </div>
                 </div>
-                <div className="flex flex-col space-y-2">
-                  <label className="cursor-pointer">
-                    <span className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white px-4 py-2 rounded-lg transition-colors inline-block">
-                      {uploading ? "Uploading..." : "Choose Image"}
-                    </span>
-                    <input
-                      type="file"
-                      name="image"
-                      accept="image/*"
-                      onChange={handleInputChange}
-                      disabled={uploading}
-                      className="sr-only"
-                    />
+              </div>
+
+              {/* Event Title */}
+              <div className="space-y-2">
+                <label className="block text-white font-medium">
+                  Event Title *
+                </label>
+                <input
+                  type="text"
+                  name="title"
+                  value={formData.title}
+                  onChange={handleInputChange}
+                  required
+                  className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-xl text-white placeholder-white/60 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  placeholder="Enter event title"
+                />
+              </div>
+
+              {/* Event Description */}
+              <div className="space-y-2">
+                <label className="block text-white font-medium">
+                  Event Description *
+                </label>
+                <textarea
+                  name="description"
+                  value={formData.description}
+                  onChange={handleInputChange}
+                  required
+                  rows={4}
+                  className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-xl text-white placeholder-white/60 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none"
+                  placeholder="Describe your event in detail"
+                />
+                <p className="text-white/60 text-sm flex items-center gap-1">
+                  <span>💡</span>
+                  <span>
+                    Tip: Any URLs (https://...) will automatically become
+                    clickable links
+                  </span>
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-white font-medium">
+                  What You'll Experience
+                </label>
+                <textarea
+                  name="experienceHighlightsRaw"
+                  value={formData.experienceHighlightsRaw || ""}
+                  onChange={handleInputChange}
+                  rows={3}
+                  className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-xl text-white placeholder-white/60 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  placeholder="🎤 Keynote Speeches - Industry leaders sharing insights"
+                />
+                <p className="text-white/60 text-sm flex items-center gap-1">
+                  <span>💡</span>
+                  <span>
+                    Tip: URLs in descriptions will automatically become
+                    clickable links
+                  </span>
+                </p>
+              </div>
+
+              {/* Category and Time Row */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="space-y-2">
+                  <label className="block text-white font-medium">
+                    Category *
                   </label>
-                  {uploadedImageUrl && (
-                    <p className="text-green-400 text-xs">
-                      ✓ Image uploaded to Cloudinary
-                    </p>
-                  )}
-                  {formData.image && !uploadedImageUrl && (
-                    <p className="text-yellow-400 text-xs">
-                      Image ready for upload
-                    </p>
-                  )}
+                  <select
+                    name="category"
+                    value={formData.category}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl text-black focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  >
+                    <option value="CONFERENCE">Conference</option>
+                    <option value="WORKSHOP">Workshop</option>
+                    <option value="SEMINAR">Seminar</option>
+                    <option value="NETWORKING">Networking</option>
+                    <option value="ENTERTAINMENT">Entertainment</option>
+                    <option value="SPORTS">Sports</option>
+                    <option value="CULTURAL">Cultural</option>
+                    <option value="EDUCATIONAL">Educational</option>
+                    <option value="CHARITY">Charity</option>
+                    <option value="WEBINAR">Webinar</option>
+                    <option value="MEETUP">Meetup</option>
+                    <option value="HACKATHON">Hackathon</option>
+                    <option value="EXHIBITION">Exhibition</option>
+                    <option value="CONCERT">Concert</option>
+                    <option value="FESTIVAL">Festival</option>
+                    <option value="COMPETITION">Competition</option>
+                    <option value="SUMMIT">Summit</option>
+                    <option value="PANEL">Panel</option>
+                    <option value="TRAINING">Training</option>
+                    <option value="BOOTCAMP">Bootcamp</option>
+                    <option value="STARTUP_PITCH">Startup Pitch</option>
+                    <option value="FUNDRAISER">Fundraiser</option>
+                    <option value="GAMING">Gaming</option>
+                    <option value="OTHER">Other</option>
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-white font-medium">
+                    Start Time *
+                  </label>
+                  <input
+                    type="time"
+                    name="time"
+                    value={formData.time}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-xl text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-white font-medium">
+                    End Time *
+                  </label>
+                  <input
+                    type="time"
+                    name="endTime"
+                    value={formData.endTime}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-xl text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  />
+                  <p className="text-white/60 text-sm">
+                    Defaults to start time
+                  </p>
                 </div>
               </div>
-            </div>
 
-            {/* Event Title */}
-            <div className="space-y-2">
-              <label className="block text-white font-medium">
-                Event Title *
-              </label>
-              <input
-                type="text"
-                name="title"
-                value={formData.title}
-                onChange={handleInputChange}
-                required
-                className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-xl text-white placeholder-white/60 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                placeholder="Enter event title"
-              />
-            </div>
-
-            {/* Event Description */}
-            <div className="space-y-2">
-              <label className="block text-white font-medium">
-                Event Description *
-              </label>
-              <textarea
-                name="description"
-                value={formData.description}
-                onChange={handleInputChange}
-                required
-                rows={4}
-                className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-xl text-white placeholder-white/60 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none"
-                placeholder="Describe your event in detail"
-              />
-              <p className="text-white/60 text-sm flex items-center gap-1">
-                <span>💡</span>
-                <span>Tip: Any URLs (https://...) will automatically become clickable links</span>
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <label className="block text-white font-medium">What You'll Experience</label>
-              <textarea
-                name="experienceHighlightsRaw"
-                value={formData.experienceHighlightsRaw || ""}
-                onChange={handleInputChange}
-                rows={3}
-                className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-xl text-white placeholder-white/60 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                placeholder="🎤 Keynote Speeches - Industry leaders sharing insights"
-              />
-              <p className="text-white/60 text-sm flex items-center gap-1">
-                <span>💡</span>
-                <span>Tip: URLs in descriptions will automatically become clickable links</span>
-              </p>
-            </div>
-
-            {/* Category and Time Row */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="space-y-2">
-                <label className="block text-white font-medium">
-                  Category *
-                </label>
-                <select
-                  name="category"
-                  value={formData.category}
-                  onChange={handleInputChange}
-                  required
-                  className="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl text-black focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                >
-                  <option value="CONFERENCE">Conference</option>
-                  <option value="WORKSHOP">Workshop</option>
-                  <option value="SEMINAR">Seminar</option>
-                  <option value="NETWORKING">Networking</option>
-                  <option value="ENTERTAINMENT">Entertainment</option>
-                  <option value="SPORTS">Sports</option>
-                  <option value="CULTURAL">Cultural</option>
-                  <option value="EDUCATIONAL">Educational</option>
-                  <option value="CHARITY">Charity</option>
-                  <option value="WEBINAR">Webinar</option>
-                  <option value="MEETUP">Meetup</option>
-                  <option value="HACKATHON">Hackathon</option>
-                  <option value="EXHIBITION">Exhibition</option>
-                  <option value="CONCERT">Concert</option>
-                  <option value="FESTIVAL">Festival</option>
-                  <option value="COMPETITION">Competition</option>
-                  <option value="SUMMIT">Summit</option>
-                  <option value="PANEL">Panel</option>
-                  <option value="TRAINING">Training</option>
-                  <option value="BOOTCAMP">Bootcamp</option>
-                  <option value="STARTUP_PITCH">Startup Pitch</option>
-                  <option value="FUNDRAISER">Fundraiser</option>
-                  <option value="GAMING">Gaming</option>
-                  <option value="OTHER">Other</option>
-                </select>
-              </div>
-
-              <div className="space-y-2">
-                <label className="block text-white font-medium">
-                  Start Time *
-                </label>
-                <input
-                  type="time"
-                  name="time"
-                  value={formData.time}
-                  onChange={handleInputChange}
-                  required
-                  className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-xl text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label className="block text-white font-medium">
-                  End Time *
-                </label>
-                <input
-                  type="time"
-                  name="endTime"
-                  value={formData.endTime}
-                  onChange={handleInputChange}
-                  required
-                  className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-xl text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                />
-                <p className="text-white/60 text-sm">Defaults to start time</p>
-              </div>
-            </div>
-
-            {/* Start Date and End Date Row */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <label className="block text-white font-medium">
-                  Start Date *
-                </label>
-                <input
-                  type="date"
-                  name="date"
-                  value={formData.date}
-                  onChange={handleInputChange}
-                  required
-                  min={new Date().toISOString().split("T")[0]}
-                  className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-xl text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label className="block text-white font-medium">
-                  End Date (Optional)
-                </label>
-                <input
-                  type="date"
-                  name="endDate"
-                  value={formData.endDate}
-                  onChange={handleInputChange}
-                  min={formData.date || new Date().toISOString().split("T")[0]}
-                  className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-xl text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                />
-                <p className="text-white/60 text-sm">
-                  Leave empty for single-day events
-                </p>
-              </div>
-            </div>
-
-            {/* Max Attendees and Ticket Price Row */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <label className="block text-white font-medium">
-                  Max Attendees *
-                </label>
-                <input
-                  type="number"
-                  name="maxAttendees"
-                  value={formData.maxAttendees}
-                  onChange={handleInputChange}
-                  required
-                  min="1"
-                  className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-xl text-white placeholder-white/60 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                  placeholder="e.g., 100"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="block text-white font-medium">
-                  Max Tickets Per User (Optional)
-                </label>
-                <input
-                  type="number"
-                  name="max_tickets_per_user"
-                  value={formData.max_tickets_per_user}
-                  onChange={handleInputChange}
-                  min="1"
-                  className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-xl text-white placeholder-white/60 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                  placeholder="e.g., 5"
-                />
-              </div>
-            </div>
-
-            {/* Location and Venue */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <label className="block text-white font-medium">
-                  Location *
-                </label>
-                <input
-                  type="text"
-                  name="location"
-                  value={formData.location}
-                  onChange={handleInputChange}
-                  required
-                  className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-xl text-white placeholder-white/60 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                  placeholder="e.g., New York, NY"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label className="block text-white font-medium">Venue *</label>
-                <input
-                  type="text"
-                  name="venue"
-                  value={formData.venue}
-                  onChange={handleInputChange}
-                  required
-                  className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-xl text-white placeholder-white/60 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                  placeholder="e.g., Convention Center Hall A"
-                />
-              </div>
-            </div>
-
-            {/* Ticket Price */}
-            <div className="space-y-2">
-              <label className="block text-white font-medium">
-                Ticket Price (₹) *
-              </label>
-              <input
-                type="number"
-                name="ticketPrice"
-                value={formData.ticketPrice}
-                onChange={handleInputChange}
-                required
-                min="0"
-                step="0.01"
-                className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-xl text-white placeholder-white/60 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                placeholder="e.g., 999.00"
-              />
-            </div>
-
-            {/* Featured Event */}
-            <div className="flex items-center space-x-3 p-4 bg-white/5 rounded-xl border border-white/20">
-              <input
-                type="checkbox"
-                id="featured"
-                name="featured"
-                checked={formData.featured}
-                onChange={handleInputChange}
-                className="w-5 h-5 rounded border-2 border-white/20 bg-white/5 text-blue-600 focus:ring-blue-500 focus:ring-2"
-              />
-              <div className="flex-1">
-                <label
-                  htmlFor="featured"
-                  className="block text-white font-medium cursor-pointer"
-                >
-                  ⭐ Feature this Event
-                </label>
-                <p className="text-white/60 text-sm">
-                  Featured events will appear at the top of event listings and
-                  get more visibility
-                </p>
-              </div>
-            </div>
-
-            {/* Organizer Information */}
-            <div className="space-y-4 pt-4 border-t border-white/20">
-              <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                <span>👤</span>
-                Organizer Information
-              </h3>
-
+              {/* Start Date and End Date Row */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <label className="block text-white font-medium">
-                    Organizer Name *
+                    Start Date *
                   </label>
                   <input
-                    type="text"
-                    name="organizerName"
-                    value={formData.organizerName}
+                    type="date"
+                    name="date"
+                    value={formData.date}
                     onChange={handleInputChange}
                     required
-                    className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-xl text-white placeholder-white/60 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                    placeholder="e.g., John Smith"
+                    min={new Date().toISOString().split("T")[0]}
+                    className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-xl text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                   />
                 </div>
 
                 <div className="space-y-2">
                   <label className="block text-white font-medium">
-                    Organizer Email *
+                    End Date (Optional)
                   </label>
                   <input
-                    type="email"
-                    name="organizerEmail"
-                    value={formData.organizerEmail}
+                    type="date"
+                    name="endDate"
+                    value={formData.endDate}
+                    onChange={handleInputChange}
+                    min={
+                      formData.date || new Date().toISOString().split("T")[0]
+                    }
+                    className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-xl text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  />
+                  <p className="text-white/60 text-sm">
+                    Leave empty for single-day events
+                  </p>
+                </div>
+              </div>
+
+              {/* Max Attendees and Ticket Price Row */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="block text-white font-medium">
+                    Max Attendees *
+                  </label>
+                  <input
+                    type="number"
+                    name="maxAttendees"
+                    value={formData.maxAttendees}
                     onChange={handleInputChange}
                     required
+                    min="1"
                     className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-xl text-white placeholder-white/60 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                    placeholder="e.g., john@company.com"
+                    placeholder="e.g., 100"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="block text-white font-medium">
+                    Max Tickets Per User (Optional)
+                  </label>
+                  <input
+                    type="number"
+                    name="max_tickets_per_user"
+                    value={formData.max_tickets_per_user}
+                    onChange={handleInputChange}
+                    min="1"
+                    className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-xl text-white placeholder-white/60 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    placeholder="e.g., 5"
                   />
                 </div>
               </div>
 
+              {/* Location and Venue */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="block text-white font-medium">
+                    Location *
+                  </label>
+                  <input
+                    type="text"
+                    name="location"
+                    value={formData.location}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-xl text-white placeholder-white/60 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    placeholder="e.g., New York, NY"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-white font-medium">
+                    Venue *
+                  </label>
+                  <input
+                    type="text"
+                    name="venue"
+                    value={formData.venue}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-xl text-white placeholder-white/60 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    placeholder="e.g., Convention Center Hall A"
+                  />
+                </div>
+              </div>
+
+              {/* Ticket Price */}
               <div className="space-y-2">
                 <label className="block text-white font-medium">
-                  Organizer Phone Number (Optional)
+                  Ticket Price (₹) *
                 </label>
                 <input
-                  type="tel"
-                  name="organizerPhone"
-                  value={formData.organizerPhone}
+                  type="number"
+                  name="ticketPrice"
+                  value={formData.ticketPrice}
                   onChange={handleInputChange}
+                  required
+                  min="0"
+                  step="0.01"
                   className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-xl text-white placeholder-white/60 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                  placeholder="e.g., +1 (555) 123-4567"
+                  placeholder="e.g., 999.00"
                 />
               </div>
-            </div>
 
-            <div className="flex flex-col sm:flex-row gap-4 pt-6">
-              <button
-                type="submit"
-                disabled={loading}
-                className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:from-gray-600 disabled:to-gray-600 text-white font-medium py-3 px-6 rounded-xl transition-all duration-200 flex items-center justify-center space-x-2"
-              >
-                {loading ? (
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                ) : (
-                  <>
-                    <span>🎯</span>
-                    <span>Create Event</span>
-                  </>
+              {/* Featured Event */}
+              <div className="flex items-center space-x-3 p-4 bg-white/5 rounded-xl border border-white/20">
+                <input
+                  type="checkbox"
+                  id="featured"
+                  name="featured"
+                  checked={formData.featured}
+                  onChange={handleInputChange}
+                  className="w-5 h-5 rounded border-2 border-white/20 bg-white/5 text-blue-600 focus:ring-blue-500 focus:ring-2"
+                />
+                <div className="flex-1">
+                  <label
+                    htmlFor="featured"
+                    className="block text-white font-medium cursor-pointer"
+                  >
+                    ⭐ Feature this Event
+                  </label>
+                  <p className="text-white/60 text-sm">
+                    Featured events will appear at the top of event listings and
+                    get more visibility
+                  </p>
+                </div>
+              </div>
+
+              {/* Show Discount Field */}
+              <div className="flex items-center space-x-3 p-4 bg-white/5 rounded-xl border border-white/20">
+                <input
+                  type="checkbox"
+                  id="show_discount_field"
+                  name="show_discount_field"
+                  checked={formData.show_discount_field}
+                  onChange={handleInputChange}
+                  className="w-5 h-5 rounded border-2 border-white/20 bg-white/5 text-green-600 focus:ring-green-500 focus:ring-2"
+                />
+                <div className="flex-1">
+                  <label
+                    htmlFor="show_discount_field"
+                    className="block text-white font-medium cursor-pointer"
+                  >
+                    🎫 Show Discount Code Field
+                  </label>
+                  <p className="text-white/60 text-sm">
+                    Enable discount code input field in booking popup for this
+                    event
+                  </p>
+                </div>
+              </div>
+
+              {/* Show Custom Field */}
+              <div className="space-y-3 p-4 bg-white/5 rounded-xl border border-white/20">
+                <div className="flex items-center space-x-3">
+                  <input
+                    type="checkbox"
+                    id="show_custom_field"
+                    name="show_custom_field"
+                    checked={formData.show_custom_field}
+                    onChange={handleInputChange}
+                    className="w-5 h-5 rounded border-2 border-white/20 bg-white/5 text-purple-600 focus:ring-purple-500 focus:ring-2"
+                  />
+                  <div className="flex-1">
+                    <label
+                      htmlFor="show_custom_field"
+                      className="block text-white font-medium cursor-pointer"
+                    >
+                      📝 Show Custom Input Field
+                    </label>
+                    <p className="text-white/60 text-sm">
+                      Add a custom input field in booking popup to collect
+                      additional information
+                    </p>
+                  </div>
+                </div>
+
+                {formData.show_custom_field && (
+                  <div className="space-y-2 pl-8">
+                    <label className="block text-white font-medium text-sm">
+                      Field Label *
+                    </label>
+                    <input
+                      type="text"
+                      name="custom_field_label"
+                      value={formData.custom_field_label}
+                      onChange={handleInputChange}
+                      placeholder="e.g., Company Name, Dietary Restrictions, etc."
+                      className="w-full px-4 py-2 bg-white/5 border border-white/20 rounded-lg text-white placeholder-white/60 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
+                    />
+                    <p className="text-white/50 text-xs">
+                      This label will appear above the input field in the
+                      booking form
+                    </p>
+                  </div>
                 )}
-              </button>
+              </div>
 
-              <button
-                type="button"
-                onClick={() => router.push("/admin/events")}
-                className="flex-1 sm:flex-none bg-white/10 hover:bg-white/20 text-white font-medium py-3 px-6 rounded-xl transition-colors border border-white/20"
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
+              {/* Organizer Information */}
+              <div className="space-y-4 pt-4 border-t border-white/20">
+                <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                  <span>👤</span>
+                  Organizer Information
+                </h3>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="block text-white font-medium">
+                      Organizer Name *
+                    </label>
+                    <input
+                      type="text"
+                      name="organizerName"
+                      value={formData.organizerName}
+                      onChange={handleInputChange}
+                      required
+                      className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-xl text-white placeholder-white/60 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                      placeholder="e.g., John Smith"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="block text-white font-medium">
+                      Organizer Email *
+                    </label>
+                    <input
+                      type="email"
+                      name="organizerEmail"
+                      value={formData.organizerEmail}
+                      onChange={handleInputChange}
+                      required
+                      className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-xl text-white placeholder-white/60 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                      placeholder="e.g., john@company.com"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-white font-medium">
+                    Organizer Phone Number (Optional)
+                  </label>
+                  <input
+                    type="tel"
+                    name="organizerPhone"
+                    value={formData.organizerPhone}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-xl text-white placeholder-white/60 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    placeholder="e.g., +1 (555) 123-4567"
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-4 pt-6">
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:from-gray-600 disabled:to-gray-600 text-white font-medium py-3 px-6 rounded-xl transition-all duration-200 flex items-center justify-center space-x-2"
+                >
+                  {loading ? (
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                  ) : (
+                    <>
+                      <span>🎯</span>
+                      <span>Create Event</span>
+                    </>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => router.push("/admin/events")}
+                  className="flex-1 sm:flex-none bg-white/10 hover:bg-white/20 text-white font-medium py-3 px-6 rounded-xl transition-colors border border-white/20"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
           </div>
 
           <div className="lg:col-span-1 space-y-4">
@@ -642,7 +740,9 @@ export default function CreateEvent() {
               <div className="bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 p-4 mb-4">
                 <div className="flex items-center justify-between">
                   <div className="text-white font-semibold">Live Preview</div>
-                  <div className="text-xs text-white/60">Updates as you type</div>
+                  <div className="text-xs text-white/60">
+                    Updates as you type
+                  </div>
                 </div>
               </div>
               <EventCard event={previewEvent} />

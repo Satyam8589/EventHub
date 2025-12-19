@@ -35,13 +35,13 @@ export async function GET() {
       if (endDateValue) {
         // Ensure proper UTC format
         let utcEndDate = endDateValue;
-        if (!endDateValue.includes('T') || !endDateValue.endsWith('Z')) {
+        if (!endDateValue.includes("T") || !endDateValue.endsWith("Z")) {
           // Convert "2025-11-22 17:30:00" to "2025-11-22T17:30:00Z"
-          utcEndDate = endDateValue.replace(' ', 'T');
-          if (!utcEndDate.endsWith('Z')) utcEndDate += 'Z';
+          utcEndDate = endDateValue.replace(" ", "T");
+          if (!utcEndDate.endsWith("Z")) utcEndDate += "Z";
         }
         const endDate = new Date(utcEndDate);
-        
+
         // ✅ Compare UTC with UTC - only show if end date is in the future
         return endDate > now;
       }
@@ -119,7 +119,11 @@ export async function GET() {
       const percentageRemaining = (remainingTickets / event.capacity) * 100;
 
       // Trigger notification if less than 10% tickets remain and at least 1 ticket left
-      if (percentageRemaining < 10 && percentageRemaining > 0 && remainingTickets > 0) {
+      if (
+        percentageRemaining < 10 &&
+        percentageRemaining > 0 &&
+        remainingTickets > 0
+      ) {
         // Only trigger if we haven't notified recently (you might want to add a cache/db check)
         await triggerNotification("events", NOTIFICATION_EVENTS.LOW_TICKETS, {
           eventId: event.id,
@@ -130,7 +134,6 @@ export async function GET() {
         });
       }
     }
-
 
     const response = NextResponse.json({ events: eventsWithCounts });
     // Prevent caching
@@ -260,14 +263,18 @@ export async function POST(request) {
 
     const [y, m, d] = (date || "").split("-").map(Number);
     const [hh, mm] = (time || "00:00").split(":").map(Number);
-    const eventDateISO = new Date(Date.UTC(y, (m || 1) - 1, d || 1, (hh || 0) - 5, (mm || 0) - 30)).toISOString();
+    const eventDateISO = new Date(
+      Date.UTC(y, (m || 1) - 1, d || 1, (hh || 0) - 5, (mm || 0) - 30)
+    ).toISOString();
 
     // Handle endDate if provided
     let eventEndDateISO = null;
     if (endDate && (endTime || time)) {
       const [ey, em, ed] = (endDate || "").split("-").map(Number);
       const [ehh, emm] = (endTime || time || "00:00").split(":").map(Number);
-      eventEndDateISO = new Date(Date.UTC(ey, (em || 1) - 1, ed || 1, (ehh || 0) - 5, (emm || 0) - 30)).toISOString();
+      eventEndDateISO = new Date(
+        Date.UTC(ey, (em || 1) - 1, ed || 1, (ehh || 0) - 5, (emm || 0) - 30)
+      ).toISOString();
     }
 
     // Prepare event data
@@ -290,6 +297,9 @@ export async function POST(request) {
       organizerEmail,
       organizerPhone,
       featured: featured || false,
+      show_discount_field: body.show_discount_field !== false,
+      show_custom_field: body.show_custom_field || false,
+      custom_field_label: body.custom_field_label || null,
       status: "UPCOMING",
       createdAt: nowUtcIso,
       updatedAt: nowUtcIso,
@@ -311,14 +321,14 @@ export async function POST(request) {
       .single();
 
     // Handle missing columns gracefully
-    if (
-      createError &&
-      createError.code === "PGRST204"
-    ) {
+    if (createError && createError.code === "PGRST204") {
       if (createError.message.includes("experienceHighlights")) {
         const { experienceHighlights, ...rest } = eventData;
         // Try snake_case
-        const eventDataSnake = { ...rest, experience_highlights: experienceHighlights };
+        const eventDataSnake = {
+          ...rest,
+          experience_highlights: experienceHighlights,
+        };
         let { data: retryEventSnake, error: retryErrSnake } = await supabase
           .from("events")
           .insert([eventDataSnake])
@@ -327,8 +337,15 @@ export async function POST(request) {
         event = retryEventSnake;
         createError = retryErrSnake;
         // If still missing, try lowercase
-        if (createError && createError.code === "PGRST204" && createError.message.includes("experience_highlights")) {
-          const eventDataLower = { ...rest, experiencehighlights: experienceHighlights };
+        if (
+          createError &&
+          createError.code === "PGRST204" &&
+          createError.message.includes("experience_highlights")
+        ) {
+          const eventDataLower = {
+            ...rest,
+            experiencehighlights: experienceHighlights,
+          };
           const { data: retryEventLower, error: retryErrLower } = await supabase
             .from("events")
             .insert([eventDataLower])
@@ -348,7 +365,13 @@ export async function POST(request) {
           createError.message.includes("experience_highlights") ||
           createError.message.includes("experiencehighlights"))
       ) {
-        const { enddate: _, endDate: __, experienceHighlights: ___, experience_highlights: ____, ...eventDataWithoutOptional } = eventData;
+        const {
+          enddate: _,
+          endDate: __,
+          experienceHighlights: ___,
+          experience_highlights: ____,
+          ...eventDataWithoutOptional
+        } = eventData;
         const { data: retryEvent, error: retryCreateError } = await supabase
           .from("events")
           .insert([eventDataWithoutOptional])
@@ -403,7 +426,6 @@ export async function POST(request) {
       // Don't fail the request if push notifications fail
       console.error("Failed to send push notifications:", pushError);
     }
-
 
     return NextResponse.json({ event }, { status: 201 });
   } catch (error) {

@@ -19,6 +19,7 @@ export default function BookingModal({
     phoneNumber: "",
     numberOfTickets: 1,
     specialRequests: "",
+    customFieldResponse: "",
   });
   const [loading, setLoading] = useState(false);
   const [loadingUserData, setLoadingUserData] = useState(false);
@@ -288,6 +289,9 @@ export default function BookingModal({
           totalAmount: (event?.price || 0) * parseInt(formData.numberOfTickets),
           finalAmount: calculateTotal(),
           discountCode: discountCode || null,
+          customFieldResponse: event?.show_custom_field
+            ? formData.customFieldResponse
+            : null,
           userDetails: {
             fullName: formData.fullName,
             email: formData.email,
@@ -303,6 +307,19 @@ export default function BookingModal({
         if (data.free) {
           setPaymentStep("success");
           if (onBookingSuccess) onBookingSuccess();
+
+          // 🔥 DISPATCH GLOBAL EVENT FOR FREE BOOKINGS TOO
+          window.dispatchEvent(
+            new CustomEvent("bookingCompleted", {
+              detail: {
+                userId: user.uid,
+                eventId: event.id,
+                timestamp: Date.now(),
+              },
+            })
+          );
+          console.log("✅ Dispatched bookingCompleted event (free)");
+
           setTimeout(() => {
             resetModal();
             onClose();
@@ -339,10 +356,22 @@ export default function BookingModal({
       onBookingSuccess();
     }
 
+    // 🔥 DISPATCH GLOBAL EVENT TO TRIGGER MY-EVENTS PAGE REFRESH
+    window.dispatchEvent(
+      new CustomEvent("bookingCompleted", {
+        detail: {
+          userId: user.uid,
+          eventId: event.id,
+          timestamp: Date.now(),
+        },
+      })
+    );
+    console.log("✅ Dispatched bookingCompleted event");
+
     setTimeout(() => {
       resetModal();
       onClose();
-      
+
       // Navigate to my-events with error handling
       try {
         router.push("/my-events");
@@ -674,70 +703,98 @@ export default function BookingModal({
                   </select>
                 </div>
 
-                {/* Discount Code */}
-                <div className="bg-blue-50/50 rounded-lg p-3 border border-blue-200">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Discount Code (Optional)
-                  </label>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={discountCode}
-                      onChange={(e) =>
-                        setDiscountCode(e.target.value.toUpperCase())
-                      }
-                      placeholder="Enter discount code"
-                      disabled={validatingDiscount || !!appliedDiscount}
-                      className="flex-1 px-3 py-2.5 rounded-lg bg-white border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-gray-800 placeholder-gray-400 text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
-                    />
-                    {!appliedDiscount ? (
-                      <button
-                        type="button"
-                        onClick={handleApplyDiscount}
-                        disabled={validatingDiscount || !discountCode.trim()}
-                        className="px-4 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-                      >
-                        {validatingDiscount ? "Validating..." : "Apply"}
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={handleRemoveDiscount}
-                        className="px-4 py-2.5 bg-red-100 text-red-600 rounded-lg text-sm font-medium hover:bg-red-200 transition-colors whitespace-nowrap"
-                      >
-                        Remove
-                      </button>
+                {/* Discount Code - Conditionally shown based on event setting */}
+                {event?.show_discount_field !== false && (
+                  <div className="bg-blue-50/50 rounded-lg p-3 border border-blue-200">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Discount Code (Optional)
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={discountCode}
+                        onChange={(e) =>
+                          setDiscountCode(e.target.value.toUpperCase())
+                        }
+                        placeholder="Enter discount code"
+                        disabled={validatingDiscount || !!appliedDiscount}
+                        className="flex-1 px-3 py-2.5 rounded-lg bg-white border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-gray-800 placeholder-gray-400 text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
+                      />
+                      {!appliedDiscount ? (
+                        <button
+                          type="button"
+                          onClick={handleApplyDiscount}
+                          disabled={validatingDiscount || !discountCode.trim()}
+                          className="px-4 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                        >
+                          {validatingDiscount ? "Validating..." : "Apply"}
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={handleRemoveDiscount}
+                          className="px-4 py-2.5 bg-red-100 text-red-600 rounded-lg text-sm font-medium hover:bg-red-200 transition-colors whitespace-nowrap"
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Success Message */}
+                    {appliedDiscount && (
+                      <div className="mt-2 text-sm text-green-700 font-medium flex items-center gap-1.5">
+                        <svg
+                          className="w-4 h-4"
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                        <span>
+                          {appliedDiscount.code} applied -{" "}
+                          {appliedDiscount.type === "PERCENTAGE"
+                            ? `${appliedDiscount.value}% off`
+                            : `₹${appliedDiscount.value} off`}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Error Message */}
+                    {discountError && (
+                      <p className="mt-2 text-sm text-red-600">
+                        {discountError}
+                      </p>
                     )}
                   </div>
+                )}
 
-                  {/* Success Message */}
-                  {appliedDiscount && (
-                    <div className="mt-2 text-sm text-green-700 font-medium flex items-center gap-1.5">
-                      <svg
-                        className="w-4 h-4"
-                        fill="currentColor"
-                        viewBox="0 0 20 20"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                      <span>
-                        {appliedDiscount.code} applied -{" "}
-                        {appliedDiscount.type === "PERCENTAGE"
-                          ? `${appliedDiscount.value}% off`
-                          : `₹${appliedDiscount.value} off`}
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Error Message */}
-                  {discountError && (
-                    <p className="mt-2 text-sm text-red-600">{discountError}</p>
-                  )}
-                </div>
+                {/* Custom Field */}
+                {event?.show_custom_field && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      {event.custom_field_label || "Additional Information"}
+                    </label>
+                    <input
+                      type="text"
+                      name="customFieldResponse"
+                      value={formData.customFieldResponse}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          customFieldResponse: e.target.value,
+                        }))
+                      }
+                      className="w-full px-3 py-2.5 rounded-lg bg-gray-100/80 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all text-gray-800 placeholder-gray-500 text-sm"
+                      placeholder={`Enter ${
+                        event.custom_field_label?.toLowerCase() || "information"
+                      }`}
+                    />
+                  </div>
+                )}
 
                 {/* Total Amount */}
                 <div className="bg-gray-100/60 rounded-lg p-3 border border-gray-200">

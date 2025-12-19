@@ -23,6 +23,9 @@ export default function EditEventPage() {
     price: "",
     featured: false,
     booking_closed: false,
+    show_discount_field: true,
+    show_custom_field: false,
+    custom_field_label: "Additional Information",
     organizerName: "",
     organizerEmail: "",
     organizerPhone: "",
@@ -114,6 +117,10 @@ export default function EditEventPage() {
         price: data.event.price || "",
         featured: data.event.featured || false,
         booking_closed: data.event.booking_closed || false,
+        show_discount_field: data.event.show_discount_field !== false,
+        show_custom_field: data.event.show_custom_field || false,
+        custom_field_label:
+          data.event.custom_field_label || "Additional Information",
         organizerName: data.event.organizerName || "",
         organizerEmail: data.event.organizerEmail || "",
         organizerPhone: data.event.organizerPhone || "",
@@ -534,9 +541,85 @@ export default function EditEventPage() {
                     When enabled, prevents new bookings regardless of event
                     timing
                   </p>
+
+                  <div className="flex items-center space-x-3 p-4 bg-white/5 rounded-xl border border-white/20">
+                    <input
+                      type="checkbox"
+                      id="show_discount_field"
+                      name="show_discount_field"
+                      checked={formData.show_discount_field}
+                      onChange={handleInputChange}
+                      className="w-5 h-5 rounded border-2 border-white/20 bg-white/5 text-green-600 focus:ring-green-500 focus:ring-2"
+                    />
+                    <label
+                      htmlFor="show_discount_field"
+                      className="text-white font-medium cursor-pointer"
+                    >
+                      🎫 Show Discount Code Field
+                    </label>
+                  </div>
+                  <p className="text-white/60 text-xs px-4">
+                    Enable discount code input field in booking popup for this
+                    event
+                  </p>
+
+                  {/* Custom Field */}
+                  <div className="flex items-center space-x-3 p-4 bg-white/5 rounded-xl border border-white/20">
+                    <input
+                      type="checkbox"
+                      id="show_custom_field"
+                      name="show_custom_field"
+                      checked={formData.show_custom_field}
+                      onChange={handleInputChange}
+                      className="w-5 h-5 rounded border-2 border-white/20 bg-white/5 text-purple-600 focus:ring-purple-500 focus:ring-2"
+                    />
+                    <label
+                      htmlFor="show_custom_field"
+                      className="text-white font-medium cursor-pointer"
+                    >
+                      📝 Show Custom Input Field
+                    </label>
+                  </div>
+                  <p className="text-white/60 text-xs px-4">
+                    Add a custom input field to collect additional information
+                    from users
+                  </p>
+
+                  {formData.show_custom_field && (
+                    <div className="space-y-2 pl-8">
+                      <label
+                        htmlFor="custom_field_label"
+                        className="block text-white font-medium mb-2"
+                      >
+                        Field Label *
+                      </label>
+                      <input
+                        type="text"
+                        id="custom_field_label"
+                        name="custom_field_label"
+                        value={formData.custom_field_label}
+                        onChange={handleInputChange}
+                        placeholder="e.g., Company Name, Dietary Restrictions, T-Shirt Size"
+                        className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-xl text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      />
+                      <p className="text-white/60 text-xs">
+                        This label will appear above the input field in the
+                        booking form
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
+            </div>
+          </div>
 
+          {/* Date and Time Section */}
+          <div className="bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 p-6">
+            <h2 className="text-xl font-semibold text-white mb-6 flex items-center gap-2">
+              📅 Date & Time
+            </h2>
+
+            <div className="space-y-6">
               {/* Date and Time */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
