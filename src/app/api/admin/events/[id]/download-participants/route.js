@@ -38,12 +38,15 @@ export async function GET(request, { params }) {
       );
     }
 
+    // Filter out PENDING bookings - only include CONFIRMED bookings in Excel
+    const confirmedBookings = bookings.filter((b) => b.status === "CONFIRMED");
+
     // Check if event has custom field or discounts enabled
     const hasCustomField = event.show_custom_field === true;
-    const hasDiscounts = bookings.some((b) => b.discountAmount > 0);
+    const hasDiscounts = confirmedBookings.some((b) => b.discountAmount > 0);
 
     // Format data for Excel
-    const excelData = bookings.map((booking, index) => {
+    const excelData = confirmedBookings.map((booking, index) => {
       const user = booking.user || {};
       const row = {
         "Sr. No.": index + 1,
@@ -65,9 +68,8 @@ export async function GET(request, { params }) {
       row["Status"] = booking.status || "N/A";
       row["Payment Method"] = booking.paymentMethod || "N/A";
 
-      // Only show Payment ID for successful payments
-      row["Payment ID"] =
-        booking.status === "CONFIRMED" ? booking.paymentId || "N/A" : "Pending";
+      // Payment ID - all bookings in Excel are confirmed, so show payment ID
+      row["Payment ID"] = booking.paymentId || "N/A";
 
       // Only add custom field column if event has custom field enabled
       if (hasCustomField) {
@@ -85,18 +87,14 @@ export async function GET(request, { params }) {
     });
 
     // Add summary row
-    const totalParticipants = bookings.length;
-    const totalTickets = bookings.reduce((sum, b) => sum + (b.tickets || 0), 0);
-    const totalRevenue = bookings
-      .filter((b) => b.status === "CONFIRMED")
-      .reduce(
+    const totalPartici - now using only confirmed bookings
+    const totalParticipants = confirmedBookings.length;
+    const totalTickets = confirmedBookings.reduce((sum, b) => sum + (b.tickets || 0), 0);
+    const totalRevenue = confirmedBookings.reduce(
         (sum, b) => sum + ((b.totalAmount || 0) - (b.discountAmount || 0)),
         0
       );
-    const confirmedBookings = bookings.filter(
-      (b) => b.status === "CONFIRMED"
-    ).length;
-
+    const totalConfirmedBookings = confirmedBookings
     // Create empty row
     const emptyRow = {
       "Sr. No.": "",
@@ -134,7 +132,7 @@ export async function GET(request, { params }) {
     summaryRow["Payment Method"] = "";
     summaryRow["Payment ID"] = "";
     if (hasCustomField)
-      summaryRow[event.custom_field_label || "Custom Field Response"] = "";
+      summaryRow[event.custom_field_labeltotalC|| "Custom Field Response"] = "";
     summaryRow["Booking Date"] = "";
 
     excelData.push(summaryRow);
@@ -183,7 +181,7 @@ export async function GET(request, { params }) {
       { Field: "Total Bookings", Value: totalParticipants },
       { Field: "Total Tickets Sold", Value: totalTickets },
       { Field: "Total Revenue", Value: `₹${totalRevenue}` },
-      { Field: "Confirmed Bookings", Value: confirmedBookings },
+      { Field: "Confirmed Bookings", Value: totalConfirmedBookings },
       {
         Field: "Report Generated",
         Value: new Date().toLocaleString("en-IN", {
