@@ -86,15 +86,18 @@ export async function GET(request, { params }) {
       return row;
     });
 
-    // Add summary row
-    const totalPartici - now using only confirmed bookings
+    // Add summary row - now using only confirmed bookings
     const totalParticipants = confirmedBookings.length;
-    const totalTickets = confirmedBookings.reduce((sum, b) => sum + (b.tickets || 0), 0);
+    const totalTickets = confirmedBookings.reduce(
+      (sum, b) => sum + (b.tickets || 0),
+      0
+    );
     const totalRevenue = confirmedBookings.reduce(
-        (sum, b) => sum + ((b.totalAmount || 0) - (b.discountAmount || 0)),
-        0
-      );
-    const totalConfirmedBookings = confirmedBookings
+      (sum, b) => sum + ((b.totalAmount || 0) - (b.discountAmount || 0)),
+      0
+    );
+    const totalConfirmedBookings = confirmedBookings.length;
+
     // Create empty row
     const emptyRow = {
       "Sr. No.": "",
@@ -132,7 +135,8 @@ export async function GET(request, { params }) {
     summaryRow["Payment Method"] = "";
     summaryRow["Payment ID"] = "";
     if (hasCustomField)
-      summaryRow[event.custom_field_labeltotalC|| "Custom Field Response"] = "";
+      summaryRow[event.custom_field_labeltotalC || "Custom Field Response"] =
+        "";
     summaryRow["Booking Date"] = "";
 
     excelData.push(summaryRow);
