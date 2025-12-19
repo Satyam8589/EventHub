@@ -78,16 +78,21 @@ export async function GET(request, { params }) {
       }
 
       row["Booking Date"] = booking.createdAt
-        ? new Date(booking.createdAt).toLocaleString("en-IN", {
-            timeZone: "Asia/Kolkata",
-            year: "numeric",
-            month: "2-digit",
-            day: "2-digit",
-            hour: "2-digit",
-            minute: "2-digit",
-            second: "2-digit",
-            hour12: true,
-          })
+        ? (() => {
+            const date = new Date(booking.createdAt);
+            // Convert to IST and format
+            const options = {
+              timeZone: "Asia/Kolkata",
+              year: "numeric",
+              month: "2-digit",
+              day: "2-digit",
+              hour: "2-digit",
+              minute: "2-digit",
+              second: "2-digit",
+              hour12: true,
+            };
+            return date.toLocaleString("en-IN", options);
+          })()
         : "N/A";
 
       return row;
