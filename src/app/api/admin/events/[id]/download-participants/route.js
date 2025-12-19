@@ -80,6 +80,13 @@ export async function GET(request, { params }) {
       row["Booking Date"] = booking.createdAt
         ? new Date(booking.createdAt).toLocaleString("en-IN", {
             timeZone: "Asia/Kolkata",
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+            hour12: true,
           })
         : "N/A";
 
@@ -131,12 +138,11 @@ export async function GET(request, { params }) {
     };
     if (hasDiscounts) summaryRow["Discount Applied (₹)"] = "";
     summaryRow["Amount Paid (₹)"] = `Total Revenue: ₹${totalRevenue}`;
-    summaryRow["Status"] = `Confirmed: ${confirmedBookings}`;
+    summaryRow["Status"] = `Confirmed: ${totalConfirmedBookings}`;
     summaryRow["Payment Method"] = "";
     summaryRow["Payment ID"] = "";
     if (hasCustomField)
-      summaryRow[event.custom_field_labeltotalC || "Custom Field Response"] =
-        "";
+      summaryRow[event.custom_field_label || "Custom Field Response"] = "";
     summaryRow["Booking Date"] = "";
 
     excelData.push(summaryRow);
