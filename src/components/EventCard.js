@@ -618,6 +618,19 @@ export default function EventCard({ event }) {
             </div>
           </div>
 
+          {/* Explore Link */}
+          <div className="mt-4 mb-1">
+            <div className="text-[10px] sm:text-[11px] text-gray-500 font-bold uppercase tracking-wider mb-1">
+              Explore Now:-
+            </div>
+            <div 
+              className="text-[10px] sm:text-[11px] text-blue-600 font-semibold break-all"
+              style={{ letterSpacing: "0px", wordSpacing: "0px" }}
+            >
+              https://www.eventhubx.site/events
+            </div>
+          </div>
+
           {/* Price and Action - Modern Layout */}
           <div className="flex items-center justify-between pt-3 border-t border-gray-100">
             <div>

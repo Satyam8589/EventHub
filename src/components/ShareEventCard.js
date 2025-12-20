@@ -21,10 +21,7 @@ export default function ShareEventCard({ event, isOpen, onClose }) {
     hasImage: !!event?.imageUrl,
   });
 
-  const eventUrl =
-    typeof window !== "undefined"
-      ? `${window.location.origin.replace(/^http:\/\//, "https://")}/events/${event.id}`
-      : "";
+  const eventUrl = "https://www.eventhubx.site/events";
 
   const formatDate = (dateStr) => {
     if (!dateStr) return "";
@@ -602,16 +599,26 @@ export default function ShareEventCard({ event, isOpen, onClose }) {
               <div
                 style={{
                   color: "rgb(148, 163, 184)",
-                  fontSize: "clamp(0.6rem, 1.6vw, 0.7rem)",
-                  fontWeight: "500",
-                  fontFamily: "monospace",
-                  wordBreak: "break-word",
-                  maxWidth: "100%",
-                  lineHeight: isDownloading ? "1" : "1.4",
-                  marginTop: isDownloading ? "-2px" : "0",
+                  fontSize: isDownloading ? "12px" : "clamp(0.7rem, 1.8vw, 0.85rem)",
+                  fontWeight: "600",
+                  fontFamily: "Inter, -apple-system, BlinkMacSystemFont, sans-serif",
+                  lineHeight: "1.3",
+                  marginTop: isDownloading ? "0.4rem" : "0.6rem",
+                  textAlign: "left",
                 }}
               >
-                {eventUrl}
+                <div style={{ marginBottom: "2px" }}>Explore Now:-</div>
+                <div 
+                  style={{ 
+                    color: isDownloading ? "rgb(148, 163, 184)" : "rgb(96, 165, 250)",
+                    fontSize: isDownloading ? "11px" : "clamp(0.6rem, 1.6vw, 0.75rem)",
+                    letterSpacing: "0px",
+                    wordSpacing: "0px",
+                    wordBreak: "break-all"
+                  }}
+                >
+                  {eventUrl}
+                </div>
               </div>
             </div>
           </div>
