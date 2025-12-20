@@ -652,9 +652,6 @@ export default function Page({ params }) {
               <h1 className="text-4xl md:text-5xl font-bold text-white leading-tight">
                 {event.title}
               </h1>
-              <p className="text-xl text-gray-400">
-                Where technology meets innovation
-              </p>
             </div>
 
             {/* Professional Tabs */}
