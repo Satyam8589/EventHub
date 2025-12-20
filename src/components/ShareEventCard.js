@@ -23,7 +23,7 @@ export default function ShareEventCard({ event, isOpen, onClose }) {
 
   const eventUrl =
     typeof window !== "undefined"
-      ? `${window.location.origin}/events/${event.id}`
+      ? `${window.location.origin.replace(/^http:\/\//, "https://")}/events/${event.id}`
       : "";
 
   const formatDate = (dateStr) => {
@@ -314,7 +314,7 @@ export default function ShareEventCard({ event, isOpen, onClose }) {
                 </span>
                 <span>
                   Organized by{" "}
-                  {event.organizerName || event.organizer?.name || "EventHub"}
+                  {event.organizerName || event.organizer?.name || "EventHubX"}
                 </span>
               </div>
             </div>
@@ -538,12 +538,12 @@ export default function ShareEventCard({ event, isOpen, onClose }) {
             <div
               style={{
                 display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                paddingTop: isDownloading ? "0.6rem" : "clamp(0.75rem, 2vw, 1rem)",
+                flexDirection: "column",
+                alignItems: "flex-start",
+                justifyContent: "flex-start",
+                paddingTop: isDownloading ? "0.4rem" : "clamp(0.75rem, 2vw, 1rem)",
                 borderTop: "1px solid rgba(255, 255, 255, 0.1)",
-                gap: "0.75rem",
-                flexWrap: "wrap",
+                gap: isDownloading ? "0" : "0.25rem",
               }}
             >
               <div
@@ -585,7 +585,7 @@ export default function ShareEventCard({ event, isOpen, onClose }) {
                       letterSpacing: "-0.01em",
                     }}
                   >
-                    EventHub
+                    EventHubX
                   </div>
                   <div
                     style={{
@@ -607,10 +607,11 @@ export default function ShareEventCard({ event, isOpen, onClose }) {
                   fontFamily: "monospace",
                   wordBreak: "break-word",
                   maxWidth: "100%",
-                  lineHeight: "1.4",
+                  lineHeight: isDownloading ? "1" : "1.4",
+                  marginTop: isDownloading ? "-2px" : "0",
                 }}
               >
-                {eventUrl.replace(/^https?:\/\//, "")}
+                {eventUrl}
               </div>
             </div>
           </div>
