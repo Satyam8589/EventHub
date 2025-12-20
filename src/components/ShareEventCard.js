@@ -9,6 +9,7 @@ export default function ShareEventCard({ event, isOpen, onClose }) {
   const [imageError, setImageError] = useState(false);
   const cardRef = useRef(null);
   const wrapperRef = useRef(null);
+  const captureWrapperRef = useRef(null);
 
   if (!isOpen) return null;
 
@@ -62,36 +63,47 @@ export default function ShareEventCard({ event, isOpen, onClose }) {
   };
 
   const handleDownload = async () => {
-    if (!cardRef.current || !wrapperRef.current) return;
+    if (!cardRef.current || !wrapperRef.current || !captureWrapperRef.current) return;
 
     setIsDownloading(true);
     
-    // Store original styles for both wrapper and card
+    // Store original styles
     const originalWrapperWidth = wrapperRef.current.style.width;
     const originalWrapperMaxWidth = wrapperRef.current.style.maxWidth;
     const originalWrapperOpacity = wrapperRef.current.style.opacity;
     const originalWrapperPointerEvents = wrapperRef.current.style.pointerEvents;
+    
     const originalCardWidth = cardRef.current.style.width;
     const originalCardMaxWidth = cardRef.current.style.maxWidth;
     const originalCardShadow = cardRef.current.style.boxShadow;
+    const originalCardMargin = cardRef.current.style.margin;
+    
+    const originalCapturePadding = captureWrapperRef.current.style.padding;
+    const originalCaptureBackground = captureWrapperRef.current.style.background;
     
     try {
       // Hide the card visually during capture to prevent visible changes
       wrapperRef.current.style.opacity = "0";
       wrapperRef.current.style.pointerEvents = "none";
       
-      // Force very small width for ultra-compact capture
-      wrapperRef.current.style.width = "280px";
-      wrapperRef.current.style.maxWidth = "280px";
+      // Setup for capture - creating "breathing room" around the card
+      // This decreases the relative size of the card in the final image
+      captureWrapperRef.current.style.padding = "40px";
+      captureWrapperRef.current.style.background = "transparent";
+      
+      // Force compact width for the card itself
+      wrapperRef.current.style.width = "360px"; // Increased slightly from 280 to handle padding better
+      wrapperRef.current.style.maxWidth = "360px";
       cardRef.current.style.width = "280px";
       cardRef.current.style.maxWidth = "280px";
-      cardRef.current.style.boxShadow = "none"; // Remove shadow during capture to fix edges
+      cardRef.current.style.margin = "0 auto"; // Center the card in the padded wrapper
+      cardRef.current.style.boxShadow = "none";
       
       // Wait a bit for state-based re-render (isDownloading=true) and reflow
       await new Promise((resolve) => setTimeout(resolve, 600));
 
-      const canvas = await html2canvas(cardRef.current, {
-        backgroundColor: null, // Transparent background to fix weird edges
+      const canvas = await html2canvas(captureWrapperRef.current, {
+        backgroundColor: null, // Keeps background transparent
         scale: 2,
         logging: false,
         useCORS: true,
@@ -99,8 +111,6 @@ export default function ShareEventCard({ event, isOpen, onClose }) {
         foreignObjectRendering: false,
         imageTimeout: 15000,
         removeContainer: true,
-        width: 280,
-        windowWidth: 280,
       });
 
       const image = canvas.toDataURL("image/png", 1.0);
@@ -140,6 +150,11 @@ export default function ShareEventCard({ event, isOpen, onClose }) {
         cardRef.current.style.width = originalCardWidth;
         cardRef.current.style.maxWidth = originalCardMaxWidth;
         cardRef.current.style.boxShadow = originalCardShadow;
+        cardRef.current.style.margin = originalCardMargin;
+      }
+      if (captureWrapperRef.current) {
+        captureWrapperRef.current.style.padding = originalCapturePadding;
+        captureWrapperRef.current.style.background = originalCaptureBackground;
       }
       setIsDownloading(false);
     }
@@ -200,17 +215,19 @@ export default function ShareEventCard({ event, isOpen, onClose }) {
           ✕
         </button>
 
-        {/* Shareable Card Container (the 4px broad gradient border) */}
-        <div
-          ref={cardRef}
-          className="rounded-[32px] overflow-hidden shadow-2xl"
-          style={{
-            background: "linear-gradient(135deg, rgb(37, 99, 235) 0%, rgb(147, 51, 234) 50%, rgb(219, 39, 119) 100%)",
-            width: "100%",
-            maxWidth: "600px",
-            padding: "4px", // 4px broad border
-          }}
-        >
+        {/* Capture Wrapper - Used to add padding around the card during download */}
+        <div ref={captureWrapperRef}>
+          {/* Shareable Card Container (the 4px broad gradient border) */}
+          <div
+            ref={cardRef}
+            className="rounded-[32px] overflow-hidden shadow-2xl"
+            style={{
+              background: "linear-gradient(135deg, rgb(37, 99, 235) 0%, rgb(147, 51, 234) 50%, rgb(219, 39, 119) 100%)",
+              width: "100%",
+              maxWidth: "600px",
+              padding: "4px", // 4px broad border
+            }}
+          >
           {/* Inner Content Card (dark background) */}
           <div
             style={{
@@ -599,6 +616,7 @@ export default function ShareEventCard({ event, isOpen, onClose }) {
           </div>
         </div>
       </div>
+    </div>
 
         {/* Action Buttons */}
         <div className="mt-6 flex flex-row gap-3">
