@@ -183,13 +183,13 @@ export default function ShareEventCard({ event, isOpen, onClose }) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-50 flex items-start md:items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto"
       onClick={onClose}
     >
       <div
         ref={wrapperRef}
-        className="relative w-full max-h-[95vh] overflow-y-auto"
-        style={{ maxWidth: "600px" }}
+        className="relative w-[92%] md:w-full mt-16 md:mt-0 max-h-none md:max-h-[95vh]"
+        style={{ maxWidth: "500px" }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Close Button */}

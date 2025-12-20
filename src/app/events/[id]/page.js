@@ -1652,18 +1652,18 @@ export default function Page({ params }) {
       )}
 
       {/* Floating Share Button */}
-      <div className="fixed bottom-6 right-6 z-50">
+      <div className="fixed bottom-24 md:bottom-6 right-4 md:right-6 z-50">
         <button
           onClick={() => setShowShareModal(true)}
           style={{
             background:
               "linear-gradient(135deg, rgb(22, 163, 74) 0%, rgb(20, 184, 166) 50%, rgb(37, 99, 235) 100%)",
           }}
-          className="group relative text-white w-14 h-14 rounded-full font-bold shadow-2xl hover:shadow-green-500/50 hover:scale-110 transition-all duration-300 flex items-center justify-center"
+          className="group relative text-white w-12 h-12 md:w-14 md:h-14 rounded-full font-bold shadow-2xl hover:shadow-green-500/50 hover:scale-110 transition-all duration-300 flex items-center justify-center"
           aria-label="Share Event"
           title="Share Event"
         >
-          <span className="text-2xl relative z-10">📤</span>
+          <span className="text-xl md:text-2xl relative z-10">📤</span>
 
           {/* Glow effect */}
           <div
