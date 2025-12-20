@@ -4,6 +4,7 @@ import { use, useState, useEffect } from "react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import BookingModal from "@/components/BookingModal";
+import ShareEventCard from "@/components/ShareEventCard";
 import { supabase } from "@/lib/supabase";
 
 export default function Page({ params }) {
@@ -17,6 +18,7 @@ export default function Page({ params }) {
   const [particles, setParticles] = useState([]);
   const [scrollY, setScrollY] = useState(0);
   const [showBookingModal, setShowBookingModal] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
   const [selectedGalleryItem, setSelectedGalleryItem] = useState(null);
   const [announcements, setAnnouncements] = useState([]);
   const [canViewAnnouncements, setCanViewAnnouncements] = useState(false);
@@ -698,15 +700,20 @@ export default function Page({ params }) {
                             <div className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
                               ₹{(event.price || 499).toLocaleString("en-IN")}
                             </div>
-                            <div className="text-xs text-gray-400">per ticket</div>
+                            <div className="text-xs text-gray-400">
+                              per ticket
+                            </div>
                           </div>
                         </div>
-                        
+
                         {/* Compact Availability */}
                         <div className="text-right">
-                          <div className="text-xs text-gray-400 mb-1">Availability</div>
+                          <div className="text-xs text-gray-400 mb-1">
+                            Availability
+                          </div>
                           <div className="text-sm font-bold text-white bg-white/10 px-2 py-1 rounded-lg">
-                            {event._count?.bookings || 0}/{event.capacity || 1000}
+                            {event._count?.bookings || 0}/
+                            {event.capacity || 1000}
                           </div>
                         </div>
                       </div>
@@ -1644,11 +1651,46 @@ export default function Page({ params }) {
         </div>
       )}
 
+      {/* Floating Share Button */}
+      <div className="fixed bottom-6 right-6 z-50">
+        <button
+          onClick={() => setShowShareModal(true)}
+          style={{
+            background:
+              "linear-gradient(135deg, rgb(22, 163, 74) 0%, rgb(20, 184, 166) 50%, rgb(37, 99, 235) 100%)",
+          }}
+          className="group relative text-white w-14 h-14 rounded-full font-bold shadow-2xl hover:shadow-green-500/50 hover:scale-110 transition-all duration-300 flex items-center justify-center"
+          aria-label="Share Event"
+          title="Share Event"
+        >
+          <span className="text-2xl relative z-10">📤</span>
+
+          {/* Glow effect */}
+          <div
+            className="absolute inset-0 rounded-full opacity-0 group-hover:opacity-30 blur-xl transition-opacity duration-300"
+            style={{
+              background:
+                "linear-gradient(135deg, rgb(74, 222, 128) 0%, rgb(94, 234, 212) 50%, rgb(96, 165, 250) 100%)",
+            }}
+          ></div>
+
+          {/* Pulse ring */}
+          <span className="absolute inset-0 rounded-full border-2 border-white/30 group-hover:animate-ping"></span>
+        </button>
+      </div>
+
       {/* Booking Modal */}
       <BookingModal
         event={event}
         isOpen={showBookingModal}
         onClose={() => setShowBookingModal(false)}
+      />
+
+      {/* Share Modal */}
+      <ShareEventCard
+        event={event}
+        isOpen={showShareModal}
+        onClose={() => setShowShareModal(false)}
       />
     </div>
   );

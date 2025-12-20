@@ -1,0 +1,599 @@
+"use client";
+
+import { useState, useRef } from "react";
+import { QRCodeSVG } from "qrcode.react";
+import html2canvas from "html2canvas";
+
+export default function ShareEventCard({ event, isOpen, onClose }) {
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [imageError, setImageError] = useState(false);
+  const cardRef = useRef(null);
+
+  if (!isOpen) return null;
+
+  // Debug: Log event data
+  console.log("ShareEventCard - Event data:", {
+    id: event?.id,
+    name: event?.name,
+    imageUrl: event?.imageUrl,
+    hasImage: !!event?.imageUrl,
+  });
+
+  const eventUrl =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/events/${event.id}`
+      : "";
+
+  const formatDate = (dateStr) => {
+    if (!dateStr) return "";
+    const dateValue =
+      dateStr.includes("T") && dateStr.includes("Z")
+        ? dateStr
+        : dateStr.includes("T")
+        ? dateStr + "Z"
+        : dateStr.replace(" ", "T") + "Z";
+
+    const date = new Date(dateValue);
+    return date.toLocaleDateString("en-IN", {
+      weekday: "short",
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      timeZone: "Asia/Kolkata",
+    });
+  };
+
+  const formatTime = (timeStr) => {
+    if (!timeStr) return "";
+    if (timeStr.includes("AM") || timeStr.includes("PM")) {
+      return timeStr;
+    }
+    const timeParts = timeStr.split(":");
+    if (timeParts.length === 2) {
+      let hours = parseInt(timeParts[0]);
+      const minutes = timeParts[1];
+      const ampm = hours >= 12 ? "PM" : "AM";
+      hours = hours % 12;
+      hours = hours ? hours : 12;
+      return `${hours}:${minutes} ${ampm}`;
+    }
+    return timeStr;
+  };
+
+  const handleDownload = async () => {
+    if (!cardRef.current) return;
+
+    setIsDownloading(true);
+    try {
+      // Wait a bit for fonts and images to load
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      const canvas = await html2canvas(cardRef.current, {
+        backgroundColor: "#0f172a",
+        scale: 1,
+        logging: false,
+        useCORS: true,
+        allowTaint: true,
+        foreignObjectRendering: false,
+        imageTimeout: 15000,
+        removeContainer: true,
+      });
+
+      const image = canvas.toDataURL("image/png", 1.0);
+      const link = document.createElement("a");
+      link.href = image;
+      const filename = event?.name
+        ? `${event.name
+            .replace(/[^a-z0-9]/gi, "_")
+            .toLowerCase()}_event_card.png`
+        : "event_card.png";
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      // Show success message
+      alert("Event card downloaded successfully! ✅");
+    } catch (error) {
+      console.error("Error downloading card:", error);
+
+      // Provide helpful fallback instructions
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      const fallbackMsg = isMobile
+        ? "Unable to auto-download. Please take a screenshot of this card to share."
+        : "Unable to auto-download. Please take a screenshot (Windows: Win+Shift+S, Mac: Cmd+Shift+4) to save the card.";
+
+      alert(`${fallbackMsg}\n\nError: ${error.message}`);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
+  const handleShare = async () => {
+    const shareData = {
+      title: event.name,
+      text: `Check out ${event.name}! 🎉\n\n${event.description?.substring(
+        0,
+        100
+      )}...`,
+      url: eventUrl,
+    };
+
+    try {
+      if (
+        navigator.share &&
+        navigator.canShare &&
+        navigator.canShare(shareData)
+      ) {
+        await navigator.share(shareData);
+      } else {
+        // Fallback: Copy to clipboard
+        await navigator.clipboard.writeText(`${event.name}\n\n${eventUrl}`);
+        alert("Event link copied to clipboard!");
+      }
+    } catch (error) {
+      if (error.name !== "AbortError") {
+        console.error("Error sharing:", error);
+        // Fallback to clipboard
+        try {
+          await navigator.clipboard.writeText(`${event.name}\n\n${eventUrl}`);
+          alert("Event link copied to clipboard!");
+        } catch (clipError) {
+          console.error("Clipboard error:", clipError);
+        }
+      }
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+      onClick={onClose}
+    >
+      <div
+        className="relative w-full max-h-[95vh] overflow-y-auto"
+        style={{ maxWidth: "600px" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Close Button */}
+        <button
+          onClick={onClose}
+          className="absolute -top-12 right-0 text-white text-2xl hover:text-red-400 transition-colors z-10"
+        >
+          ✕
+        </button>
+
+        {/* Shareable Card */}
+        <div
+          ref={cardRef}
+          className="rounded-3xl overflow-hidden shadow-2xl"
+          style={{
+            background: "rgb(15, 23, 42)",
+            width: "100%",
+            maxWidth: "600px",
+          }}
+        >
+          {/* Hero Section with Event Image */}
+          <div
+            className="relative"
+            style={{ height: "clamp(140px, 28vh, 200px)" }}
+          >
+            {event.imageUrl && !imageError ? (
+              <img
+                src={event.imageUrl}
+                alt={event.name}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                }}
+                crossOrigin="anonymous"
+                onLoad={() => {
+                  console.log("Image loaded successfully:", event.imageUrl);
+                }}
+                onError={(e) => {
+                  console.log("Image failed to load:", event.imageUrl);
+                  setImageError(true);
+                }}
+              />
+            ) : (
+              <div
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  background:
+                    "linear-gradient(135deg, rgb(37, 99, 235) 0%, rgb(147, 51, 234) 50%, rgb(219, 39, 119) 100%)",
+                }}
+              ></div>
+            )}
+
+            {/* Gradient Overlay */}
+            <div
+              className="absolute inset-0"
+              style={{
+                background:
+                  "linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.3) 40%, rgba(15, 23, 42, 0.95) 100%)",
+              }}
+            ></div>
+
+            {/* Event Title Overlay */}
+            <div
+              className="absolute bottom-0 left-0 right-0"
+              style={{ padding: "clamp(1rem, 3vw, 1.5rem)" }}
+            >
+              <h2
+                style={{
+                  color: "rgb(255, 255, 255)",
+                  fontSize: "clamp(1.25rem, 4vw, 2rem)",
+                  fontWeight: "800",
+                  lineHeight: "1.2",
+                  marginBottom: "0.5rem",
+                  textShadow: "0 2px 8px rgba(0, 0, 0, 0.5)",
+                }}
+              >
+                {event.name}
+              </h2>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.5rem",
+                  color: "rgb(203, 213, 225)",
+                  fontSize: "clamp(0.75rem, 2vw, 0.875rem)",
+                  fontWeight: "500",
+                  marginTop: "0.75rem",
+                }}
+              >
+                <span style={{ fontSize: "clamp(0.875rem, 2.5vw, 1rem)" }}>
+                  🎤
+                </span>
+                <span>
+                  Organized by{" "}
+                  {event.organizerName || event.organizer?.name || "EventHub"}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Content Section */}
+          <div style={{ padding: "clamp(0.875rem, 3vw, 1.5rem)" }}>
+            {/* Event Details - Modern Grid */}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+                gap: "clamp(0.5rem, 1.5vw, 0.75rem)",
+                marginBottom: "clamp(0.75rem, 2vw, 1rem)",
+              }}
+            >
+              {/* Date Card */}
+              <div
+                style={{
+                  background:
+                    "linear-gradient(135deg, rgba(37, 99, 235, 0.1) 0%, rgba(37, 99, 235, 0.05) 100%)",
+                  borderRadius: "0.875rem",
+                  padding: "clamp(0.75rem, 2.5vw, 1rem)",
+                  border: "1px solid rgba(37, 99, 235, 0.2)",
+                  position: "relative",
+                  overflow: "hidden",
+                }}
+              >
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "-20px",
+                    right: "-20px",
+                    fontSize: "clamp(2.5rem, 8vw, 4rem)",
+                    opacity: "0.1",
+                  }}
+                >
+                  📅
+                </div>
+                <div
+                  style={{
+                    fontSize: "clamp(0.65rem, 1.8vw, 0.75rem)",
+                    color: "rgb(96, 165, 250)",
+                    fontWeight: "600",
+                    marginBottom: "0.25rem",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.05em",
+                  }}
+                >
+                  Date
+                </div>
+                <div
+                  style={{
+                    color: "rgb(255, 255, 255)",
+                    fontWeight: "700",
+                    fontSize: "clamp(0.8rem, 2.2vw, 0.95rem)",
+                    lineHeight: "1.3",
+                  }}
+                >
+                  {formatDate(event.date)}
+                </div>
+              </div>
+
+              {/* Time Card */}
+              <div
+                style={{
+                  background:
+                    "linear-gradient(135deg, rgba(147, 51, 234, 0.1) 0%, rgba(147, 51, 234, 0.05) 100%)",
+                  borderRadius: "0.875rem",
+                  padding: "clamp(0.75rem, 2.5vw, 1rem)",
+                  border: "1px solid rgba(147, 51, 234, 0.2)",
+                  position: "relative",
+                  overflow: "hidden",
+                }}
+              >
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "-20px",
+                    right: "-20px",
+                    fontSize: "clamp(2.5rem, 8vw, 4rem)",
+                    opacity: "0.1",
+                  }}
+                >
+                  🕐
+                </div>
+                <div
+                  style={{
+                    fontSize: "clamp(0.65rem, 1.8vw, 0.75rem)",
+                    color: "rgb(196, 181, 253)",
+                    fontWeight: "600",
+                    marginBottom: "0.25rem",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.05em",
+                  }}
+                >
+                  Time
+                </div>
+                <div
+                  style={{
+                    color: "rgb(255, 255, 255)",
+                    fontWeight: "700",
+                    fontSize: "clamp(0.8rem, 2.2vw, 0.95rem)",
+                  }}
+                >
+                  {formatTime(event.time)}
+                </div>
+              </div>
+
+              {/* Location Card - Full Width */}
+              {event.location && (
+                <div
+                  style={{
+                    gridColumn: "1 / -1",
+                    background:
+                      "linear-gradient(135deg, rgba(219, 39, 119, 0.1) 0%, rgba(219, 39, 119, 0.05) 100%)",
+                    borderRadius: "0.875rem",
+                    padding: "clamp(0.75rem, 2.5vw, 1rem)",
+                    border: "1px solid rgba(219, 39, 119, 0.2)",
+                    position: "relative",
+                    overflow: "hidden",
+                  }}
+                >
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: "-20px",
+                      right: "-20px",
+                      fontSize: "clamp(2.5rem, 8vw, 4rem)",
+                      opacity: "0.1",
+                    }}
+                  >
+                    📍
+                  </div>
+                  <div
+                    style={{
+                      fontSize: "clamp(0.65rem, 1.8vw, 0.75rem)",
+                      color: "rgb(251, 113, 133)",
+                      fontWeight: "600",
+                      marginBottom: "0.25rem",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.05em",
+                    }}
+                  >
+                    Location
+                  </div>
+                  <div
+                    style={{
+                      color: "rgb(255, 255, 255)",
+                      fontWeight: "700",
+                      fontSize: "clamp(0.8rem, 2.2vw, 0.95rem)",
+                      lineHeight: "1.4",
+                    }}
+                  >
+                    {event.location}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* QR Code Section - Modern Design */}
+            <div
+              style={{
+                background:
+                  "linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.03) 100%)",
+                borderRadius: "1rem",
+                padding: "clamp(0.875rem, 3vw, 1.25rem)",
+                border: "1px solid rgba(255, 255, 255, 0.1)",
+                display: "flex",
+                flexDirection: "row",
+                alignItems: "center",
+                gap: "clamp(0.75rem, 2vw, 1rem)",
+                marginBottom: "clamp(0.75rem, 2vw, 1rem)",
+              }}
+            >
+              {/* QR Code */}
+              <div
+                style={{
+                  background: "rgb(255, 255, 255)",
+                  padding: "clamp(0.5rem, 1.5vw, 0.75rem)",
+                  borderRadius: "0.75rem",
+                  boxShadow: "0 8px 32px rgba(0, 0, 0, 0.3)",
+                  flexShrink: 0,
+                }}
+              >
+                <QRCodeSVG
+                  value={eventUrl}
+                  size={Math.min(90, window.innerWidth * 0.18)}
+                  level="H"
+                  includeMargin={false}
+                  bgColor="#ffffff"
+                  fgColor="#000000"
+                />
+              </div>
+
+              {/* QR Text */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <h3
+                  style={{
+                    fontSize: "clamp(1rem, 3vw, 1.25rem)",
+                    fontWeight: "800",
+                    color: "rgb(255, 255, 255)",
+                    marginBottom: "0.5rem",
+                    background:
+                      "linear-gradient(135deg, rgb(96, 165, 250) 0%, rgb(168, 85, 247) 100%)",
+                    WebkitBackgroundClip: "text",
+                    WebkitTextFillColor: "transparent",
+                    backgroundClip: "text",
+                  }}
+                >
+                  Scan to Book
+                </h3>
+                <p
+                  style={{
+                    fontSize: "clamp(0.75rem, 2vw, 0.875rem)",
+                    color: "rgb(203, 213, 225)",
+                    lineHeight: "1.5",
+                  }}
+                >
+                  Scan this QR code with your phone to view event details and
+                  book tickets instantly
+                </p>
+              </div>
+            </div>
+
+            {/* Footer - Modern Brand */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                paddingTop: "clamp(0.75rem, 2vw, 1rem)",
+                borderTop: "1px solid rgba(255, 255, 255, 0.1)",
+                gap: "0.75rem",
+                flexWrap: "wrap",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "clamp(0.5rem, 2vw, 0.75rem)",
+                }}
+              >
+                <div
+                  style={{
+                    width: "clamp(2rem, 6vw, 2.5rem)",
+                    height: "clamp(2rem, 6vw, 2.5rem)",
+                    borderRadius: "0.75rem",
+                    background:
+                      "linear-gradient(135deg, rgb(37, 99, 235) 0%, rgb(147, 51, 234) 100%)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    boxShadow: "0 4px 12px rgba(37, 99, 235, 0.3)",
+                  }}
+                >
+                  <span
+                    style={{
+                      color: "rgb(255, 255, 255)",
+                      fontWeight: "800",
+                      fontSize: "clamp(1rem, 3vw, 1.25rem)",
+                    }}
+                  >
+                    E
+                  </span>
+                </div>
+                <div>
+                  <div
+                    style={{
+                      color: "rgb(255, 255, 255)",
+                      fontWeight: "700",
+                      fontSize: "clamp(0.8rem, 2.2vw, 0.95rem)",
+                      letterSpacing: "-0.01em",
+                    }}
+                  >
+                    EventHub
+                  </div>
+                  <div
+                    style={{
+                      color: "rgb(148, 163, 184)",
+                      fontSize: "clamp(0.65rem, 1.8vw, 0.75rem)",
+                      fontWeight: "500",
+                    }}
+                  >
+                    Your Event Platform
+                  </div>
+                </div>
+              </div>
+
+              <div
+                style={{
+                  color: "rgb(148, 163, 184)",
+                  fontSize: "clamp(0.6rem, 1.6vw, 0.7rem)",
+                  fontWeight: "500",
+                  fontFamily: "monospace",
+                  wordBreak: "break-all",
+                  maxWidth: "100%",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
+              >
+                {eventUrl.replace(/^https?:\/\//, "")}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="mt-6 flex flex-row gap-3">
+          <button
+            onClick={handleDownload}
+            disabled={isDownloading}
+            style={{
+              background:
+                "linear-gradient(90deg, rgb(37, 99, 235) 0%, rgb(147, 51, 234) 100%)",
+            }}
+            className="flex-1 text-white py-2 px-4 rounded-2xl font-bold text-sm hover:opacity-90 transition-all duration-300 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            <span className="text-lg">📥</span>
+            {isDownloading ? "Downloading..." : "Download Card"}
+          </button>
+
+          <button
+            onClick={handleShare}
+            style={{
+              background:
+                "linear-gradient(90deg, rgb(22, 163, 74) 0%, rgb(20, 184, 166) 100%)",
+            }}
+            className="flex-1 text-white py-2 px-4 rounded-2xl font-bold text-sm hover:opacity-90 transition-all duration-300 shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
+          >
+            <span className="text-xl">📤</span>
+            Share Event
+          </button>
+        </div>
+
+        {/* Instructions */}
+        <div className="mt-4 text-center">
+          <p className="text-gray-400 text-sm">
+            Download the card or share directly to social media, WhatsApp, or
+            anywhere!
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
