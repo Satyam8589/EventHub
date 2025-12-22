@@ -13,6 +13,7 @@ export default function UploadReelModal({ onClose, onSuccess }) {
   const [selectedFile, setSelectedFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [error, setError] = useState(null);
+  const [showErrorPopup, setShowErrorPopup] = useState(false);
 
   // Available hashtags
   const availableTags = [
@@ -50,16 +51,17 @@ export default function UploadReelModal({ onClose, onSuccess }) {
       return;
     }
 
-    // Validate file size (max 10MB for images, 50MB for videos)
-    const maxSize = file.type.startsWith("video")
-      ? 50 * 1024 * 1024
-      : 10 * 1024 * 1024;
+    // Validate file size (max 10MB for both images and videos)
+    const maxSize = 10 * 1024 * 1024; // 10MB for all files
     if (file.size > maxSize) {
-      setError(
-        `File size must be less than ${
-          file.type.startsWith("video") ? "50MB" : "10MB"
-        }`
-      );
+      const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
+      const fileType = file.type.startsWith("video") ? "video" : "image";
+      setError({
+        size: fileSizeMB,
+        type: fileType,
+        isOversize: true
+      });
+      setShowErrorPopup(true);
       return;
     }
 
@@ -284,7 +286,7 @@ export default function UploadReelModal({ onClose, onSuccess }) {
                       Click to upload image or video
                     </p>
                     <p className="text-gray-400 text-sm">
-                      Images: max 10MB | Videos: max 50MB
+                      Max file size: 10MB (images and videos)
                     </p>
                   </div>
                 )}
@@ -358,8 +360,8 @@ export default function UploadReelModal({ onClose, onSuccess }) {
             )}
           </div>
 
-          {/* Error Message */}
-          {error && (
+          {/* Error Message - Only for non-oversize errors */}
+          {error && typeof error === 'string' && (
             <div className="bg-red-500/20 border border-red-500/50 rounded-lg p-4">
               <p className="text-red-200 text-sm">{error}</p>
             </div>
@@ -392,6 +394,157 @@ export default function UploadReelModal({ onClose, onSuccess }) {
           </div>
         </form>
       </div>
+
+      {/* File Size Error Popup Modal */}
+      {showErrorPopup && error?.isOversize && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-fade-in">
+          <div className="bg-gradient-to-br from-gray-900 via-red-900/20 to-gray-900 rounded-2xl shadow-2xl max-w-lg w-full border border-red-500/30 animate-scale-in">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-red-500 to-orange-500 p-6 rounded-t-2xl">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="text-4xl">📦</div>
+                  <h2 className="text-2xl font-bold text-white">File Too Large</h2>
+                </div>
+                <button
+                  onClick={() => setShowErrorPopup(false)}
+                  className="text-white hover:bg-white/20 rounded-full p-2 transition-colors"
+                >
+                  <svg
+                    className="w-6 h-6"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 space-y-6">
+              {/* File Size Info */}
+              <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4">
+                <p className="text-white text-center text-lg">
+                  Your <span className="font-bold text-red-400">{error.type}</span> is{" "}
+                  <span className="font-bold text-red-400">{error.size} MB</span>
+                </p>
+                <p className="text-gray-300 text-center mt-2">
+                  Maximum allowed size is <span className="font-bold text-white">10 MB</span>
+                </p>
+              </div>
+
+              {/* Suggestions */}
+              <div className="bg-white/5 rounded-xl p-5 border border-white/10">
+                <p className="text-white font-semibold mb-4 flex items-center gap-2 text-lg">
+                  <span>💡</span>
+                  <span>How to fix this:</span>
+                </p>
+                <ul className="space-y-3 text-sm text-gray-200">
+                  {error.type === 'video' ? (
+                    <>
+                      <li className="flex items-start gap-3 p-2 hover:bg-white/5 rounded-lg transition-colors">
+                        <span className="text-green-400 text-lg mt-0.5">✓</span>
+                        <div>
+                          <span className="block mb-1">Compress your video using:</span>
+                          <div className="flex flex-wrap gap-2">
+                            <a
+                              href="https://www.freeconvert.com/video-compressor"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 px-3 py-1 bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 rounded-full text-xs font-medium transition-colors"
+                            >
+                              FreeConvert ↗
+                            </a>
+                            <a
+                              href="https://www.videosmaller.com/"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 px-3 py-1 bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 rounded-full text-xs font-medium transition-colors"
+                            >
+                              VideoSmaller ↗
+                            </a>
+                          </div>
+                        </div>
+                      </li>
+                      <li className="flex items-start gap-3 p-2 hover:bg-white/5 rounded-lg transition-colors">
+                        <span className="text-green-400 text-lg mt-0.5">✓</span>
+                        <span>Reduce video resolution (try 720p instead of 1080p)</span>
+                      </li>
+                      <li className="flex items-start gap-3 p-2 hover:bg-white/5 rounded-lg transition-colors">
+                        <span className="text-green-400 text-lg mt-0.5">✓</span>
+                        <span>Trim the video to make it shorter</span>
+                      </li>
+                    </>
+                  ) : (
+                    <>
+                      <li className="flex items-start gap-3 p-2 hover:bg-white/5 rounded-lg transition-colors">
+                        <span className="text-green-400 text-lg mt-0.5">✓</span>
+                        <div>
+                          <span className="block mb-1">Compress your image using:</span>
+                          <div className="flex flex-wrap gap-2">
+                            <a
+                              href="https://tinypng.com/"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 px-3 py-1 bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 rounded-full text-xs font-medium transition-colors"
+                            >
+                              TinyPNG ↗
+                            </a>
+                            <a
+                              href="https://compressor.io/"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 px-3 py-1 bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 rounded-full text-xs font-medium transition-colors"
+                            >
+                              Compressor.io ↗
+                            </a>
+                          </div>
+                        </div>
+                      </li>
+                      <li className="flex items-start gap-3 p-2 hover:bg-white/5 rounded-lg transition-colors">
+                        <span className="text-green-400 text-lg mt-0.5">✓</span>
+                        <span>Reduce image dimensions (recommended: 1080x1920 for reels)</span>
+                      </li>
+                      <li className="flex items-start gap-3 p-2 hover:bg-white/5 rounded-lg transition-colors">
+                        <span className="text-green-400 text-lg mt-0.5">✓</span>
+                        <span>Convert to a more efficient format (WebP or JPEG)</span>
+                      </li>
+                    </>
+                  )}
+                </ul>
+              </div>
+
+              {/* Pro Tip */}
+              <div className="bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border border-yellow-500/30 rounded-xl p-4">
+                <div className="flex items-start gap-3">
+                  <span className="text-2xl">⚡</span>
+                  <div>
+                    <p className="text-yellow-200 font-medium mb-1">Pro Tip</p>
+                    <p className="text-yellow-100/80 text-sm">
+                      Most compression tools can reduce file size by 50-70% without noticeable quality loss!
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Close Button */}
+              <button
+                onClick={() => setShowErrorPopup(false)}
+                className="w-full px-6 py-3 bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-xl hover:scale-105 transition-transform font-semibold text-lg shadow-lg"
+              >
+                Got it, I'll compress my file
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
