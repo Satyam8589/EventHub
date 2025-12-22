@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useRouter, useParams } from "next/navigation";
 import AdminLayout from "@/components/AdminLayout";
 import { useFileUpload } from "@/hooks/useFileUpload";
+import MapLocationPicker from "@/components/MapLocationPicker";
 
 export default function EditEventPage() {
   const [event, setEvent] = useState(null);
@@ -18,6 +19,8 @@ export default function EditEventPage() {
     time: "",
     endTime: "",
     location: "",
+    latitude: "",
+    longitude: "",
     venue: "",
     capacity: "",
     price: "",
@@ -112,6 +115,8 @@ export default function EditEventPage() {
         time: data.event.time || "",
         endTime: data.event.endTime || data.event.endtime || "",
         location: data.event.location || "",
+        latitude: data.event.latitude || "",
+        longitude: data.event.longitude || "",
         venue: data.event.venue || "",
         capacity: data.event.capacity || "",
         price: data.event.price || "",
@@ -155,6 +160,15 @@ export default function EditEventPage() {
     setFormData((prev) => ({
       ...prev,
       [name]: type === "checkbox" ? checked : value,
+    }));
+  };
+
+  // Handle location change from map picker
+  const handleLocationChange = (lat, lng) => {
+    setFormData((prev) => ({
+      ...prev,
+      latitude: lat.toString(),
+      longitude: lng.toString(),
     }));
   };
 
@@ -288,6 +302,8 @@ export default function EditEventPage() {
         endDate: formData.endDate || null,
         time: formData.time,
         endTime: formData.endTime || null,
+        latitude: formData.latitude ? parseFloat(formData.latitude) : null,
+        longitude: formData.longitude ? parseFloat(formData.longitude) : null,
         capacity: parseInt(formData.capacity),
         price: parseFloat(formData.price),
         gallery: gallery,
@@ -715,6 +731,13 @@ export default function EditEventPage() {
                   />
                 </div>
               </div>
+
+              {/* Map Location Picker */}
+              <MapLocationPicker
+                latitude={formData.latitude}
+                longitude={formData.longitude}
+                onLocationChange={handleLocationChange}
+              />
 
               {/* Capacity and Price */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

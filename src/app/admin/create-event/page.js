@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import AdminLayout from "@/components/AdminLayout";
 import { useFileUpload } from "@/hooks/useFileUpload";
 import EventCard from "@/components/EventCard";
+import MapLocationPicker from "@/components/MapLocationPicker";
 
 export default function CreateEvent() {
   const { user, loading: authLoading } = useAuth();
@@ -22,6 +23,8 @@ export default function CreateEvent() {
     time: "",
     endTime: "",
     location: "",
+    latitude: "",
+    longitude: "",
     venue: "",
     maxAttendees: "",
     ticketPrice: "",
@@ -75,6 +78,15 @@ export default function CreateEvent() {
       alert("Failed to upload image. Please try again.");
       return null;
     }
+  };
+
+  // Handle location change from map picker
+  const handleLocationChange = (lat, lng) => {
+    setFormData((prev) => ({
+      ...prev,
+      latitude: lat.toString(),
+      longitude: lng.toString(),
+    }));
   };
 
   // Handle form submission
@@ -138,6 +150,8 @@ export default function CreateEvent() {
         time: formData.time, // Keep original IST time for reference
         endTime: formData.endTime || null,
         location: formData.location,
+        latitude: formData.latitude ? parseFloat(formData.latitude) : null,
+        longitude: formData.longitude ? parseFloat(formData.longitude) : null,
         venue: formData.venue,
         maxAttendees: parseInt(formData.maxAttendees),
         ticketPrice: parseFloat(formData.ticketPrice),
@@ -541,6 +555,13 @@ export default function CreateEvent() {
                   />
                 </div>
               </div>
+
+              {/* Map Location Picker */}
+              <MapLocationPicker
+                latitude={formData.latitude}
+                longitude={formData.longitude}
+                onLocationChange={handleLocationChange}
+              />
 
               {/* Ticket Price */}
               <div className="space-y-2">

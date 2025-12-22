@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import BookingModal from "@/components/BookingModal";
 import ShareEventCard from "@/components/ShareEventCard";
+import EventLocationMap from "@/components/EventLocationMap";
 import { supabase } from "@/lib/supabase";
 
 export default function Page({ params }) {
@@ -1342,8 +1343,8 @@ export default function Page({ params }) {
               <h3 className="text-xl font-bold text-white mb-6">
                 Event Details
               </h3>
-              <div className="space-y-5">
-                <div className="flex gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl bg-white/5 border border-white/10">
+              <div className="space-y-3">
+                <div className="flex gap-2 sm:gap-3 p-2 sm:p-3 rounded-xl bg-white/5 border border-white/10">
                   <div className="flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-blue-600/20 flex items-center justify-center text-xl sm:text-2xl">
                     📅
                   </div>
@@ -1404,7 +1405,7 @@ export default function Page({ params }) {
                   event.enddate ||
                   event.endTime ||
                   event.endtime) && (
-                  <div className="flex gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl bg-white/5 border border-white/10">
+                  <div className="flex gap-2 sm:gap-3 p-2 sm:p-3 rounded-xl bg-white/5 border border-white/10">
                     <div className="flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-red-600/20 flex items-center justify-center text-xl sm:text-2xl">
                       🏁
                     </div>
@@ -1470,7 +1471,7 @@ export default function Page({ params }) {
                   </div>
                 )}
 
-                <div className="flex gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl bg-white/5 border border-white/10">
+                <div className="flex gap-2 sm:gap-3 p-2 sm:p-3 rounded-xl bg-white/5 border border-white/10">
                   <div className="flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-purple-600/20 flex items-center justify-center text-xl sm:text-2xl">
                     📍
                   </div>
@@ -1484,7 +1485,21 @@ export default function Page({ params }) {
                   </div>
                 </div>
 
-                <div className="flex gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl bg-white/5 border border-white/10">
+                <div className="flex gap-2 sm:gap-3 p-2 sm:p-3 rounded-xl bg-white/5 border border-white/10">
+                  <div className="flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-green-600/20 flex items-center justify-center text-xl sm:text-2xl">
+                    🏢
+                  </div>
+                  <div>
+                    <div className="font-semibold text-white mb-1">
+                      Venue
+                    </div>
+                    <div className="text-sm text-gray-400">
+                      {event.venue || "Venue TBD"}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex gap-2 sm:gap-3 p-2 sm:p-3 rounded-xl bg-white/5 border border-white/10">
                   <div className="flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-blue-600/20 flex items-center justify-center text-xl sm:text-2xl">
                     👥
                   </div>
@@ -1567,6 +1582,18 @@ export default function Page({ params }) {
                 )}
               </div>
             </div>
+
+            {/* Event Location Map - Right Sidebar */}
+            {event.latitude && event.longitude && (
+              <div className="backdrop-blur-xl bg-white/5 rounded-2xl p-3 sm:p-4 border border-black/40 shadow-2xl">
+                <EventLocationMap
+                  latitude={event.latitude}
+                  longitude={event.longitude}
+                  location={event.location}
+                  venue={event.venue}
+                />
+              </div>
+            )}
           </div>
         </div>
       </div>
