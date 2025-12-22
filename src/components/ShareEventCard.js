@@ -21,7 +21,7 @@ export default function ShareEventCard({ event, isOpen, onClose }) {
     hasImage: !!event?.imageUrl,
   });
 
-  const eventUrl = "https://www.eventhubx.site/events";
+  const eventUrl = `https://www.eventhubx.site/events/${event?.id || ''}`;
 
   const formatDate = (dateStr) => {
     if (!dateStr) return "";
