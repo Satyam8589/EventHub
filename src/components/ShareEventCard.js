@@ -8,8 +8,6 @@ export default function ShareEventCard({ event, isOpen, onClose }) {
   const [isDownloading, setIsDownloading] = useState(false);
   const [imageError, setImageError] = useState(false);
   const cardRef = useRef(null);
-  const wrapperRef = useRef(null);
-  const captureWrapperRef = useRef(null);
 
   if (!isOpen) return null;
 
@@ -21,7 +19,10 @@ export default function ShareEventCard({ event, isOpen, onClose }) {
     hasImage: !!event?.imageUrl,
   });
 
-  const eventUrl = `https://www.eventhubx.site/events/${event?.id || ''}`;
+  const eventUrl =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/events/${event.id}`
+      : "";
 
   const formatDate = (dateStr) => {
     if (!dateStr) return "";
@@ -60,48 +61,16 @@ export default function ShareEventCard({ event, isOpen, onClose }) {
   };
 
   const handleDownload = async () => {
-    if (!cardRef.current || !wrapperRef.current || !captureWrapperRef.current) return;
+    if (!cardRef.current) return;
 
     setIsDownloading(true);
-    
-    // Store original styles
-    const originalWrapperWidth = wrapperRef.current.style.width;
-    const originalWrapperMaxWidth = wrapperRef.current.style.maxWidth;
-    const originalWrapperOpacity = wrapperRef.current.style.opacity;
-    const originalWrapperPointerEvents = wrapperRef.current.style.pointerEvents;
-    
-    const originalCardWidth = cardRef.current.style.width;
-    const originalCardMaxWidth = cardRef.current.style.maxWidth;
-    const originalCardShadow = cardRef.current.style.boxShadow;
-    const originalCardMargin = cardRef.current.style.margin;
-    
-    const originalCapturePadding = captureWrapperRef.current.style.padding;
-    const originalCaptureBackground = captureWrapperRef.current.style.background;
-    
     try {
-      // Hide the card visually during capture to prevent visible changes
-      wrapperRef.current.style.opacity = "0";
-      wrapperRef.current.style.pointerEvents = "none";
-      
-      // Setup for capture - creating "breathing room" around the card
-      // This decreases the relative size of the card in the final image
-      captureWrapperRef.current.style.padding = "40px";
-      captureWrapperRef.current.style.background = "transparent";
-      
-      // Force compact width for the card itself
-      wrapperRef.current.style.width = "360px"; // Increased slightly from 280 to handle padding better
-      wrapperRef.current.style.maxWidth = "360px";
-      cardRef.current.style.width = "280px";
-      cardRef.current.style.maxWidth = "280px";
-      cardRef.current.style.margin = "0 auto"; // Center the card in the padded wrapper
-      cardRef.current.style.boxShadow = "none";
-      
-      // Wait a bit for state-based re-render (isDownloading=true) and reflow
-      await new Promise((resolve) => setTimeout(resolve, 600));
+      // Wait a bit for fonts and images to load
+      await new Promise((resolve) => setTimeout(resolve, 500));
 
-      const canvas = await html2canvas(captureWrapperRef.current, {
-        backgroundColor: null, // Keeps background transparent
-        scale: 2,
+      const canvas = await html2canvas(cardRef.current, {
+        backgroundColor: "#0f172a",
+        scale: 1,
         logging: false,
         useCORS: true,
         allowTaint: true,
@@ -136,23 +105,6 @@ export default function ShareEventCard({ event, isOpen, onClose }) {
 
       alert(`${fallbackMsg}\n\nError: ${error.message}`);
     } finally {
-      // Always restore original styles for both elements
-      if (wrapperRef.current) {
-        wrapperRef.current.style.width = originalWrapperWidth;
-        wrapperRef.current.style.maxWidth = originalWrapperMaxWidth;
-        wrapperRef.current.style.opacity = originalWrapperOpacity;
-        wrapperRef.current.style.pointerEvents = originalWrapperPointerEvents;
-      }
-      if (cardRef.current) {
-        cardRef.current.style.width = originalCardWidth;
-        cardRef.current.style.maxWidth = originalCardMaxWidth;
-        cardRef.current.style.boxShadow = originalCardShadow;
-        cardRef.current.style.margin = originalCardMargin;
-      }
-      if (captureWrapperRef.current) {
-        captureWrapperRef.current.style.padding = originalCapturePadding;
-        captureWrapperRef.current.style.background = originalCaptureBackground;
-      }
       setIsDownloading(false);
     }
   };
@@ -195,13 +147,12 @@ export default function ShareEventCard({ event, isOpen, onClose }) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start md:items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
       onClick={onClose}
     >
       <div
-        ref={wrapperRef}
-        className="relative w-[92%] md:w-full mt-16 md:mt-0 max-h-none md:max-h-[95vh]"
-        style={{ maxWidth: "500px" }}
+        className="relative w-full max-h-[95vh] overflow-y-auto"
+        style={{ maxWidth: "600px" }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Close Button */}
@@ -212,33 +163,20 @@ export default function ShareEventCard({ event, isOpen, onClose }) {
           ✕
         </button>
 
-        {/* Capture Wrapper - Used to add padding around the card during download */}
-        <div ref={captureWrapperRef}>
-          {/* Shareable Card Container (the 4px broad gradient border) */}
-          <div
-            ref={cardRef}
-            className="rounded-[32px] overflow-hidden shadow-2xl"
-            style={{
-              background: "linear-gradient(135deg, rgb(37, 99, 235) 0%, rgb(147, 51, 234) 50%, rgb(219, 39, 119) 100%)",
-              width: "100%",
-              maxWidth: "600px",
-              padding: "4px", // 4px broad border
-            }}
-          >
-          {/* Inner Content Card (dark background) */}
-          <div
-            style={{
-              background: "rgb(15, 23, 42)",
-              borderRadius: "28px",
-              overflow: "hidden",
-              width: "100%",
-              height: "100%",
-            }}
-          >
+        {/* Shareable Card */}
+        <div
+          ref={cardRef}
+          className="rounded-3xl overflow-hidden shadow-2xl"
+          style={{
+            background: "rgb(15, 23, 42)",
+            width: "100%",
+            maxWidth: "600px",
+          }}
+        >
           {/* Hero Section with Event Image */}
           <div
-            className="relative overflow-hidden"
-            style={{ height: "clamp(120px, 24vh, 160px)" }}
+            className="relative"
+            style={{ height: "clamp(140px, 28vh, 200px)" }}
           >
             {event.imageUrl && !imageError ? (
               <img
@@ -281,15 +219,15 @@ export default function ShareEventCard({ event, isOpen, onClose }) {
             {/* Event Title Overlay */}
             <div
               className="absolute bottom-0 left-0 right-0"
-              style={{ padding: isDownloading ? "0.75rem 1rem" : "clamp(1rem, 3vw, 1.5rem)" }}
+              style={{ padding: "clamp(1rem, 3vw, 1.5rem)" }}
             >
               <h2
                 style={{
                   color: "rgb(255, 255, 255)",
-                  fontSize: isDownloading ? "1.1rem" : "clamp(1.25rem, 4vw, 2rem)",
+                  fontSize: "clamp(1.25rem, 4vw, 2rem)",
                   fontWeight: "800",
                   lineHeight: "1.2",
-                  marginBottom: isDownloading ? "0.35rem" : "0.5rem",
+                  marginBottom: "0.5rem",
                   textShadow: "0 2px 8px rgba(0, 0, 0, 0.5)",
                 }}
               >
@@ -301,9 +239,9 @@ export default function ShareEventCard({ event, isOpen, onClose }) {
                   alignItems: "center",
                   gap: "0.5rem",
                   color: "rgb(203, 213, 225)",
-                  fontSize: isDownloading ? "0.7rem" : "clamp(0.75rem, 2vw, 0.875rem)",
+                  fontSize: "clamp(0.75rem, 2vw, 0.875rem)",
                   fontWeight: "500",
-                  marginTop: isDownloading ? "0.5rem" : "0.75rem",
+                  marginTop: "0.75rem",
                 }}
               >
                 <span style={{ fontSize: "clamp(0.875rem, 2.5vw, 1rem)" }}>
@@ -311,21 +249,21 @@ export default function ShareEventCard({ event, isOpen, onClose }) {
                 </span>
                 <span>
                   Organized by{" "}
-                  {event.organizerName || event.organizer?.name || "EventHubX"}
+                  {event.organizerName || event.organizer?.name || "EventHub"}
                 </span>
               </div>
             </div>
           </div>
 
           {/* Content Section */}
-          <div style={{ padding: isDownloading ? "0.75rem 1rem" : "clamp(0.875rem, 3vw, 1.5rem)" }}>
+          <div style={{ padding: "clamp(0.875rem, 3vw, 1.5rem)" }}>
             {/* Event Details - Modern Grid */}
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: isDownloading ? "0.4rem" : "clamp(0.5rem, 1.5vw, 0.75rem)",
-                marginBottom: isDownloading ? "0.6rem" : "clamp(0.75rem, 2vw, 1rem)",
+                gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+                gap: "clamp(0.5rem, 1.5vw, 0.75rem)",
+                marginBottom: "clamp(0.75rem, 2vw, 1rem)",
               }}
             >
               {/* Date Card */}
@@ -334,7 +272,7 @@ export default function ShareEventCard({ event, isOpen, onClose }) {
                   background:
                     "linear-gradient(135deg, rgba(37, 99, 235, 0.1) 0%, rgba(37, 99, 235, 0.05) 100%)",
                   borderRadius: "0.875rem",
-                  padding: isDownloading ? "0.35rem 0.5rem" : "clamp(0.75rem, 2.5vw, 1rem)",
+                  padding: "clamp(0.75rem, 2.5vw, 1rem)",
                   border: "1px solid rgba(37, 99, 235, 0.2)",
                   position: "relative",
                   overflow: "hidden",
@@ -345,7 +283,7 @@ export default function ShareEventCard({ event, isOpen, onClose }) {
                     position: "absolute",
                     top: "-20px",
                     right: "-20px",
-                    fontSize: isDownloading ? "2rem" : "clamp(2.5rem, 8vw, 4rem)",
+                    fontSize: "clamp(2.5rem, 8vw, 4rem)",
                     opacity: "0.1",
                   }}
                 >
@@ -353,10 +291,10 @@ export default function ShareEventCard({ event, isOpen, onClose }) {
                 </div>
                 <div
                   style={{
-                    fontSize: isDownloading ? "0.6rem" : "clamp(0.65rem, 1.8vw, 0.75rem)",
+                    fontSize: "clamp(0.65rem, 1.8vw, 0.75rem)",
                     color: "rgb(96, 165, 250)",
                     fontWeight: "600",
-                    marginBottom: isDownloading ? "0.05rem" : "0.25rem",
+                    marginBottom: "0.25rem",
                     textTransform: "uppercase",
                     letterSpacing: "0.05em",
                   }}
@@ -367,7 +305,7 @@ export default function ShareEventCard({ event, isOpen, onClose }) {
                   style={{
                     color: "rgb(255, 255, 255)",
                     fontWeight: "700",
-                    fontSize: isDownloading ? "0.75rem" : "clamp(0.8rem, 2.2vw, 0.95rem)",
+                    fontSize: "clamp(0.8rem, 2.2vw, 0.95rem)",
                     lineHeight: "1.3",
                   }}
                 >
@@ -381,7 +319,7 @@ export default function ShareEventCard({ event, isOpen, onClose }) {
                   background:
                     "linear-gradient(135deg, rgba(147, 51, 234, 0.1) 0%, rgba(147, 51, 234, 0.05) 100%)",
                   borderRadius: "0.875rem",
-                  padding: isDownloading ? "0.35rem 0.5rem" : "clamp(0.75rem, 2.5vw, 1rem)",
+                  padding: "clamp(0.75rem, 2.5vw, 1rem)",
                   border: "1px solid rgba(147, 51, 234, 0.2)",
                   position: "relative",
                   overflow: "hidden",
@@ -392,7 +330,7 @@ export default function ShareEventCard({ event, isOpen, onClose }) {
                     position: "absolute",
                     top: "-20px",
                     right: "-20px",
-                    fontSize: isDownloading ? "2rem" : "clamp(2.5rem, 8vw, 4rem)",
+                    fontSize: "clamp(2.5rem, 8vw, 4rem)",
                     opacity: "0.1",
                   }}
                 >
@@ -400,10 +338,10 @@ export default function ShareEventCard({ event, isOpen, onClose }) {
                 </div>
                 <div
                   style={{
-                    fontSize: isDownloading ? "0.6rem" : "clamp(0.65rem, 1.8vw, 0.75rem)",
+                    fontSize: "clamp(0.65rem, 1.8vw, 0.75rem)",
                     color: "rgb(196, 181, 253)",
                     fontWeight: "600",
-                    marginBottom: isDownloading ? "0.05rem" : "0.25rem",
+                    marginBottom: "0.25rem",
                     textTransform: "uppercase",
                     letterSpacing: "0.05em",
                   }}
@@ -414,7 +352,7 @@ export default function ShareEventCard({ event, isOpen, onClose }) {
                   style={{
                     color: "rgb(255, 255, 255)",
                     fontWeight: "700",
-                    fontSize: isDownloading ? "0.75rem" : "clamp(0.8rem, 2.2vw, 0.95rem)",
+                    fontSize: "clamp(0.8rem, 2.2vw, 0.95rem)",
                   }}
                 >
                   {formatTime(event.time)}
@@ -429,7 +367,7 @@ export default function ShareEventCard({ event, isOpen, onClose }) {
                     background:
                       "linear-gradient(135deg, rgba(219, 39, 119, 0.1) 0%, rgba(219, 39, 119, 0.05) 100%)",
                     borderRadius: "0.875rem",
-                    padding: isDownloading ? "0.35rem 0.5rem" : "clamp(0.75rem, 2.5vw, 1rem)",
+                    padding: "clamp(0.75rem, 2.5vw, 1rem)",
                     border: "1px solid rgba(219, 39, 119, 0.2)",
                     position: "relative",
                     overflow: "hidden",
@@ -440,7 +378,7 @@ export default function ShareEventCard({ event, isOpen, onClose }) {
                       position: "absolute",
                       top: "-20px",
                       right: "-20px",
-                      fontSize: isDownloading ? "2rem" : "clamp(2.5rem, 8vw, 4rem)",
+                      fontSize: "clamp(2.5rem, 8vw, 4rem)",
                       opacity: "0.1",
                     }}
                   >
@@ -448,10 +386,10 @@ export default function ShareEventCard({ event, isOpen, onClose }) {
                   </div>
                   <div
                     style={{
-                      fontSize: isDownloading ? "0.6rem" : "clamp(0.65rem, 1.8vw, 0.75rem)",
+                      fontSize: "clamp(0.65rem, 1.8vw, 0.75rem)",
                       color: "rgb(251, 113, 133)",
                       fontWeight: "600",
-                      marginBottom: isDownloading ? "0.05rem" : "0.25rem",
+                      marginBottom: "0.25rem",
                       textTransform: "uppercase",
                       letterSpacing: "0.05em",
                     }}
@@ -462,7 +400,7 @@ export default function ShareEventCard({ event, isOpen, onClose }) {
                     style={{
                       color: "rgb(255, 255, 255)",
                       fontWeight: "700",
-                      fontSize: isDownloading ? "0.75rem" : "clamp(0.8rem, 2.2vw, 0.95rem)",
+                      fontSize: "clamp(0.8rem, 2.2vw, 0.95rem)",
                       lineHeight: "1.4",
                     }}
                   >
@@ -478,13 +416,13 @@ export default function ShareEventCard({ event, isOpen, onClose }) {
                 background:
                   "linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.03) 100%)",
                 borderRadius: "1rem",
-                padding: isDownloading ? "0.6rem 1rem" : "clamp(0.875rem, 3vw, 1.25rem)",
+                padding: "clamp(0.875rem, 3vw, 1.25rem)",
                 border: "1px solid rgba(255, 255, 255, 0.1)",
                 display: "flex",
                 flexDirection: "row",
                 alignItems: "center",
-                gap: isDownloading ? "0.6rem" : "clamp(0.75rem, 2vw, 1rem)",
-                marginBottom: isDownloading ? "0.6rem" : "clamp(0.75rem, 2vw, 1rem)",
+                gap: "clamp(0.75rem, 2vw, 1rem)",
+                marginBottom: "clamp(0.75rem, 2vw, 1rem)",
               }}
             >
               {/* QR Code */}
@@ -499,7 +437,7 @@ export default function ShareEventCard({ event, isOpen, onClose }) {
               >
                 <QRCodeSVG
                   value={eventUrl}
-                  size={isDownloading ? 75 : Math.min(90, window.innerWidth * 0.18)}
+                  size={Math.min(90, window.innerWidth * 0.18)}
                   level="H"
                   includeMargin={false}
                   bgColor="#ffffff"
@@ -511,17 +449,22 @@ export default function ShareEventCard({ event, isOpen, onClose }) {
               <div style={{ flex: 1, minWidth: 0 }}>
                 <h3
                   style={{
-                    fontSize: isDownloading ? "0.9rem" : "clamp(1rem, 3vw, 1.25rem)",
+                    fontSize: "clamp(1rem, 3vw, 1.25rem)",
                     fontWeight: "800",
                     color: "rgb(255, 255, 255)",
-                    marginBottom: isDownloading ? "0.25rem" : "0.5rem",
+                    marginBottom: "0.5rem",
+                    background:
+                      "linear-gradient(135deg, rgb(96, 165, 250) 0%, rgb(168, 85, 247) 100%)",
+                    WebkitBackgroundClip: "text",
+                    WebkitTextFillColor: "transparent",
+                    backgroundClip: "text",
                   }}
                 >
                   Scan to Book
                 </h3>
                 <p
                   style={{
-                    fontSize: isDownloading ? "0.68rem" : "clamp(0.75rem, 2vw, 0.875rem)",
+                    fontSize: "clamp(0.75rem, 2vw, 0.875rem)",
                     color: "rgb(203, 213, 225)",
                     lineHeight: "1.5",
                   }}
@@ -532,15 +475,16 @@ export default function ShareEventCard({ event, isOpen, onClose }) {
               </div>
             </div>
 
+            {/* Footer - Modern Brand */}
             <div
               style={{
                 display: "flex",
-                flexDirection: "column",
-                alignItems: "flex-start",
-                justifyContent: "flex-start",
-                paddingTop: isDownloading ? "0.4rem" : "clamp(0.75rem, 2vw, 1rem)",
+                alignItems: "center",
+                justifyContent: "space-between",
+                paddingTop: "clamp(0.75rem, 2vw, 1rem)",
                 borderTop: "1px solid rgba(255, 255, 255, 0.1)",
-                gap: isDownloading ? "0" : "0.25rem",
+                gap: "0.75rem",
+                flexWrap: "wrap",
               }}
             >
               <div
@@ -582,7 +526,7 @@ export default function ShareEventCard({ event, isOpen, onClose }) {
                       letterSpacing: "-0.01em",
                     }}
                   >
-                    EventHubX
+                    EventHub
                   </div>
                   <div
                     style={{
@@ -599,32 +543,20 @@ export default function ShareEventCard({ event, isOpen, onClose }) {
               <div
                 style={{
                   color: "rgb(148, 163, 184)",
-                  fontSize: isDownloading ? "12px" : "clamp(0.7rem, 1.8vw, 0.85rem)",
-                  fontWeight: "600",
-                  fontFamily: "Inter, -apple-system, BlinkMacSystemFont, sans-serif",
-                  lineHeight: "1.3",
-                  marginTop: isDownloading ? "0.4rem" : "0.6rem",
-                  textAlign: "left",
+                  fontSize: "clamp(0.6rem, 1.6vw, 0.7rem)",
+                  fontWeight: "500",
+                  fontFamily: "monospace",
+                  wordBreak: "break-all",
+                  maxWidth: "100%",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
                 }}
               >
-                <div style={{ marginBottom: "2px" }}>Explore Now:-</div>
-                <div 
-                  style={{ 
-                    color: isDownloading ? "rgb(148, 163, 184)" : "rgb(96, 165, 250)",
-                    fontSize: isDownloading ? "11px" : "clamp(0.6rem, 1.6vw, 0.75rem)",
-                    letterSpacing: "0px",
-                    wordSpacing: "0px",
-                    wordBreak: "break-all"
-                  }}
-                >
-                  {eventUrl}
-                </div>
+                {eventUrl.replace(/^https?:\/\//, "")}
               </div>
             </div>
           </div>
         </div>
-      </div>
-    </div>
 
         {/* Action Buttons */}
         <div className="mt-6 flex flex-row gap-3">
