@@ -60,13 +60,6 @@ export default function Navbar({ setShowLogin, setShowSignup }) {
             <Link href="/events" className="hover:text-white transition-colors">
               Events
             </Link>
-            <Link
-              href="/reels"
-              className="hover:text-white transition-colors flex items-center gap-1.5"
-            >
-              <span>📸</span>
-              <span>Reels</span>
-            </Link>
 
             {/* Show About when not logged in */}
             {!authLoading && !user ? (
@@ -118,18 +111,6 @@ export default function Navbar({ setShowLogin, setShowSignup }) {
           </div>
 
           <div className="flex items-center space-x-4">
-            {/* Mobile Reels Button - Only visible on small screens AND specific pages */}
-            {(pathname === "/" ||
-              pathname === "/events" ||
-              pathname.startsWith("/reviews")) && (
-              <Link
-                href="/reels"
-                className="lg:hidden flex items-center gap-1.5 bg-gradient-to-r from-pink-500 to-purple-500 text-white px-3 py-1.5 rounded-full text-sm font-medium hover:scale-105 transition-transform"
-              >
-                <span>📸</span>
-                <span>Reels</span>
-              </Link>
-            )}
 
             {/* Mobile Push Notification Button - Only visible on small screens AND home page */}
             {!authLoading && user && pathname === "/" && (

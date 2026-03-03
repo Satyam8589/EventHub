@@ -207,6 +207,22 @@ body {
   animation: snowfall linear infinite;
 }
 
+/* Holi Gulal Sprinkle Sparkle Animation */
+@keyframes holiSparkle {
+  0%, 100% {
+    transform: scale(1) translateY(0px);
+    opacity: 0.75;
+  }
+  30% {
+    transform: scale(1.6) translateY(-4px);
+    opacity: 1;
+  }
+  60% {
+    transform: scale(0.8) translateY(3px);
+    opacity: 0.5;
+  }
+}
+
 /* Line clamp utilities */
 .line-clamp-1 {
   display: -webkit-box;

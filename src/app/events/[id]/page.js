@@ -186,7 +186,10 @@ export default function Page({ params }) {
     const endDateValue = event.endDate || event.enddate;
     const endTimeValue = event.endTime || event.endtime;
 
-    if (!endDateValue || !endTimeValue) return false;
+    // If no endDate/endTime is set, fall back to checking if the start date has passed
+    if (!endDateValue || !endTimeValue) {
+      return isEventExpired(event);
+    }
 
     try {
       // Helper to ensure proper UTC format
@@ -705,43 +708,47 @@ export default function Page({ params }) {
                         </div>
 
                         {/* Compact Availability */}
-                        <div className="text-right">
-                          <div className="text-xs text-gray-400 mb-1">
-                            Availability
+                        {!hasEventEnded() && (
+                          <div className="text-right">
+                            <div className="text-xs text-gray-400 mb-1">
+                              Availability
+                            </div>
+                            <div className="text-sm font-bold text-white bg-white/10 px-2 py-1 rounded-lg">
+                              {event._count?.bookings || 0}/
+                              {event.capacity || 1000}
+                            </div>
                           </div>
-                          <div className="text-sm font-bold text-white bg-white/10 px-2 py-1 rounded-lg">
-                            {event._count?.bookings || 0}/
-                            {event.capacity || 1000}
-                          </div>
-                        </div>
+                        )}
                       </div>
 
                       {/* Compact Progress Bar */}
-                      <div className="mb-3">
-                        <div className="relative w-full h-2 bg-white/10 rounded-full overflow-hidden">
-                          <div
-                            className="absolute top-0 left-0 h-full bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-full transition-all duration-1000"
-                            style={{
-                              width: `${Math.min(
-                                100,
-                                Math.max(5, bookedPercentage)
-                              )}%`,
-                            }}
-                          >
-                            <div className="absolute inset-0 bg-white/30 animate-pulse rounded-full"></div>
+                      {!hasEventEnded() && (
+                        <div className="mb-3">
+                          <div className="relative w-full h-2 bg-white/10 rounded-full overflow-hidden">
+                            <div
+                              className="absolute top-0 left-0 h-full bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-full transition-all duration-1000"
+                              style={{
+                                width: `${Math.min(
+                                  100,
+                                  Math.max(5, bookedPercentage)
+                                )}%`,
+                              }}
+                            >
+                              <div className="absolute inset-0 bg-white/30 animate-pulse rounded-full"></div>
+                            </div>
+                          </div>
+                          <div className="flex justify-between items-center mt-1">
+                            <p className="text-[10px] text-gray-400">
+                              {Math.round(bookedPercentage)}% filled
+                            </p>
+                            <p className="text-[10px] text-green-400 font-medium">
+                              {availableSpots > 0
+                                ? `${availableSpots} spots left`
+                                : "Sold Out"}
+                            </p>
                           </div>
                         </div>
-                        <div className="flex justify-between items-center mt-1">
-                          <p className="text-[10px] text-gray-400">
-                            {Math.round(bookedPercentage)}% filled
-                          </p>
-                          <p className="text-[10px] text-green-400 font-medium">
-                            {availableSpots > 0
-                              ? `${availableSpots} spots left`
-                              : "Sold Out"}
-                          </p>
-                        </div>
-                      </div>
+                      )}
 
                       {/* CTA Button - Compact */}
                       {user ? (
@@ -1224,40 +1231,42 @@ export default function Page({ params }) {
                 </div>
 
                 {/* Availability Progress */}
-                <div className="mb-8">
-                  <div className="flex justify-between items-center text-sm mb-4">
-                    <span className="text-gray-300 font-medium">
-                      Availability
-                    </span>
-                    <span className="font-bold text-white bg-white/10 px-3 py-1 rounded-full">
-                      {event._count?.bookings || 0} / {event.capacity || 1000}
-                    </span>
-                  </div>
-                  <div className="relative w-full h-3 bg-white/10 rounded-full overflow-hidden shadow-inner">
-                    <div
-                      className="absolute top-0 left-0 h-full bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-full transition-all duration-1000 shadow-lg"
-                      style={{
-                        width: `${Math.min(
-                          100,
-                          Math.max(5, bookedPercentage)
-                        )}%`,
-                      }}
-                    >
-                      <div className="absolute inset-0 bg-white/30 animate-pulse rounded-full"></div>
-                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer rounded-full"></div>
+                {!hasEventEnded() && (
+                  <div className="mb-8">
+                    <div className="flex justify-between items-center text-sm mb-4">
+                      <span className="text-gray-300 font-medium">
+                        Availability
+                      </span>
+                      <span className="font-bold text-white bg-white/10 px-3 py-1 rounded-full">
+                        {event._count?.bookings || 0} / {event.capacity || 1000}
+                      </span>
+                    </div>
+                    <div className="relative w-full h-3 bg-white/10 rounded-full overflow-hidden shadow-inner">
+                      <div
+                        className="absolute top-0 left-0 h-full bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-full transition-all duration-1000 shadow-lg"
+                        style={{
+                          width: `${Math.min(
+                            100,
+                            Math.max(5, bookedPercentage)
+                          )}%`,
+                        }}
+                      >
+                        <div className="absolute inset-0 bg-white/30 animate-pulse rounded-full"></div>
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer rounded-full"></div>
+                      </div>
+                    </div>
+                    <div className="flex justify-between items-center mt-3">
+                      <p className="text-xs text-gray-400">
+                        {Math.round(bookedPercentage)}% filled
+                      </p>
+                      <p className="text-xs text-green-400 font-medium">
+                        {availableSpots > 0
+                          ? `${availableSpots} spots left`
+                          : "Sold Out"}
+                      </p>
                     </div>
                   </div>
-                  <div className="flex justify-between items-center mt-3">
-                    <p className="text-xs text-gray-400">
-                      {Math.round(bookedPercentage)}% filled
-                    </p>
-                    <p className="text-xs text-green-400 font-medium">
-                      {availableSpots > 0
-                        ? `${availableSpots} spots left`
-                        : "Sold Out"}
-                    </p>
-                  </div>
-                </div>
+                )}
 
                 {/* CTA Button */}
                 {user ? (
@@ -1499,47 +1508,49 @@ export default function Page({ params }) {
                   </div>
                 </div>
 
-                <div className="flex gap-2 sm:gap-3 p-2 sm:p-3 rounded-xl bg-white/5 border border-white/10">
-                  <div className="flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-blue-600/20 flex items-center justify-center text-xl sm:text-2xl">
-                    👥
+                {!hasEventEnded() && (
+                  <div className="flex gap-2 sm:gap-3 p-2 sm:p-3 rounded-xl bg-white/5 border border-white/10">
+                    <div className="flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-blue-600/20 flex items-center justify-center text-xl sm:text-2xl">
+                      👥
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-semibold text-white mb-1">
+                        Availability
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div className="text-sm text-gray-300">
+                          {(event.capacity || 1000) - availableSpots}/
+                          {event.capacity || 1000} registered
+                        </div>
+                        <div
+                          className={`text-sm font-medium ${
+                            availableSpots > 0 ? "text-green-400" : "text-red-400"
+                          }`}
+                        >
+                          {availableSpots > 0
+                            ? `${availableSpots} spots remaining`
+                            : "Sold Out"}
+                        </div>
+                      </div>
+                      <div className="mt-2 text-sm text-gray-500">
+                        <div>
+                          {event.date
+                            ? new Date(event.date).toLocaleDateString("en-IN", {
+                                month: "short",
+                                day: "numeric",
+                                timeZone: "Asia/Kolkata",
+                              })
+                            : "Date TBD"}
+                          {event.time ? ` • ${event.time}` : ""}
+                          {event.endTime || event.endtime
+                            ? ` - ${event.endTime || event.endtime}`
+                            : ""}
+                        </div>
+                        <div>{event.location}</div>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex-1">
-                    <div className="font-semibold text-white mb-1">
-                      Availability
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div className="text-sm text-gray-300">
-                        {(event.capacity || 1000) - availableSpots}/
-                        {event.capacity || 1000} registered
-                      </div>
-                      <div
-                        className={`text-sm font-medium ${
-                          availableSpots > 0 ? "text-green-400" : "text-red-400"
-                        }`}
-                      >
-                        {availableSpots > 0
-                          ? `${availableSpots} spots remaining`
-                          : "Sold Out"}
-                      </div>
-                    </div>
-                    <div className="mt-2 text-sm text-gray-500">
-                      <div>
-                        {event.date
-                          ? new Date(event.date).toLocaleDateString("en-IN", {
-                              month: "short",
-                              day: "numeric",
-                              timeZone: "Asia/Kolkata",
-                            })
-                          : "Date TBD"}
-                        {event.time ? ` • ${event.time}` : ""}
-                        {event.endTime || event.endtime
-                          ? ` - ${event.endTime || event.endtime}`
-                          : ""}
-                      </div>
-                      <div>{event.location}</div>
-                    </div>
-                  </div>
-                </div>
+                )}
               </div>
             </div>
 
