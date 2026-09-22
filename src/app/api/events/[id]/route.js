@@ -135,32 +135,28 @@ export async function PUT(request, { params }) {
       .select("*")
       .single();
 
-    // If endDate column doesn't exist, retry without endDate
-    if (
-      error &&
-      error.code === "PGRST204" &&
-      (error.message.includes("endDate") || error.message.includes("enddate"))
-    ) {
-      console.warn(
-        "endDate column doesn't exist in database, updating without endDate"
-      );
+    // Dynamic retry: If any column is missing in schema cache (PGRST204), remove it and retry
+    let retries = 0;
+    while (error && error.code === "PGRST204" && retries < 5) {
+      retries++;
+      const match = error.message.match(/Could not find the '([^']+)' column/);
+      if (match && match[1]) {
+        const missingCol = match[1];
+        console.warn(`Column '${missingCol}' missing in database, retrying update without it.`);
+        delete updateData[missingCol];
 
-      // Remove endDate from update data
-      const {
-        enddate: _,
-        endDate: __,
-        ...updateDataWithoutEndDate
-      } = updateData;
+        const retryResult = await supabase
+          .from("events")
+          .update(updateData)
+          .eq("id", id)
+          .select("*")
+          .single();
 
-      const { data: retryEvent, error: retryError } = await supabase
-        .from("events")
-        .update(updateDataWithoutEndDate)
-        .eq("id", id)
-        .select("*")
-        .single();
-
-      event = retryEvent;
-      error = retryError;
+        event = retryResult.data;
+        error = retryResult.error;
+      } else {
+        break;
+      }
     }
 
     if (error) {
@@ -171,7 +167,7 @@ export async function PUT(request, { params }) {
   } catch (error) {
     console.error("Error updating event:", error);
     return NextResponse.json(
-      { error: "Failed to update event" },
+      { error: "Failed to update event", details: error.message },
       { status: 500 }
     );
   }
