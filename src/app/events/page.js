@@ -6,6 +6,7 @@ import LoginForm from "../../components/auth/LoginForm";
 import SignupForm from "../../components/auth/SignupForm";
 import Navbar from "../../components/Navbar";
 import EventHubLogo from "../../components/EventHubLogo";
+import Breadcrumb from "../../components/Breadcrumb";
 
 // Constants
 const EVENTS_PER_PAGE = 12;
@@ -222,8 +223,12 @@ export default function EventsPage() {
       <Navbar setShowLogin={setShowLogin} setShowSignup={setShowSignup} />
 
       {/* Header Section */}
-      <div className="relative z-10 py-8 md:py-12">
+      <div className="relative z-10 py-6 md:py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          <div className="mb-3 flex justify-start">
+            <Breadcrumb items={[{ label: "Events" }]} />
+          </div>
+
           <div className="text-center mb-6 md:mb-8">
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-3 md:mb-4">
               Discover Events

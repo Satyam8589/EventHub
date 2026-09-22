@@ -7,6 +7,7 @@ import BookingModal from "@/components/BookingModal";
 import ShareEventCard from "@/components/ShareEventCard";
 import EventLocationMap from "@/components/EventLocationMap";
 import EventLoadingAnimation from "@/components/EventLoadingAnimation";
+import Breadcrumb from "@/components/Breadcrumb";
 import { supabase } from "@/lib/supabase";
 
 export default function Page({ params }) {
@@ -601,7 +602,27 @@ export default function Page({ params }) {
       </nav>
 
       {/* Main Content */}
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 pt-28 pb-16">
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 pt-24 pb-16">
+        {/* Breadcrumb Navigation */}
+        <div className="mb-3">
+          <Breadcrumb
+            items={[
+              { label: "Events", href: "/events" },
+              ...(event?.category
+                ? [
+                    {
+                      label: event.category,
+                      href: `/events?category=${encodeURIComponent(
+                        event.category
+                      )}`,
+                    },
+                  ]
+                : []),
+              { label: event?.title || "Event Details" },
+            ]}
+          />
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Left Column - Main Content */}
           <div className="lg:col-span-2 space-y-6">

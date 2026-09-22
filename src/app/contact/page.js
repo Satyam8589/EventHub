@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
+import Breadcrumb from "@/components/Breadcrumb";
 
 
 export default function ContactPage() {
@@ -172,10 +173,14 @@ export default function ContactPage() {
       </nav>
 
       {/* Hero Section */}
-      <section className="relative z-10 py-12 sm:py-16 md:py-20 lg:py-24">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+      <section className="relative z-10 py-6 sm:py-10 md:py-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="mb-3 flex justify-start">
+            <Breadcrumb items={[{ label: "Contact Us" }]} />
+          </div>
+
           <div
-            className="animate-on-scroll opacity-0 translate-y-8 transition-all duration-1000"
+            className="text-center animate-on-scroll opacity-0 translate-y-8 transition-all duration-1000"
             style={{
               opacity: isVisible[0] ? 1 : 0,
               transform: isVisible[0] ? "translateY(0)" : "translateY(32px)",

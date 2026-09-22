@@ -3,6 +3,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import EventHubLogo from "./EventHubLogo";
+import Breadcrumb from "./Breadcrumb";
 
 export default function AdminLayout({ children, activeTab = "dashboard" }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -133,33 +134,39 @@ export default function AdminLayout({ children, activeTab = "dashboard" }) {
       {/* Main content */}
       <div className="flex-1 flex flex-col min-h-screen lg:min-h-0">
         {/* Header */}
-        <header className="bg-black/20 backdrop-blur-md border-b border-white/10 px-6 py-4">
-          <div className="flex items-center justify-between">
-            <button
-              onClick={() => setSidebarOpen(true)}
-              className="lg:hidden text-white"
-            >
-              <svg
-                className="w-6 h-6"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
+        <header className="bg-black/20 backdrop-blur-md border-b border-white/10 px-4 sm:px-6 py-3.5">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3 min-w-0">
+              <button
+                onClick={() => setSidebarOpen(true)}
+                className="lg:hidden text-white p-1 hover:bg-white/10 rounded-lg shrink-0"
+                aria-label="Open sidebar"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 6h16M4 12h16M4 18h16"
-                />
-              </svg>
-            </button>
+                <svg
+                  className="w-6 h-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 6h16M4 12h16M4 18h16"
+                  />
+                </svg>
+              </button>
 
-            <div className="flex items-center space-x-4">
+              <Breadcrumb variant="subtle" className="py-1 px-2 border-0 bg-transparent shadow-none" />
+            </div>
+
+            <div className="flex items-center space-x-4 shrink-0">
               <Link
                 href="/"
-                className="text-gray-300 hover:text-white text-sm font-medium"
+                className="inline-flex items-center gap-1.5 text-gray-300 hover:text-white text-xs sm:text-sm font-medium bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-lg border border-white/10 transition-colors"
               >
-                ← Back to Site
+                <span>🏠</span>
+                <span className="hidden sm:inline">Back to</span> Site
               </Link>
             </div>
           </div>

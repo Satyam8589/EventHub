@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "react-hot-toast";
+import Breadcrumb from "@/components/Breadcrumb";
 
 export default function QRScanner() {
   const [qrData, setQrData] = useState("");
@@ -89,6 +90,10 @@ export default function QRScanner() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-6">
       <div className="max-w-2xl mx-auto">
+        <div className="mb-3 flex justify-start">
+          <Breadcrumb items={[{ label: "QR Scanner" }]} />
+        </div>
+
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-white mb-2">

@@ -7,6 +7,7 @@ import Navbar from "@/components/Navbar";
 import LoginForm from "@/components/auth/LoginForm";
 import SignupForm from "@/components/auth/SignupForm";
 import EventHubLogo from "@/components/EventHubLogo";
+import Breadcrumb from "@/components/Breadcrumb";
 
 export default function GamificationPage() {
   const { user, loading: authLoading } = useAuth();
@@ -404,7 +405,11 @@ export default function GamificationPage() {
       <Navbar setShowLogin={setShowLogin} setShowSignup={setShowSignup} />
 
       {/* Main Content */}
-      <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+      <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
+        <div className="mb-3 flex justify-start">
+          <Breadcrumb items={[{ label: "Leaderboard" }]} />
+        </div>
+
         {/* Hero Section */}
         <div className="text-center mb-12">
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white mb-4">

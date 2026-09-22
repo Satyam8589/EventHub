@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import TicketModal from "@/components/TicketModal";
 import EventHubLogo from "@/components/EventHubLogo";
+import Breadcrumb from "@/components/Breadcrumb";
 
 // ===== UTILITY FUNCTIONS =====
 
@@ -704,9 +705,13 @@ export default function MyEventsPage() {
       <Navigation user={user} authLoading={authLoading} signOut={signOut} />
 
       {/* Main Content */}
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
+        <div className="mb-3 flex justify-start">
+          <Breadcrumb items={[{ label: "My Bookings" }]} />
+        </div>
+
         {/* Header */}
-        <div className="text-center mb-12">
+        <div className="text-center mb-10">
           <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
             My Events
           </h1>

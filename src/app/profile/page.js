@@ -1,10 +1,11 @@
-﻿"use client";
+"use client";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import TicketModal from "@/components/TicketModal";
 import EventHubLogo from "@/components/EventHubLogo";
+import Breadcrumb from "@/components/Breadcrumb";
 
 export default function ProfilePage() {
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
@@ -390,7 +391,11 @@ export default function ProfilePage() {
       </nav>
 
       {/* Main Content */}
-      <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+        <div className="mb-3 flex justify-start">
+          <Breadcrumb items={[{ label: "Profile" }]} />
+        </div>
+
         {/* Profile Header */}
         <div className="bg-black/30 backdrop-blur-md rounded-2xl border border-white/10 p-6 mb-8">
           <div className="flex flex-col md:flex-row items-center md:items-start space-y-4 md:space-y-0 md:space-x-6">
