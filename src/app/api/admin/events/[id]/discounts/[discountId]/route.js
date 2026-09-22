@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { supabase, getSupabaseAdmin } from "@/lib/supabase";
 
 // PATCH /api/admin/events/[id]/discounts/[discountId] - Update discount status
 export async function PATCH(request, { params }) {
@@ -7,8 +7,9 @@ export async function PATCH(request, { params }) {
     const { id, discountId } = await params;
     const body = await request.json();
     const { isActive } = body;
+    const dbClient = getSupabaseAdmin();
 
-    const { data: discount, error } = await supabase
+    const { data: discount, error } = await dbClient
       .from("event_discounts")
       .update({ isActive: isActive })
       .eq("id", discountId)
@@ -34,8 +35,9 @@ export async function PATCH(request, { params }) {
 export async function DELETE(request, { params }) {
   try {
     const { id, discountId } = await params;
+    const dbClient = getSupabaseAdmin();
     
-    const { error } = await supabase
+    const { error } = await dbClient
       .from("event_discounts")
       .delete()
       .eq("id", discountId)

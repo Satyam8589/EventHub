@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import Razorpay from "razorpay";
 import crypto from "crypto";
-import { supabase } from "@/lib/supabase";
+import { supabase, getSupabaseAdmin } from "@/lib/supabase";
 import { sendNotificationToUser } from "@/lib/notificationHelper";
+import { sendTicketToUser } from "@/lib/ticketEmail";
 
 // Initialize Razorpay instance
 const razorpay = new Razorpay({
@@ -10,10 +11,10 @@ const razorpay = new Razorpay({
   key_secret: process.env.RAZORPAY_KEY_SECRET,
 });
 
-// Log presence of Razorpay environment variables (helps debug misconfiguration)
 // POST /api/payment/create-order - Create Razorpay order
 export async function POST(request) {
   try {
+    const dbClient = getSupabaseAdmin();
     const now = new Date();
     const datePart = new Intl.DateTimeFormat("en-CA", {
       timeZone: "Asia/Kolkata",
@@ -48,8 +49,55 @@ export async function POST(request) {
       );
     }
 
+    // Ensure user exists in users table to satisfy foreign key constraint bookings_userId_fkey
+    let effectiveUserId = userId;
+    try {
+      const { data: userById } = await dbClient
+        .from("users")
+        .select("id")
+        .eq("id", userId)
+        .maybeSingle();
+
+      if (!userById) {
+        const userEmail = userDetails?.email || `${userId}@user.eventhub`;
+        const userName = userDetails?.name || userDetails?.fullName || userEmail.split("@")[0];
+        const userPhone = userDetails?.phone || userDetails?.phoneNumber || null;
+
+        const { data: userByEmail } = await dbClient
+          .from("users")
+          .select("id")
+          .eq("email", userEmail)
+          .maybeSingle();
+
+        if (userByEmail) {
+          // If user exists by email, try to update their id to Firebase UID or use existing id
+          const { error: updateIdErr } = await dbClient
+            .from("users")
+            .update({ id: userId, name: userName, phone: userPhone, updatedAt: nowIstIso })
+            .eq("id", userByEmail.id);
+
+          if (updateIdErr) {
+            effectiveUserId = userByEmail.id;
+          }
+        } else {
+          // Create the user record in users table
+          await dbClient.from("users").insert([{
+            id: userId,
+            email: userEmail,
+            name: userName,
+            phone: userPhone,
+            role: "ATTENDEE",
+            createdAt: nowIstIso,
+            updatedAt: nowIstIso,
+          }]);
+        }
+      }
+    } catch (uErr) {
+      console.warn("User sync check in create-order warning:", uErr);
+    }
+
     // Check if event exists
-    const { data: event, error: eventError } = await supabase
+    const { data: event, error: eventError } = await dbClient
       .from("events")
       .select("*")
       .eq("id", eventId)
@@ -67,7 +115,7 @@ export async function POST(request) {
 
     if (discountCode && discountCode.trim()) {
       try {
-        const { data: discount, error: discountError } = await supabase
+        const { data: discount, error: discountError } = await dbClient
           .from("event_discounts")
           .select("*")
           .eq("eventId", eventId)
@@ -140,7 +188,7 @@ export async function POST(request) {
     // Use database function to atomically check availability with row-level locking
     // This prevents race conditions when multiple users check availability simultaneously
     const { data: availabilityResult, error: availabilityError } =
-      await supabase.rpc("check_ticket_availability", {
+      await dbClient.rpc("check_ticket_availability", {
         p_event_id: eventId,
         p_requested_tickets: parseInt(tickets),
       });
@@ -149,7 +197,7 @@ export async function POST(request) {
       console.error("Availability check error:", availabilityError);
       // Fallback to old method if RPC fails (for backward compatibility)
       // ⚠️ IMPORTANT: Only count CONFIRMED bookings (not PENDING)
-      const { data: existingBookings, error: bookingsError } = await supabase
+      const { data: existingBookings, error: bookingsError } = await dbClient
         .from("bookings")
         .select("tickets")
         .eq("eventId", eventId)
@@ -189,7 +237,7 @@ export async function POST(request) {
       finalAmount !== undefined ? finalAmount : calculatedFinalAmount;
     if (parseFloat(amountToCharge) <= 0) {
       // ✅ Check ticket availability even for free bookings
-      const { data: availabilityCheck, error: availError } = await supabase.rpc(
+      const { data: availabilityCheck, error: availError } = await dbClient.rpc(
         "check_ticket_availability",
         {
           p_event_id: eventId,
@@ -217,7 +265,7 @@ export async function POST(request) {
 
       const pendingBooking = {
         id: crypto.randomUUID(),
-        userId,
+        userId: effectiveUserId,
         eventId,
         tickets: parseInt(tickets),
         totalAmount: 0,
@@ -233,7 +281,7 @@ export async function POST(request) {
         updatedAt: nowIstIso,
       };
 
-      let { data: booking, error: bookingError } = await supabase
+      let { data: booking, error: bookingError } = await dbClient
         .from("bookings")
         .insert([pendingBooking])
         .select()
@@ -249,7 +297,7 @@ export async function POST(request) {
           console.warn(`Column '${missingCol}' missing in bookings table, retrying free booking without it.`);
           delete pendingBooking[missingCol];
 
-          const retryResult = await supabase
+          const retryResult = await dbClient
             .from("bookings")
             .insert([pendingBooking])
             .select()
@@ -272,7 +320,7 @@ export async function POST(request) {
       // ✅ INCREMENT DISCOUNT USAGE FOR FREE BOOKING
       if (discountId) {
         try {
-          const { error: discountError } = await supabase.rpc(
+          const { error: discountError } = await dbClient.rpc(
             "increment_discount_usage",
             {
               p_discount_id: discountId,
@@ -316,7 +364,7 @@ export async function POST(request) {
         if (userDetails.phone) updateData.phone = userDetails.phone;
         if (userDetails.phoneNumber) updateData.phone = userDetails.phoneNumber;
         updateData.updatedAt = nowIstIso;
-        await supabase.from("users").update(updateData).eq("id", userId);
+        await dbClient.from("users").update(updateData).eq("id", effectiveUserId);
       }
 
       // 📧 SEND TICKET EMAIL FOR FREE BOOKING
@@ -379,7 +427,7 @@ export async function POST(request) {
     // until database migration adds razorpayOrderId column
     const pendingBooking = {
       id: crypto.randomUUID(),
-      userId,
+      userId: effectiveUserId,
       eventId,
       tickets: parseInt(tickets),
       totalAmount: parseFloat(amountToCharge),
@@ -394,7 +442,7 @@ export async function POST(request) {
       updatedAt: nowIstIso,
     };
 
-    let { data: booking, error: bookingError } = await supabase
+    let { data: booking, error: bookingError } = await dbClient
       .from("bookings")
       .insert([pendingBooking])
       .select()
@@ -410,7 +458,7 @@ export async function POST(request) {
         console.warn(`Column '${missingCol}' missing in bookings table, retrying paid booking without it.`);
         delete pendingBooking[missingCol];
 
-        const retryResult = await supabase
+        const retryResult = await dbClient
           .from("bookings")
           .insert([pendingBooking])
           .select()
@@ -424,6 +472,7 @@ export async function POST(request) {
     }
 
     if (bookingError) {
+      console.error("Paid booking creation error:", bookingError);
       throw bookingError;
     }
 
@@ -449,10 +498,10 @@ export async function POST(request) {
       if (userDetails.phone) updateData.phone = userDetails.phone;
       if (userDetails.phoneNumber) updateData.phone = userDetails.phoneNumber; // Handle frontend phoneNumber field
       updateData.updatedAt = nowIstIso;
-      const { error: userUpdateError } = await supabase
+      const { error: userUpdateError } = await dbClient
         .from("users")
         .update(updateData)
-        .eq("id", userId);
+        .eq("id", effectiveUserId);
 
       if (userUpdateError) {
         // Don't throw error here, just log it as it's not critical for payment
@@ -477,10 +526,12 @@ export async function POST(request) {
       userDetails,
     });
   } catch (error) {
+    console.error("❌ CREATE-ORDER ERROR:", error);
     return NextResponse.json(
       {
         error: "Failed to create payment order",
-        details: error.message,
+        details: error.message || error,
+        code: error.code,
       },
       { status: 500 }
     );

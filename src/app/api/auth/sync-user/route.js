@@ -50,18 +50,37 @@ export async function POST(request) {
     }
 
     if (user) {
-      // Update existing user (preserve existing role)
-      const { data: updatedUser, error: updateError } = await supabase
+      // Update existing user (preserve existing role, and sync id to uid if changed)
+      const updatePayload = {
+        name: name || user.name,
+        avatar: avatar || user.avatar,
+        phone: phone || user.phone,
+        updatedAt: new Date().toISOString(),
+      };
+
+      if (user.id !== uid) {
+        updatePayload.id = uid;
+      }
+
+      let { data: updatedUser, error: updateError } = await supabase
         .from("users")
-        .update({
-          name: name || user.name,
-          avatar: avatar || user.avatar,
-          phone: phone || user.phone,
-          updatedAt: new Date().toISOString(),
-        })
+        .update(updatePayload)
         .eq("id", user.id)
         .select()
         .single();
+
+      // If updating ID failed (e.g. FK constraints), retry without changing ID
+      if (updateError && user.id !== uid) {
+        delete updatePayload.id;
+        const retry = await supabase
+          .from("users")
+          .update(updatePayload)
+          .eq("id", user.id)
+          .select()
+          .single();
+        updatedUser = retry.data;
+        updateError = retry.error;
+      }
 
       if (updateError) {
         console.error("Error updating user in Supabase:", updateError);

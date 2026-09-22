@@ -158,7 +158,7 @@ export default function CreateEvent() {
         max_tickets_per_user: formData.max_tickets_per_user
           ? parseInt(formData.max_tickets_per_user)
           : null,
-        organizerId: user.uid,
+        organizerId: user.dbUser?.id || user.uid,
         organizerName: formData.organizerName,
         organizerEmail: formData.organizerEmail,
         organizerPhone: formData.organizerPhone || null,
@@ -191,7 +191,7 @@ export default function CreateEvent() {
         router.push("/admin/events");
       } else {
         const error = await response.json();
-        alert(error.message || "Failed to create event");
+        alert(error.details || error.message || error.error || "Failed to create event");
       }
     } catch (error) {
       console.error("Error creating event:", error);

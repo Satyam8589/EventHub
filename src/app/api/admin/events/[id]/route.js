@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { supabase, getSupabaseAdmin } from "@/lib/supabase";
 
 // GET /api/admin/events/[id] - Get single event with full details
 export async function GET(request, { params }) {
   try {
     const { id } = await params;
+    const dbClient = getSupabaseAdmin();
 
     // Get event details
-    const { data: event, error: eventError } = await supabase
+    const { data: event, error: eventError } = await dbClient
       .from("events")
       .select("*")
       .eq("id", id)
@@ -137,7 +138,8 @@ export async function PUT(request, { params }) {
       updateData.endtime = endTime; // ✅ Use endTime directly from form (HH:MM format)
     }
 
-    let { data: updatedEvent, error: updateError } = await supabase
+    const dbClient = getSupabaseAdmin();
+    let { data: updatedEvent, error: updateError } = await dbClient
       .from("events")
       .update(updateData)
       .eq("id", id)
@@ -154,7 +156,7 @@ export async function PUT(request, { params }) {
         console.warn(`Column '${missingCol}' missing in database, retrying update without it.`);
         delete updateData[missingCol];
 
-        const retryResult = await supabase
+        const retryResult = await dbClient
           .from("events")
           .update(updateData)
           .eq("id", id)
@@ -173,7 +175,7 @@ export async function PUT(request, { params }) {
     }
 
     // Return the updated event with enriched data
-    const { data: organizer } = await supabase
+    const { data: organizer } = await dbClient
       .from("users")
       .select("id, name, email")
       .eq("id", updatedEvent.organizerId)

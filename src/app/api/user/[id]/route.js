@@ -13,14 +13,15 @@ export async function GET(request, { params }) {
       .from("users")
       .select("*")
       .eq("id", id)
-      .single();
+      .maybeSingle();
 
     if (error) {
+      console.error("Error fetching user:", error);
       throw error;
     }
 
     if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+      return NextResponse.json({ user: null, message: "User not found" }, { status: 404 });
     }
 
     return NextResponse.json({ user });

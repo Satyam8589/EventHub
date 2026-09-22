@@ -1,55 +1,83 @@
-﻿import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { NextResponse } from "next/server";
+import { supabase, getSupabaseAdmin } from "@/lib/supabase";
 
 // GET /api/bookings - Get all bookings (with optional user filter)
 export async function GET(request) {
   try {
+    const dbClient = getSupabaseAdmin();
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get("userId");
     const status = searchParams.get("status"); // Optional status filter
+
     // First get the bookings
-    let query = supabase
-      .from("bookings")
-      .select("*")
-      .order("createdAt", { ascending: false });
+    let query = dbClient.from("bookings").select("*");
 
     if (userId) {
       query = query.eq("userId", userId);
     }
 
-    // Filter by status if provided (e.g., "CONFIRMED", "PENDING", "FAILED" or "CONFIRMED,COMPLETED")
+    // Sanitize status filter against valid PostgreSQL BookingStatus enum values
+    const VALID_BOOKING_STATUSES = ["CONFIRMED", "PENDING", "CANCELLED", "FAILED"];
+    let validStatuses = null;
     if (status) {
-      if (status.includes(",")) {
-        // Handle multiple statuses
-        const statusArray = status.split(",").map((s) => s.trim());
-        query = query.in("status", statusArray);
-      } else {
-        // Handle single status
-        query = query.eq("status", status);
+      const rawStatuses = status.split(",").map((s) => s.trim().toUpperCase());
+      const filtered = rawStatuses.filter((s) => VALID_BOOKING_STATUSES.includes(s));
+      if (filtered.length > 0) {
+        validStatuses = filtered;
       }
     }
 
-    const { data: bookings, error } = await query;
+    if (validStatuses) {
+      if (validStatuses.length === 1) {
+        query = query.eq("status", validStatuses[0]);
+      } else {
+        query = query.in("status", validStatuses);
+      }
+    }
+
+    let { data: bookings, error } = await query.order("createdAt", { ascending: false });
+
+    // Fallback if createdAt column name differs (e.g. created_at)
+    if (error && (error.message?.includes("createdAt") || error.code === "PGRST204" || error.code === "42703")) {
+      console.warn("Retrying bookings query with created_at order:", error.message);
+      let retryQuery = dbClient.from("bookings").select("*");
+      if (userId) retryQuery = retryQuery.eq("userId", userId);
+      if (validStatuses) {
+        if (validStatuses.length === 1) {
+          retryQuery = retryQuery.eq("status", validStatuses[0]);
+        } else {
+          retryQuery = retryQuery.in("status", validStatuses);
+        }
+      }
+      const retryRes = await retryQuery.order("created_at", { ascending: false });
+      if (!retryRes.error) {
+        bookings = retryRes.data;
+        error = null;
+      } else {
+        // Retry without order
+        let noOrderQuery = dbClient.from("bookings").select("*");
+        if (userId) noOrderQuery = noOrderQuery.eq("userId", userId);
+        if (validStatuses) {
+          if (validStatuses.length === 1) {
+            noOrderQuery = noOrderQuery.eq("status", validStatuses[0]);
+          } else {
+            noOrderQuery = noOrderQuery.in("status", validStatuses);
+          }
+        }
+        const noOrderRes = await noOrderQuery;
+        if (!noOrderRes.error) {
+          bookings = noOrderRes.data;
+          error = null;
+        }
+      }
+    }
 
     if (error) {
+      console.error("❌ Error fetching bookings from Supabase:", error);
       throw error;
     }
-    console.log(
-      "Booking statuses:",
-      bookings?.map((b) => ({
-        id: b.id,
-        status: b.status,
-        userId: b.userId,
-        eventId: b.eventId,
-      }))
-    );
 
     if (!bookings || bookings.length === 0) {
-      console.log(
-        "Check: 1) userId exists in database, 2) bookings exist for this user, 3) status matches filter"
-      );
-
-      // Return empty array if no bookings found
       return NextResponse.json(
         { bookings: [] },
         {
@@ -65,33 +93,38 @@ export async function GET(request) {
     // Then fetch event and user details for each booking
     const bookingsWithEventAndUser = await Promise.all(
       bookings.map(async (booking) => {
-        // Fetch event details
-        const { data: event, error: eventError } = await supabase
-          .from("events")
-          .select("*")
-          .eq("id", booking.eventId)
-          .single();
+        try {
+          const eventIdToQuery = booking.eventId || booking.eventid || booking.event_id;
+          const userIdToQuery = booking.userId || booking.userid || booking.user_id;
 
-        // Fetch user details
-        const { data: user, error: userError } = await supabase
-          .from("users")
-          .select("id, name, email, phone, avatar")
-          .eq("id", booking.userId)
-          .single();
+          const { data: event } = await dbClient
+            .from("events")
+            .select("*")
+            .eq("id", eventIdToQuery)
+            .maybeSingle();
 
-        if (eventError) {
+          const { data: user } = await dbClient
+            .from("users")
+            .select("id, name, email, phone, avatar")
+            .eq("id", userIdToQuery)
+            .maybeSingle();
+
+          return {
+            ...booking,
+            event: event || null,
+            user: user || null,
+          };
+        } catch (joinErr) {
+          console.warn("Error resolving booking event/user join:", joinErr);
+          return {
+            ...booking,
+            event: null,
+            user: null,
+          };
         }
-
-        if (userError) {
-        }
-
-        return {
-          ...booking,
-          event: event || null,
-          user: user || null,
-        };
       })
     );
+
     return NextResponse.json(
       { bookings: bookingsWithEventAndUser },
       {
@@ -103,11 +136,12 @@ export async function GET(request) {
       }
     );
   } catch (error) {
+    console.error("❌ Critical error in GET /api/bookings:", error);
     return NextResponse.json(
       {
         error: "Failed to fetch bookings",
         details: error?.message || "Unknown error",
-        bookings: [], // Return empty array to prevent frontend crash
+        bookings: [],
       },
       { status: 500 }
     );

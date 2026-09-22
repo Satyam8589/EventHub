@@ -281,6 +281,74 @@ export async function POST(request) {
 
     // Prepare event data
     const nowUtcIso = new Date().toISOString();
+
+    // Ensure organizer exists in users table to satisfy foreign key constraint (events_organizerId_fkey)
+    let effectiveOrganizerId = organizerId;
+    try {
+      const { data: userById } = await supabase
+        .from("users")
+        .select("id")
+        .eq("id", organizerId)
+        .maybeSingle();
+
+      if (!userById) {
+        // Check if user exists with the same email
+        const { data: userByEmail } = await supabase
+          .from("users")
+          .select("id")
+          .eq("email", organizerEmail)
+          .maybeSingle();
+
+        if (userByEmail) {
+          // Try to update existing record's id to organizerId (Firebase UID)
+          const { error: updateIdError } = await supabase
+            .from("users")
+            .update({
+              id: organizerId,
+              name: organizerName,
+              phone: organizerPhone || null,
+              updatedAt: nowUtcIso,
+            })
+            .eq("id", userByEmail.id);
+
+          if (updateIdError) {
+            // If ID update failed (e.g. FK constraints), use existing ID for the event
+            effectiveOrganizerId = userByEmail.id;
+          }
+        } else {
+          // Create the organizer user record in users table
+          const newUserData = {
+            id: organizerId,
+            email: organizerEmail,
+            name: organizerName || organizerEmail.split("@")[0],
+            phone: organizerPhone || null,
+            role: "ORGANIZER",
+            createdAt: nowUtcIso,
+            updatedAt: nowUtcIso,
+          };
+
+          const { error: insertUserError } = await supabase
+            .from("users")
+            .insert([newUserData]);
+
+          if (insertUserError) {
+            console.warn("Standard user insert failed, trying fallback:", insertUserError.message);
+            const fallbackUserData = {
+              id: organizerId,
+              email: organizerEmail,
+              name: organizerName || organizerEmail.split("@")[0],
+              phone: organizerPhone || null,
+              created_at: nowUtcIso,
+              updated_at: nowUtcIso,
+            };
+            await supabase.from("users").insert([fallbackUserData]);
+          }
+        }
+      }
+    } catch (organizerSyncError) {
+      console.error("Error verifying organizer in users table:", organizerSyncError);
+    }
+
     const eventData = {
       id: randomUUID(),
       title,
@@ -296,7 +364,7 @@ export async function POST(request) {
       capacity: parseInt(maxAttendees) || 100,
       max_tickets_per_user: max_tickets_per_user,
       imageUrl,
-      organizerId,
+      organizerId: effectiveOrganizerId,
       organizerName,
       organizerEmail,
       organizerPhone,

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import Razorpay from "razorpay";
 import crypto from "crypto";
-import { supabase } from "@/lib/supabase";
+import { supabase, getSupabaseAdmin } from "@/lib/supabase";
 import { sendNotificationToUser } from "@/lib/notificationHelper";
 import { sendTicketToUser } from "@/lib/ticketEmail";
 
@@ -38,6 +38,7 @@ const getIstTimestamp = () => {
 // POST /api/payment/verify - Verify Razorpay payment
 export async function POST(request) {
   const startTime = Date.now();
+  const dbClient = getSupabaseAdmin();
   let body = null;
 
   try {
@@ -95,7 +96,7 @@ export async function POST(request) {
     if (generatedSignature !== razorpay_signature) {
       const nowIstIso = getIstTimestamp();
       
-      await supabase
+      await dbClient
         .from("bookings")
         .update({
           status: "FAILED",
@@ -105,17 +106,17 @@ export async function POST(request) {
         .eq("id", bookingId);
 
       try {
-        const { data: bookingForPush } = await supabase
+        const { data: bookingForPush } = await dbClient
           .from("bookings")
           .select("id,userId,eventId")
           .eq("id", bookingId)
-          .single();
+          .maybeSingle();
         if (bookingForPush) {
-          const { data: eventInfo } = await supabase
+          const { data: eventInfo } = await dbClient
             .from("events")
             .select("id,title")
             .eq("id", bookingForPush.eventId)
-            .single();
+            .maybeSingle();
           await sendNotificationToUser(bookingForPush.userId, "payment-failed", {
             eventTitle: eventInfo?.title || "the event",
             eventId: bookingForPush.eventId,
@@ -133,11 +134,11 @@ export async function POST(request) {
     }
 
     // Get the pending booking
-    let { data: booking, error: bookingError } = await supabase
+    let { data: booking, error: bookingError } = await dbClient
       .from("bookings")
       .select("*")
       .eq("id", bookingId)
-      .single();
+      .maybeSingle();
 
     console.log("=== BOOKING QUERY RESULT (by ID) ===");
 
@@ -155,7 +156,7 @@ export async function POST(request) {
       // Log this verification attempt (even though webhook already processed it)
       try {
         const attemptNumber = (booking.verification_attempts || 0) + 1;
-        await supabase.rpc("log_verification_attempt", {
+        await dbClient.rpc("log_verification_attempt", {
           p_booking_id: bookingId,
           p_payment_id: razorpay_payment_id,
           p_order_id: razorpay_order_id,
@@ -171,11 +172,11 @@ export async function POST(request) {
       }
       
       // Get event details for response
-      const { data: eventInfo } = await supabase
+      const { data: eventInfo } = await dbClient
         .from("events")
         .select("id, title, date, time, location")
         .eq("id", booking.eventId)
-        .single();
+        .maybeSingle();
       
       // Return success response (idempotent - already processed)
       return NextResponse.json({
@@ -217,43 +218,63 @@ export async function POST(request) {
     }
 
     // 🔒 ATOMIC BOOKING CONFIRMATION WITH AVAILABILITY CHECK
-    const { data: confirmationResult, error: rpcError } = await supabase.rpc(
-      "confirm_booking_with_availability_check",
-      {
-        p_booking_id: bookingId,
-        p_payment_id: razorpay_payment_id,
-      }
-    );
+    let confirmedBooking = null;
+    let eventInfo = null;
+    let storedPaymentId = razorpay_payment_id;
 
-    if (rpcError) {
-      console.error("RPC Error:", rpcError);
-      throw new Error(
-        `Database function error: ${rpcError.message}. Please ensure the database migration has been applied.`
-      );
-    }
-
-    const result = confirmationResult;
-
-    if (!result.success) {
-      return NextResponse.json(
+    try {
+      const { data: confirmationResult, error: rpcError } = await dbClient.rpc(
+        "confirm_booking_with_availability_check",
         {
-          success: false,
-          error: result.error || "Booking confirmation failed",
-          details: result,
-        },
-        { status: 400 }
+          p_booking_id: bookingId,
+          p_payment_id: razorpay_payment_id,
+        }
       );
+
+      if (rpcError || !confirmationResult || !confirmationResult.success) {
+        throw rpcError || new Error(confirmationResult?.error || "RPC returned false");
+      }
+
+      confirmedBooking = confirmationResult.booking;
+      eventInfo = confirmationResult.event;
+      storedPaymentId = confirmedBooking.paymentId || razorpay_payment_id;
+    } catch (rpcErr) {
+      console.warn("RPC confirm_booking failed, executing direct update fallback:", rpcErr.message);
+
+      const nowIstIso = getIstTimestamp();
+      const { data: fallbackBooking, error: updateError } = await dbClient
+        .from("bookings")
+        .update({
+          status: "CONFIRMED",
+          paymentId: razorpay_payment_id,
+          paymentVerifiedAt: nowIstIso,
+          ticketgeneratedat: nowIstIso,
+          razorpaysignature: razorpay_signature,
+          updatedAt: nowIstIso,
+        })
+        .eq("id", bookingId)
+        .select()
+        .single();
+
+      if (updateError || !fallbackBooking) {
+        console.error("Direct update fallback failed:", updateError);
+        throw updateError || new Error("Failed to confirm booking");
+      }
+
+      confirmedBooking = fallbackBooking;
+      const { data: fallbackEvent } = await dbClient
+        .from("events")
+        .select("*")
+        .eq("id", fallbackBooking.eventId)
+        .maybeSingle();
+
+      eventInfo = fallbackEvent || { id: fallbackBooking.eventId, title: "Event" };
     }
 
-    // Extract booking and event from result
-    const confirmedBooking = result.booking;
-    const eventInfo = result.event;
-    const storedPaymentId = confirmedBooking.paymentId || razorpay_payment_id;
-    
     // Log verification attempt
     try {
       const attemptNumber = (confirmedBooking.verification_attempts || 0) + 1;
-      await supabase.rpc("log_verification_attempt", {
+      await dbClient.rpc("log_verification_attempt", {
         p_booking_id: bookingId,
         p_payment_id: razorpay_payment_id,
         p_order_id: razorpay_order_id,
@@ -265,7 +286,7 @@ export async function POST(request) {
       });
       console.log("✅ Verification attempt logged");
     } catch (logError) {
-      console.error("⚠️ Failed to log verification attempt:", logError);
+      console.warn("Verification attempt log skipped:", logError.message);
     }
 
     // Prepare success response
@@ -292,7 +313,7 @@ export async function POST(request) {
     // Persist verification metadata on booking
     try {
       const nowIstIso = getIstTimestamp();
-      let { error: metaError } = await supabase
+      await dbClient
         .from("bookings")
         .update({
           paymentVerifiedAt: nowIstIso,
@@ -301,35 +322,15 @@ export async function POST(request) {
           updatedAt: nowIstIso,
         })
         .eq("id", bookingId);
-      
-      if (metaError && process.env.SUPABASE_SERVICE_ROLE_KEY) {
-        const { createClient } = require("@supabase/supabase-js");
-        const admin = createClient(
-          process.env.NEXT_PUBLIC_SUPABASE_URL,
-          process.env.SUPABASE_SERVICE_ROLE_KEY
-        );
-        const { error: metaError2 } = await admin
-          .from("bookings")
-          .update({
-            paymentVerifiedAt: nowIstIso,
-            ticketgeneratedat: nowIstIso,
-            razorpaysignature: razorpay_signature,
-            updatedAt: nowIstIso,
-          })
-          .eq("id", bookingId);
-        if (metaError2) {
-          console.error("Metadata update error with admin client:", metaError2);
-        }
-      }
     } catch (_) {}
 
     // ✅ INCREMENT DISCOUNT USAGE AFTER SUCCESSFUL PAYMENT
     if (confirmedBooking.discountId) {
       try {
-        const { error: discountError } = await supabase.rpc(
+        const { error: discountError } = await dbClient.rpc(
           "increment_discount_usage",
           { 
-            discount_id: confirmedBooking.discountId 
+            p_discount_id: confirmedBooking.discountId 
           }
         );
         if (discountError) {

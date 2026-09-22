@@ -585,8 +585,9 @@ export default function MyEventsPage() {
     try {
       setLoading(true);
       const cacheBuster = Date.now();
+      const userIdToFetch = user.dbUser?.id || user.uid;
       const response = await fetch(
-        `/api/bookings?userId=${user.uid}&status=CONFIRMED&_=${cacheBuster}`,
+        `/api/bookings?userId=${encodeURIComponent(userIdToFetch)}&status=CONFIRMED&_=${cacheBuster}`,
         {
           cache: "no-store",
           headers: {

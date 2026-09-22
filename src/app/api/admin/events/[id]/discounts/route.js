@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { supabase, getSupabaseAdmin } from "@/lib/supabase";
 
 // POST /api/admin/events/[id]/discounts - Create new discount
 export async function POST(request, { params }) {
   try {
     const { id } = await params;
     const body = await request.json();
+    const dbClient = getSupabaseAdmin();
 
     console.log("=== DISCOUNT CREATION DEBUG ===");
     console.log("Event ID:", id);
@@ -23,7 +24,7 @@ export async function POST(request, { params }) {
     }
 
     // Check if discount code already exists for this event
-    const { data: existingDiscount, error: checkError } = await supabase
+    const { data: existingDiscount, error: checkError } = await dbClient
       .from("event_discounts")
       .select("*")
       .eq("eventId", id)
@@ -71,8 +72,8 @@ export async function POST(request, { params }) {
 
     console.log("Discount data to insert:", discountData);
 
-    // Create new discount using main supabase client
-    const { data: discount, error: createError } = await supabase
+    // Create new discount using dbClient (admin client)
+    const { data: discount, error: createError } = await dbClient
       .from("event_discounts")
       .insert([discountData])
       .select()
