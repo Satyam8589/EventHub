@@ -1,17 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-
-// Create service role client to bypass RLS for admin operations
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
-  }
-);
+import { supabase } from "@/lib/supabase";
 
 // POST /api/admin/events/[id]/discounts - Create new discount
 export async function POST(request, { params }) {
@@ -35,7 +23,7 @@ export async function POST(request, { params }) {
     }
 
     // Check if discount code already exists for this event
-    const { data: existingDiscount, error: checkError } = await supabaseAdmin
+    const { data: existingDiscount, error: checkError } = await supabase
       .from("event_discounts")
       .select("*")
       .eq("eventId", id)
@@ -57,7 +45,7 @@ export async function POST(request, { params }) {
       // The frontend sends datetime-local format (e.g., "2025-12-31T23:59")
       // We need to treat this as IST and convert to ISO format with IST offset
       const dateObj = new Date(validUntil);
-      
+
       // Format as IST ISO string (YYYY-MM-DDTHH:MM:SS+05:30)
       const year = dateObj.getFullYear();
       const month = String(dateObj.getMonth() + 1).padStart(2, '0');
@@ -65,7 +53,7 @@ export async function POST(request, { params }) {
       const hours = String(dateObj.getHours()).padStart(2, '0');
       const minutes = String(dateObj.getMinutes()).padStart(2, '0');
       const seconds = String(dateObj.getSeconds()).padStart(2, '0');
-      
+
       validUntilIST = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}+05:30`;
       console.log("Valid until (IST):", validUntilIST);
     }
@@ -83,8 +71,8 @@ export async function POST(request, { params }) {
 
     console.log("Discount data to insert:", discountData);
 
-    // Create new discount using service role client (bypasses RLS)
-    const { data: discount, error: createError } = await supabaseAdmin
+    // Create new discount using main supabase client
+    const { data: discount, error: createError } = await supabase
       .from("event_discounts")
       .insert([discountData])
       .select()
@@ -103,9 +91,9 @@ export async function POST(request, { params }) {
     console.error("Error message:", error.message);
     console.error("Error details:", error);
     console.error("Error stack:", error.stack);
-    
+
     return NextResponse.json(
-      { 
+      {
         error: "Failed to create discount",
         details: error.message,
         hint: error.hint || "Check server logs for more details"

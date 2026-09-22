@@ -1,15 +1,30 @@
 import { createClient } from "@supabase/supabase-js";
 
 // Supabase configuration
-const supabaseUrl =
-  process.env.NEXT_PUBLIC_SUPABASE_URL ||
-  "https://wasrwhlzzmxqwiwwxtxe.supabase.co";
-const supabaseKey =
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indhc3J3aGx6em14cXdpd3d4dHhlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mjk3NzI4NjcsImV4cCI6MjA0NTM0ODg2N30.yVF8vIU-HBhNMM3h9FYyLgR6Gm_2z5oO8lq9XkEyD3w";
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 // Create Supabase client
 export const supabase = createClient(supabaseUrl, supabaseKey);
+
+// Safe Supabase Admin / Service Role Client helper
+export const getSupabaseAdmin = () => {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || supabaseUrl;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  // Only use service key if it's a valid JWT starting with eyJ
+  const keyToUse =
+    serviceKey && serviceKey.trim().startsWith("eyJ")
+      ? serviceKey.trim()
+      : process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || supabaseKey;
+
+  return createClient(url, keyToUse, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  });
+};
 
 // Database helper functions
 export const db = {
