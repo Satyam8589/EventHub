@@ -64,36 +64,64 @@ export async function POST(request) {
         .single();
 
       if (updateError) {
+        console.error("Error updating user in Supabase:", updateError);
         throw updateError;
       }
       user = updatedUser;
     } else {
       // Create new user
-      const { data: newUser, error: createError } = await supabase
+      const userData = {
+        id: uid, // Use Firebase UID as our database ID
+        email,
+        name: name || email.split("@")[0],
+        phone: phone || null,
+        avatar: avatar || null,
+        role: "ATTENDEE",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      let { data: newUser, error: createError } = await supabase
         .from("users")
-        .insert([
-          {
-            id: uid, // Use Firebase UID as our database ID
-            email,
-            name: name || email.split("@")[0],
-            phone: phone || null,
-            avatar,
-            role: "ATTENDEE",
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          },
-        ])
+        .insert([userData])
         .select()
         .single();
 
+      // If failed due to role or column naming differences, attempt fallback
       if (createError) {
-        throw createError;
+        console.warn("Initial sync insert failed, attempting fallback:", createError.message);
+        
+        const fallbackUserData = {
+          id: uid,
+          email,
+          name: name || email.split("@")[0],
+          phone: phone || null,
+          avatar: avatar || null,
+          image: avatar || null,
+          role: "USER",
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+
+        const { data: fallbackUser, error: fallbackError } = await supabase
+          .from("users")
+          .insert([fallbackUserData])
+          .select()
+          .single();
+
+        if (fallbackError) {
+          console.error("Supabase user sync fallback also failed:", fallbackError);
+          throw createError;
+        }
+        newUser = fallbackUser;
       }
+
       user = newUser;
     }
 
     return NextResponse.json({ user });
   } catch (error) {
+    console.error("Critical error in /api/auth/sync-user:", error);
     return NextResponse.json(
       { error: "Failed to sync user", details: error.message },
       { status: 500 }

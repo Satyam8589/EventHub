@@ -397,7 +397,10 @@ export async function POST(request) {
       eventDate: event.date,
       eventLocation: event.location,
       eventPrice: event.price,
-      eventImage: event.imageUrl,
+      eventImage:
+        event.imageUrl && event.imageUrl.startsWith("http")
+          ? event.imageUrl
+          : undefined,
     });
 
     // Send push notifications to all subscribers
@@ -433,8 +436,13 @@ export async function POST(request) {
 
     return NextResponse.json({ event }, { status: 201 });
   } catch (error) {
+    console.error("Error creating event in POST /api/events:", error);
     return NextResponse.json(
-      { error: "Failed to create event" },
+      { 
+        error: "Failed to create event", 
+        details: error.message || error,
+        code: error.code
+      },
       { status: 500 }
     );
   }
