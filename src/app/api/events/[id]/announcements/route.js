@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { supabase, getSupabaseAdmin } from "@/lib/supabase";
 import { sendNotificationToUsers } from "@/lib/notificationHelper";
 
 // GET - Fetch announcements for an event
@@ -8,15 +8,17 @@ export async function GET(request, { params }) {
     const { id } = await params;
     const url = new URL(request.url);
     const userId = url.searchParams.get("userId");
+    const email = url.searchParams.get("email");
+    const dbClient = getSupabaseAdmin() || supabase;
 
     // Fetch event announcements - select all to handle any column naming
-    const { data: event, error: eventError } = await supabase
+    const { data: event, error: eventError } = await dbClient
       .from("events")
       .select("*")
       .eq("id", id)
       .single();
 
-    if (eventError) {
+    if (eventError || !event) {
       console.error("Error fetching event:", eventError);
       return NextResponse.json(
         { error: "Event not found" },
@@ -24,27 +26,106 @@ export async function GET(request, { params }) {
       );
     }
 
-    // Check if user has purchased tickets for this event
+    // Check if user has purchased tickets for this event or is admin/creator
     let hasPurchased = false;
-    if (userId) {
-      const { data: bookings, error: bookingError } = await supabase
-        .from("bookings")
-        .select("id")
-        .eq("eventId", id)  // bookings table uses camelCase
-        .eq("userId", userId)
-        .eq("status", "CONFIRMED");
+    let isAdminOrCreator = false;
 
-      if (!bookingError && bookings && bookings.length > 0) {
-        hasPurchased = true;
+    // Collect all candidate user identifiers (UID, DB UUID, email)
+    const userIdentifiers = new Set();
+    if (userId && userId.trim()) userIdentifiers.add(userId.trim());
+    if (email && email.trim()) userIdentifiers.add(email.trim().toLowerCase());
+
+    if (userId || email) {
+      // Find matching user from users table to get alternative IDs / emails
+      try {
+        let userQuery = dbClient.from("users").select("id, email, role");
+        if (userId && email) {
+          userQuery = userQuery.or(`id.eq.${userId},email.eq.${email.trim().toLowerCase()}`);
+        } else if (userId) {
+          userQuery = userQuery.or(`id.eq.${userId},email.eq.${userId}`);
+        } else if (email) {
+          userQuery = userQuery.eq("email", email.trim().toLowerCase());
+        }
+
+        const { data: matchedUsers } = await userQuery;
+        if (matchedUsers && matchedUsers.length > 0) {
+          for (const u of matchedUsers) {
+            if (u.id) userIdentifiers.add(u.id);
+            if (u.email) userIdentifiers.add(u.email.toLowerCase());
+            if (u.role === "SUPER_ADMIN") isAdminOrCreator = true;
+          }
+        }
+      } catch (err) {
+        console.warn("User lookup in announcements warning:", err);
+      }
+
+      const idList = Array.from(userIdentifiers);
+
+      // 1. Check if user is event creator
+      const eventUserId = event.userId || event.user_id;
+      if (eventUserId && userIdentifiers.has(eventUserId)) {
+        isAdminOrCreator = true;
+      }
+
+      // 2. Check if user is an assigned admin
+      if (!isAdminOrCreator && idList.length > 0) {
+        const { data: adminData } = await dbClient
+          .from("event_admins")
+          .select("id")
+          .eq("event_id", id)
+          .in("user_id", idList)
+          .maybeSingle();
+
+        if (adminData) {
+          isAdminOrCreator = true;
+        }
+      }
+
+      // 3. Check bookings table for confirmed booking
+      if (idList.length > 0) {
+        const { data: bookings, error: bookingError } = await dbClient
+          .from("bookings")
+          .select("id, status")
+          .eq("eventId", id)
+          .in("userId", idList)
+          .in("status", ["CONFIRMED", "confirmed", "PAID", "paid", "FREE", "free"]);
+
+        if (!bookingError && bookings && bookings.length > 0) {
+          hasPurchased = true;
+        } else {
+          // Fallback: check snake_case columns
+          const { data: snakeBookings } = await dbClient
+            .from("bookings")
+            .select("id, status")
+            .eq("event_id", id)
+            .in("user_id", idList)
+            .in("status", ["CONFIRMED", "confirmed", "PAID", "paid", "FREE", "free"]);
+
+          if (snakeBookings && snakeBookings.length > 0) {
+            hasPurchased = true;
+          }
+        }
       }
     }
 
-    // Return announcements with access info
-    return NextResponse.json({
-      announcements: event.announcements || [],
-      hasPurchased,
-      canView: hasPurchased,
-    });
+    const canView = hasPurchased || isAdminOrCreator;
+
+    // Return announcements with access info and disable browser/CDN caching
+    return NextResponse.json(
+      {
+        announcements: event.announcements || [],
+        hasPurchased,
+        canView,
+        isAdmin: isAdminOrCreator,
+      },
+      {
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+          Pragma: "no-cache",
+          Expires: "0",
+        },
+      }
+    );
   } catch (error) {
     console.error("Error fetching event announcements:", error);
     return NextResponse.json(
@@ -59,6 +140,7 @@ export async function POST(request, { params }) {
   try {
     const { id } = await params;
     const { message, userId } = await request.json();
+    const dbClient = getSupabaseAdmin() || supabase;
 
     if (!message || !userId) {
       return NextResponse.json(
@@ -68,7 +150,7 @@ export async function POST(request, { params }) {
     }
 
     // Verify user is admin of this event
-    const { data: event, error: eventError } = await supabase
+    const { data: event, error: eventError } = await dbClient
       .from("events")
       .select("*")
       .eq("id", id)
@@ -86,7 +168,7 @@ export async function POST(request, { params }) {
     const isCreator = eventUserId === userId;
 
     // Check if user is a super admin
-    const { data: userData } = await supabase
+    const { data: userData } = await dbClient
       .from("users")
       .select("role")
       .eq("id", userId)
@@ -95,7 +177,7 @@ export async function POST(request, { params }) {
     const isSuperAdmin = userData?.role === "SUPER_ADMIN";
 
     // Check if user is an assigned admin
-    const { data: adminData } = await supabase
+    const { data: adminData } = await dbClient
       .from("event_admins")
       .select("id")
       .eq("event_id", id)
@@ -124,7 +206,7 @@ export async function POST(request, { params }) {
     const updatedAnnouncements = [newAnnouncement, ...existingAnnouncements];
 
     // Update event with new announcement
-    const { data: updatedEvent, error: updateError } = await supabase
+    const { data: updatedEvent, error: updateError } = await dbClient
       .from("events")
       .update({ announcements: updatedAnnouncements })
       .eq("id", id)
@@ -142,7 +224,7 @@ export async function POST(request, { params }) {
     // Send push notifications to all ticket holders
     try {
       // Get all confirmed bookings for this event
-      const { data: bookings, error: bookingsError } = await supabase
+      const { data: bookings, error: bookingsError } = await dbClient
         .from("bookings")
         .select("userId")
         .eq("eventId", id)
@@ -187,6 +269,7 @@ export async function DELETE(request, { params }) {
     const url = new URL(request.url);
     const announcementId = url.searchParams.get("announcementId");
     const userId = url.searchParams.get("userId");
+    const dbClient = getSupabaseAdmin() || supabase;
 
     if (!announcementId || !userId) {
       return NextResponse.json(
@@ -196,7 +279,7 @@ export async function DELETE(request, { params }) {
     }
 
     // Verify user is admin of this event
-    const { data: event, error: eventError } = await supabase
+    const { data: event, error: eventError } = await dbClient
       .from("events")
       .select("*")
       .eq("id", id)
@@ -214,7 +297,7 @@ export async function DELETE(request, { params }) {
     const isCreator = eventUserId === userId;
 
     // Check if user is a super admin
-    const { data: userData } = await supabase
+    const { data: userData } = await dbClient
       .from("users")
       .select("role")
       .eq("id", userId)
@@ -223,7 +306,7 @@ export async function DELETE(request, { params }) {
     const isSuperAdmin = userData?.role === "SUPER_ADMIN";
 
     // Check if user is an assigned admin
-    const { data: adminData } = await supabase
+    const { data: adminData } = await dbClient
       .from("event_admins")
       .select("id")
       .eq("event_id", id)
@@ -246,7 +329,7 @@ export async function DELETE(request, { params }) {
     );
 
     // Update event
-    const { data: updatedEvent, error: updateError } = await supabase
+    const { data: updatedEvent, error: updateError } = await dbClient
       .from("events")
       .update({ announcements: updatedAnnouncements })
       .eq("id", id)

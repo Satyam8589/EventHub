@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useState, useEffect } from "react";
+import { use, useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import BookingModal from "@/components/BookingModal";
@@ -98,73 +98,70 @@ export default function Page({ params }) {
       // Convert start date to IST date string
       const startDateISTString = startDateUTC.toLocaleString("en-US", {
         timeZone: "Asia/Kolkata",
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
       });
+      const startDateIST = new Date(startDateISTString);
 
-      // Parse the IST date string (format: MM/DD/YYYY)
-      const [startMonth, startDay, startYear] = startDateISTString
-        .split("/")
-        .map((num) => parseInt(num));
+      // Extract date components from the event start date
+      const year = startDateIST.getFullYear();
+      const month = startDateIST.getMonth();
+      const day = startDateIST.getDate();
 
-      // Parse event start time
-      let startHours = 0,
-        startMinutes = 0;
-      const startTimeValue = event.time;
+      // Check if event has a specific time field
+      let startHours = 0;
+      let startMinutes = 0;
 
-      if (!startTimeValue) return false;
+      if (event.time) {
+        // Parse time string (e.g., "10:00 AM", "2:30 PM", "14:00")
+        const timeStr = event.time.trim();
+        const timeMatch = timeStr.match(/(\d+):(\d+)\s*(AM|PM)?/i);
 
-      if (startTimeValue.includes("AM") || startTimeValue.includes("PM")) {
-        // 12-hour format
-        const match = startTimeValue.match(/(\d+):(\d+)\s*(AM|PM)/i);
-        if (match) {
-          startHours = parseInt(match[1]);
-          startMinutes = parseInt(match[2]);
-          const period = match[3].toUpperCase();
-          if (period === "PM" && startHours !== 12) startHours += 12;
-          if (period === "AM" && startHours === 12) startHours = 0;
+        if (timeMatch) {
+          let hours = parseInt(timeMatch[1], 10);
+          const minutes = parseInt(timeMatch[2], 10);
+          const modifier = timeMatch[3] ? timeMatch[3].toUpperCase() : null;
+
+          if (modifier === "PM" && hours < 12) hours += 12;
+          if (modifier === "AM" && hours === 12) hours = 0;
+
+          startHours = hours;
+          startMinutes = minutes;
         }
       } else {
-        // 24-hour format
-        const parts = startTimeValue.split(":");
-        if (parts.length >= 2) {
-          startHours = parseInt(parts[0]);
-          startMinutes = parseInt(parts[1]);
-        }
+        // If no time specified, use the time from the date field
+        startHours = startDateIST.getHours();
+        startMinutes = startDateIST.getMinutes();
       }
 
-      // Create event start datetime in IST (month is 0-indexed)
+      // Create event start date in IST
       const eventStartIST = new Date(
-        startYear,
-        startMonth - 1,
-        startDay,
+        year,
+        month,
+        day,
         startHours,
         startMinutes,
         0
       );
 
       // Get current time in IST
-      const now = new Date();
-      const nowISTString = now.toLocaleString("en-US", {
+      const nowISTString = new Date().toLocaleString("en-US", {
         timeZone: "Asia/Kolkata",
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        hour12: false,
       });
+      const nowIST = new Date(nowISTString);
 
-      // Parse current IST time
-      const [datePartNow, timePartNow] = nowISTString.split(", ");
-      const [monthNow, dayNow, yearNow] = datePartNow
+      // Extract components to create exact IST date object
+      const nowISTParts = nowISTString.split(", ");
+      const [monthNow, dayNow, yearNow] = nowISTParts[0]
         .split("/")
-        .map((num) => parseInt(num));
-      const [hoursNow, minutesNow, secondsNow] = timePartNow
-        .split(":")
-        .map((num) => parseInt(num));
+        .map((num) => parseInt(num, 10));
+      const [timePart, ampm] = nowISTParts[1].split(" ");
+      const [hoursStr, minutesStr, secondsStr] = timePart.split(":");
+      let hoursNow = parseInt(hoursStr, 10);
+      const minutesNow = parseInt(minutesStr, 10);
+      const secondsNow = parseInt(secondsStr, 10);
+
+      if (ampm === "PM" && hoursNow < 12) hoursNow += 12;
+      if (ampm === "AM" && hoursNow === 12) hoursNow = 0;
+
       const nowISTDate = new Date(
         yearNow,
         monthNow - 1,
@@ -185,14 +182,6 @@ export default function Page({ params }) {
   const hasEventEnded = () => {
     if (!event) return false;
 
-    const endDateValue = event.endDate || event.enddate;
-    const endTimeValue = event.endTime || event.endtime;
-
-    // If no endDate/endTime is set, fall back to checking if the start date has passed
-    if (!endDateValue || !endTimeValue) {
-      return isEventExpired(event);
-    }
-
     try {
       // Helper to ensure proper UTC format
       const ensureUTCString = (dateStr) => {
@@ -202,76 +191,108 @@ export default function Page({ params }) {
         return dateStr.replace(" ", "T") + "Z";
       };
 
-      // Parse the end date (stored as UTC in database)
-      const endDateUTC = new Date(ensureUTCString(endDateValue));
+      // Check for endDate first (could be in endDate, enddate, or end_date)
+      const endDateValue =
+        event.endDate || event.enddate || event.end_date;
 
-      // Convert end date to IST date string
-      const endDateISTString = endDateUTC.toLocaleString("en-US", {
-        timeZone: "Asia/Kolkata",
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
+      // Check for endTime/endtime
+      const endTimeValue =
+        event.endTime || event.endtime || event.end_time;
+
+      console.log("hasEventEnded Debug for Event:", {
+        eventId: event.id,
+        title: event.title,
+        date: event.date,
+        time: event.time,
+        endDate: event.endDate,
+        enddate: event.enddate,
+        endTime: event.endTime,
+        endtime: event.endtime,
       });
 
-      // Parse the IST date string (format: MM/DD/YYYY)
-      const [endMonth, endDay, endYear] = endDateISTString
-        .split("/")
-        .map((num) => parseInt(num));
-
-      // Parse event end time
-      let endHours = 0,
-        endMinutes = 0;
-
-      if (endTimeValue.includes("AM") || endTimeValue.includes("PM")) {
-        // 12-hour format
-        const match = endTimeValue.match(/(\d+):(\d+)\s*(AM|PM)/i);
-        if (match) {
-          endHours = parseInt(match[1]);
-          endMinutes = parseInt(match[2]);
-          const period = match[3].toUpperCase();
-          if (period === "PM" && endHours !== 12) endHours += 12;
-          if (period === "AM" && endHours === 12) endHours = 0;
-        }
+      // If we have an endDate, parse it
+      let targetDateUTC;
+      if (endDateValue) {
+        targetDateUTC = new Date(ensureUTCString(endDateValue));
       } else {
-        // 24-hour format
-        const parts = endTimeValue.split(":");
-        if (parts.length >= 2) {
-          endHours = parseInt(parts[0]);
-          endMinutes = parseInt(parts[1]);
+        targetDateUTC = new Date(ensureUTCString(event.date));
+      }
+
+      // Convert target date to IST
+      const targetDateISTString = targetDateUTC.toLocaleString("en-US", {
+        timeZone: "Asia/Kolkata",
+      });
+      const targetDateIST = new Date(targetDateISTString);
+
+      const year = targetDateIST.getFullYear();
+      const month = targetDateIST.getMonth();
+      const day = targetDateIST.getDate();
+
+      let endHours = 23;
+      let endMinutes = 59;
+      let endSeconds = 59;
+
+      if (endTimeValue) {
+        const timeStr = String(endTimeValue).trim();
+        const timeMatch = timeStr.match(/(\d+):(\d+)\s*(AM|PM)?/i);
+
+        if (timeMatch) {
+          let hours = parseInt(timeMatch[1], 10);
+          const minutes = parseInt(timeMatch[2], 10);
+          const modifier = timeMatch[3] ? timeMatch[3].toUpperCase() : null;
+
+          if (modifier === "PM" && hours < 12) hours += 12;
+          if (modifier === "AM" && hours === 12) hours = 0;
+
+          endHours = hours;
+          endMinutes = minutes;
+          endSeconds = 0;
+        }
+      } else if (!endDateValue && event.time) {
+        const timeStr = event.time.trim();
+        const timeMatch = timeStr.match(/(\d+):(\d+)\s*(AM|PM)?/i);
+
+        if (timeMatch) {
+          let hours = parseInt(timeMatch[1], 10);
+          const minutes = parseInt(timeMatch[2], 10);
+          const modifier = timeMatch[3] ? timeMatch[3].toUpperCase() : null;
+
+          if (modifier === "PM" && hours < 12) hours += 12;
+          if (modifier === "AM" && hours === 12) hours = 0;
+
+          endHours = (hours + 3) % 24;
+          endMinutes = minutes;
+          endSeconds = 0;
         }
       }
 
-      // Create event end datetime in IST (month is 0-indexed)
       const eventEndIST = new Date(
-        endYear,
-        endMonth - 1,
-        endDay,
+        year,
+        month,
+        day,
         endHours,
         endMinutes,
-        0
+        endSeconds
       );
 
-      // Get current time in IST
-      const now = new Date();
-      const nowISTString = now.toLocaleString("en-US", {
+      const nowISTString = new Date().toLocaleString("en-US", {
         timeZone: "Asia/Kolkata",
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        hour12: false,
       });
+      const nowIST = new Date(nowISTString);
 
-      // Parse current IST time
-      const [datePartNow, timePartNow] = nowISTString.split(", ");
-      const [monthNow, dayNow, yearNow] = datePartNow
+      const nowISTParts = nowISTString.split(", ");
+      const [monthNow, dayNow, yearNow] = nowISTParts[0]
         .split("/")
-        .map((num) => parseInt(num));
-      const [hoursNow, minutesNow, secondsNow] = timePartNow
-        .split(":")
-        .map((num) => parseInt(num));
+        .map((num) => parseInt(num, 10));
+      const [timePart, ampm] = nowISTParts[1].split(" ");
+      const [hoursStr, minutesStr, secondsStr] = timePart.split(":");
+      let hoursNow = parseInt(hoursStr, 10);
+      const minutesNow = parseInt(minutesStr, 10);
+      const secondsNow = parseInt(secondsStr, 10);
+
+      if (ampm === "PM" && hoursNow < 12) hoursNow += 12;
+      if (ampm === "AM" && hoursNow === 12) hoursNow = 0;
+
       const nowISTDate = new Date(
         yearNow,
         monthNow - 1,
@@ -288,98 +309,138 @@ export default function Page({ params }) {
     }
   };
 
-  useEffect(() => {
-    if (user && event) {
-      const fetchUserBookings = async () => {
-        setLoadingBookings(true);
-        const { data, error } = await supabase
-          .from("bookings")
-          .select("tickets")
-          .eq("eventId", event.id)
-          .eq("userId", user.uid)
-          .eq("status", "CONFIRMED");
-
-        if (error) {
-          console.error("Error fetching user bookings:", error);
-        } else {
-          const totalTickets = data.reduce(
-            (sum, booking) => sum + booking.tickets,
-            0
-          );
-          setUserTotalTickets(totalTickets);
-        }
-        setLoadingBookings(false);
-      };
-
-      fetchUserBookings();
-    } else {
-      setLoadingBookings(false);
-    }
-  }, [user, event]);
-
-  useEffect(() => {
+  // Fetch event details
+  const fetchEventDetails = useCallback(async () => {
     if (!p?.id) return;
 
-    console.log("Fetching event details for ID:", p.id);
-
-    // Add cache buster to force fresh data
-    const cacheBuster = Date.now();
-
-    fetch(`/api/events/${p.id}?_=${cacheBuster}`, {
-      cache: "no-store",
-      headers: {
-        "Cache-Control": "no-cache",
-      },
-    })
-      .then((res) => {
-        if (!res.ok) throw new Error("Not found");
-        return res.json();
-      })
-      .then((data) => {
-        console.log("Event Detail Page - Event data:", {
-          eventId: data.event?.id,
-          title: data.event?.title,
-          imageUrl: data.event?.imageUrl,
-          gallery: data.event?.gallery,
-          bookingsCount: data.event?._count?.bookings,
-          capacity: data.event?.capacity,
-          // Debug endtime fields
-          endTime: data.event?.endTime,
-          endtime: data.event?.endtime,
-          endDate: data.event?.endDate,
-          enddate: data.event?.enddate,
-          time: data.event?.time,
-        });
-        setEvent(data.event);
-        setLoading(false);
-      })
-      .catch((err) => {
-        setError(err.message);
-        setLoading(false);
+    try {
+      const cacheBuster = Date.now();
+      const res = await fetch(`/api/events/${p.id}?_=${cacheBuster}`, {
+        cache: "no-store",
+        headers: {
+          "Cache-Control": "no-cache",
+        },
       });
+
+      if (!res.ok) throw new Error("Not found");
+      const data = await res.json();
+      setEvent(data.event);
+      setLoading(false);
+    } catch (err) {
+      setError(err.message);
+      setLoading(false);
+    }
   }, [p?.id]);
 
-  // Fetch announcements separately
-  useEffect(() => {
+  // Fetch user bookings
+  const fetchUserBookings = useCallback(async () => {
+    if (!p?.id || !user?.uid) {
+      setUserTotalTickets(0);
+      setLoadingBookings(false);
+      return;
+    }
+
+    setLoadingBookings(true);
+    try {
+      const { data, error } = await supabase
+        .from("bookings")
+        .select("tickets")
+        .eq("eventId", p.id)
+        .eq("userId", user.uid)
+        .eq("status", "CONFIRMED");
+
+      if (error) {
+        console.error("Error fetching user bookings:", error);
+      } else if (data) {
+        const totalTickets = data.reduce(
+          (sum, booking) => sum + (booking.tickets || 0),
+          0
+        );
+        setUserTotalTickets(totalTickets);
+      }
+    } catch (err) {
+      console.error("Error fetching user bookings:", err);
+    } finally {
+      setLoadingBookings(false);
+    }
+  }, [p?.id, user?.uid]);
+
+  // Fetch announcements
+  const fetchAnnouncements = useCallback(async () => {
     if (!p?.id) return;
 
-    const fetchAnnouncements = async () => {
-      try {
-        const userId = user?.uid || "";
-        const res = await fetch(
-          `/api/events/${p.id}/announcements?userId=${userId}`
-        );
-        const data = await res.json();
+    try {
+      const userId = user?.uid || user?.id || user?.dbUser?.id || "";
+      const userEmail = user?.email || user?.dbUser?.email || "";
+      const cacheBuster = Date.now();
+      const res = await fetch(
+        `/api/events/${p.id}/announcements?userId=${encodeURIComponent(
+          userId
+        )}&email=${encodeURIComponent(userEmail)}&_=${cacheBuster}`,
+        {
+          cache: "no-store",
+          headers: {
+            "Cache-Control": "no-cache",
+          },
+        }
+      );
+      const data = await res.json();
 
-        setAnnouncements(data.announcements || []);
-        setCanViewAnnouncements(data.canView || false);
-      } catch (err) {
-        console.error("Error fetching announcements:", err);
+      if (data.announcements) {
+        setAnnouncements(data.announcements);
       }
+      if (data.canView || data.hasPurchased || userTotalTickets > 0) {
+        setCanViewAnnouncements(true);
+      } else {
+        setCanViewAnnouncements(data.canView || false);
+      }
+    } catch (err) {
+      console.error("Error fetching announcements:", err);
+    }
+  }, [p?.id, user, userTotalTickets]);
+
+  // Combined refresh function after any ticket purchase
+  const refreshAllEventData = useCallback(() => {
+    console.log("Refreshing all event data after ticket purchase...");
+    fetchEventDetails();
+    fetchUserBookings();
+    fetchAnnouncements();
+  }, [fetchEventDetails, fetchUserBookings, fetchAnnouncements]);
+
+  // Initial event fetch
+  useEffect(() => {
+    fetchEventDetails();
+  }, [fetchEventDetails]);
+
+  // Initial user bookings fetch
+  useEffect(() => {
+    fetchUserBookings();
+  }, [fetchUserBookings]);
+
+  // Initial announcements fetch
+  useEffect(() => {
+    fetchAnnouncements();
+  }, [fetchAnnouncements]);
+
+  // Refresh announcements when switching to announcements tab
+  useEffect(() => {
+    if (activeTab === "announcements") {
+      fetchAnnouncements();
+    }
+  }, [activeTab, fetchAnnouncements]);
+
+  // Listen for global bookingCompleted events (e.g. from modals, webhooks, etc.)
+  useEffect(() => {
+    const handleBookingCompleted = (e) => {
+      console.log("bookingCompleted event received on event detail page:", e.detail);
+      refreshAllEventData();
     };
 
-    fetchAnnouncements();
-  }, [p?.id, user]);
+    window.addEventListener("bookingCompleted", handleBookingCompleted);
+    return () => {
+      window.removeEventListener("bookingCompleted", handleBookingCompleted);
+    };
+  }, [refreshAllEventData]);
 
   // Check if user is admin of this event
   useEffect(() => {
@@ -388,7 +449,7 @@ export default function Page({ params }) {
     const checkAdminStatus = async () => {
       try {
         // Check if user is event creator
-        if (event.userId === user.uid) {
+        if (event.userId === user.uid || event.user_id === user.uid) {
           setIsEventAdmin(true);
           return;
         }
@@ -397,9 +458,9 @@ export default function Page({ params }) {
         const { data } = await supabase
           .from("event_admins")
           .select("id")
-          .eq("event_id", event.id) // Changed from eventId to event_id
-          .eq("user_id", user.uid) // Changed from userId to user_id
-          .single();
+          .eq("event_id", event.id)
+          .eq("user_id", user.uid)
+          .maybeSingle();
 
         setIsEventAdmin(!!data);
       } catch (err) {
@@ -993,55 +1054,50 @@ export default function Page({ params }) {
                 </div>
               )}
 
-              {activeTab === "announcements" && (
-                <div>
-                  <div className="text-center mb-6 md:mb-8">
-                    <div className="inline-flex items-center justify-center w-16 h-16 md:w-24 md:h-24 rounded-full bg-gradient-to-br from-blue-600/20 to-purple-600/20 border-2 border-blue-500/30 mb-4 md:mb-6">
-                      <span className="text-3xl md:text-5xl">📢</span>
-                    </div>
-                    <h3 className="text-xl md:text-3xl font-bold text-white mb-2 px-4">
-                      Event Announcements
-                    </h3>
-                    <p className="text-sm md:text-base text-gray-400 px-4">
-                      {canViewAnnouncements
-                        ? "Important updates from the organizer"
-                        : "Purchase a ticket to view announcements"}
-                    </p>
-                  </div>
+              {activeTab === "announcements" && (() => {
+                const hasAccessToAnnouncements =
+                  canViewAnnouncements ||
+                  userTotalTickets > 0 ||
+                  isEventAdmin ||
+                  Boolean(
+                    user &&
+                      event &&
+                      (event.userId === user.uid ||
+                        event.user_id === user.uid ||
+                        event.userId === user?.id ||
+                        event.user_id === user?.id)
+                  );
 
-                  {/* Admin Notice - Direct to Admin Dashboard */}
-                  {isEventAdmin && (
-                    <div className="mb-6 md:mb-8 p-4 md:p-6 rounded-2xl bg-gradient-to-br from-purple-600/10 via-blue-600/10 to-indigo-600/5 border border-purple-500/20 shadow-lg backdrop-blur-sm">
-                      <div className="flex items-start gap-3 md:gap-4">
-                        <div className="flex-shrink-0 w-10 h-10 md:w-12 md:h-12 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center shadow-lg">
-                          <svg
-                            className="w-5 h-5 md:w-6 md:h-6 text-white"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                            />
-                          </svg>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h4 className="text-base md:text-lg font-bold text-white mb-2">
-                            Event Administrator
-                          </h4>
-                          <p className="text-xs md:text-sm text-gray-300 mb-4">
-                            To post announcements and manage this event, please
-                            use the Admin Dashboard.
-                          </p>
-                          <Link
-                            href="/admin/events"
-                            className="inline-flex items-center gap-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white px-4 md:px-5 py-2 md:py-2.5 rounded-lg text-sm md:text-base font-semibold hover:from-purple-700 hover:to-blue-700 transition-all shadow-lg hover:shadow-xl"
-                          >
+                const displayedAnnouncements =
+                  announcements && announcements.length > 0
+                    ? announcements
+                    : event?.announcements && Array.isArray(event.announcements)
+                    ? event.announcements
+                    : [];
+
+                return (
+                  <div>
+                    <div className="text-center mb-6 md:mb-8">
+                      <div className="inline-flex items-center justify-center w-16 h-16 md:w-24 md:h-24 rounded-full bg-gradient-to-br from-blue-600/20 to-purple-600/20 border-2 border-blue-500/30 mb-4 md:mb-6">
+                        <span className="text-3xl md:text-5xl">📢</span>
+                      </div>
+                      <h3 className="text-xl md:text-3xl font-bold text-white mb-2 px-4">
+                        Event Announcements
+                      </h3>
+                      <p className="text-sm md:text-base text-gray-400 px-4">
+                        {hasAccessToAnnouncements
+                          ? "Important updates from the organizer"
+                          : "Purchase a ticket to view announcements"}
+                      </p>
+                    </div>
+
+                    {/* Admin Notice - Direct to Admin Dashboard */}
+                    {isEventAdmin && (
+                      <div className="mb-6 md:mb-8 p-4 md:p-6 rounded-2xl bg-gradient-to-br from-purple-600/10 via-blue-600/10 to-indigo-600/5 border border-purple-500/20 shadow-lg backdrop-blur-sm">
+                        <div className="flex items-start gap-3 md:gap-4">
+                          <div className="flex-shrink-0 w-10 h-10 md:w-12 md:h-12 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center shadow-lg">
                             <svg
-                              className="w-4 h-4 md:w-5 md:h-5"
+                              className="w-5 h-5 md:w-6 md:h-6 text-white"
                               fill="none"
                               stroke="currentColor"
                               viewBox="0 0 24 24"
@@ -1050,51 +1106,130 @@ export default function Page({ params }) {
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
                                 strokeWidth={2}
-                                d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
-                              />
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                               />
                             </svg>
-                            <span>Go to Admin Dashboard</span>
-                          </Link>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="text-base md:text-lg font-bold text-white mb-2">
+                              Event Administrator
+                            </h4>
+                            <p className="text-xs md:text-sm text-gray-300 mb-4">
+                              To post announcements and manage this event, please
+                              use the Admin Dashboard.
+                            </p>
+                            <Link
+                              href="/admin/events"
+                              className="inline-flex items-center gap-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white px-4 md:px-5 py-2 md:py-2.5 rounded-lg text-sm md:text-base font-semibold hover:from-purple-700 hover:to-blue-700 transition-all shadow-lg hover:shadow-xl"
+                            >
+                              <svg
+                                className="w-4 h-4 md:w-5 md:h-5"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+                                />
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                                />
+                              </svg>
+                              <span>Go to Admin Dashboard</span>
+                            </Link>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  )}
+                    )}
 
-                  {/* Announcements List */}
-                  {canViewAnnouncements ? (
-                    announcements && announcements.length > 0 ? (
-                      <div className="space-y-4 md:space-y-6">
-                        {announcements.map((announcement, index) => (
-                          <div
-                            key={announcement.id || index}
-                            className="group relative"
-                          >
-                            {/* Message Card */}
-                            <div className="relative p-4 md:p-6 rounded-xl md:rounded-2xl bg-gradient-to-br from-slate-800/80 to-slate-900/80 backdrop-blur-sm border border-white/10 shadow-xl hover:shadow-2xl hover:border-blue-500/30 transition-all duration-300">
-                              {/* Header */}
-                              <div className="flex items-start justify-between mb-3 md:mb-4 gap-2">
-                                <div className="flex items-start md:items-center gap-2 md:gap-3 flex-1 min-w-0">
-                                  {/* Icon */}
-                                  <div className="flex-shrink-0 w-8 h-8 md:w-10 md:h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center shadow-lg">
-                                    <span className="text-base md:text-xl">
-                                      📢
-                                    </span>
+                    {/* Announcements List */}
+                    {hasAccessToAnnouncements ? (
+                      displayedAnnouncements && displayedAnnouncements.length > 0 ? (
+                        <div className="space-y-4 md:space-y-6">
+                          {displayedAnnouncements.map((announcement, index) => (
+                            <div
+                              key={announcement.id || index}
+                              className="group relative"
+                            >
+                              {/* Message Card */}
+                              <div className="relative p-4 md:p-6 rounded-xl md:rounded-2xl bg-gradient-to-br from-slate-800/80 to-slate-900/80 backdrop-blur-sm border border-white/10 shadow-xl hover:shadow-2xl hover:border-blue-500/30 transition-all duration-300">
+                                {/* Header */}
+                                <div className="flex items-start justify-between mb-3 md:mb-4 gap-2">
+                                  <div className="flex items-start md:items-center gap-2 md:gap-3 flex-1 min-w-0">
+                                    {/* Icon */}
+                                    <div className="flex-shrink-0 w-8 h-8 md:w-10 md:h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center shadow-lg">
+                                      <span className="text-base md:text-xl">
+                                        📢
+                                      </span>
+                                    </div>
+
+                                    {/* Timestamp */}
+                                    <div className="flex-1 min-w-0">
+                                      <div className="text-xs md:text-sm font-semibold text-white">
+                                        Event Organizer
+                                      </div>
+                                      <div className="text-[10px] md:text-xs text-gray-400 flex items-center gap-1">
+                                        <svg
+                                          className="w-2.5 h-2.5 md:w-3 md:h-3 flex-shrink-0"
+                                          fill="none"
+                                          stroke="currentColor"
+                                          viewBox="0 0 24 24"
+                                        >
+                                          <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                                          />
+                                        </svg>
+                                        <span className="truncate">
+                                          {new Date(
+                                            announcement.createdAt
+                                          ).toLocaleDateString("en-IN", {
+                                            year: "numeric",
+                                            month: "short",
+                                            day: "numeric",
+                                            hour: "2-digit",
+                                            minute: "2-digit",
+                                            timeZone: "Asia/Kolkata",
+                                          })}
+                                        </span>
+                                      </div>
+                                    </div>
                                   </div>
 
-                                  {/* Timestamp */}
-                                  <div className="flex-1 min-w-0">
-                                    <div className="text-xs md:text-sm font-semibold text-white">
-                                      Event Organizer
-                                    </div>
-                                    <div className="text-[10px] md:text-xs text-gray-400 flex items-center gap-1">
+                                  {/* Delete Button */}
+                                  {isEventAdmin && (
+                                    <button
+                                      onClick={async () => {
+                                        if (!confirm("Delete this announcement?"))
+                                          return;
+                                        try {
+                                          const res = await fetch(
+                                            `/api/events/${event.id}/announcements?announcementId=${announcement.id}&userId=${user.uid}`,
+                                            { method: "DELETE" }
+                                          );
+                                          const data = await res.json();
+                                          if (data.success) {
+                                            setAnnouncements(data.announcements);
+                                          }
+                                        } catch (err) {
+                                          console.error(
+                                            "Error deleting announcement:",
+                                            err
+                                          );
+                                        }
+                                      }}
+                                      className="md:opacity-0 md:group-hover:opacity-100 transition-opacity px-2 md:px-3 py-1 md:py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 text-xs md:text-sm font-medium border border-red-500/20 hover:border-red-500/40 flex items-center gap-1 md:gap-1.5 flex-shrink-0"
+                                    >
                                       <svg
-                                        className="w-2.5 h-2.5 md:w-3 md:h-3 flex-shrink-0"
+                                        className="w-3 h-3 md:w-4 md:h-4"
                                         fill="none"
                                         stroke="currentColor"
                                         viewBox="0 0 24 24"
@@ -1103,114 +1238,62 @@ export default function Page({ params }) {
                                           strokeLinecap="round"
                                           strokeLinejoin="round"
                                           strokeWidth={2}
-                                          d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
                                         />
                                       </svg>
-                                      <span className="truncate">
-                                        {new Date(
-                                          announcement.createdAt
-                                        ).toLocaleDateString("en-IN", {
-                                          year: "numeric",
-                                          month: "short",
-                                          day: "numeric",
-                                          hour: "2-digit",
-                                          minute: "2-digit",
-                                          timeZone: "Asia/Kolkata",
-                                        })}
+                                      <span className="hidden md:inline">
+                                        Delete
                                       </span>
-                                    </div>
-                                  </div>
+                                    </button>
+                                  )}
                                 </div>
 
-                                {/* Delete Button */}
-                                {isEventAdmin && (
-                                  <button
-                                    onClick={async () => {
-                                      if (!confirm("Delete this announcement?"))
-                                        return;
-                                      try {
-                                        const res = await fetch(
-                                          `/api/events/${event.id}/announcements?announcementId=${announcement.id}&userId=${user.uid}`,
-                                          { method: "DELETE" }
-                                        );
-                                        const data = await res.json();
-                                        if (data.success) {
-                                          setAnnouncements(data.announcements);
-                                        }
-                                      } catch (err) {
-                                        console.error(
-                                          "Error deleting announcement:",
-                                          err
-                                        );
-                                      }
-                                    }}
-                                    className="md:opacity-0 md:group-hover:opacity-100 transition-opacity px-2 md:px-3 py-1 md:py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 text-xs md:text-sm font-medium border border-red-500/20 hover:border-red-500/40 flex items-center gap-1 md:gap-1.5 flex-shrink-0"
-                                  >
-                                    <svg
-                                      className="w-3 h-3 md:w-4 md:h-4"
-                                      fill="none"
-                                      stroke="currentColor"
-                                      viewBox="0 0 24 24"
-                                    >
-                                      <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                                      />
-                                    </svg>
-                                    <span className="hidden md:inline">
-                                      Delete
-                                    </span>
-                                  </button>
-                                )}
-                              </div>
+                                {/* Message Content */}
+                                <div className="md:pl-13">
+                                  <div className="relative">
+                                    {/* Message Text */}
+                                    <p className="text-white/90 leading-relaxed whitespace-pre-wrap text-sm md:text-[15px] font-normal break-words">
+                                      {announcement.message}
+                                    </p>
 
-                              {/* Message Content */}
-                              <div className="md:pl-13">
-                                <div className="relative">
-                                  {/* Message Text */}
-                                  <p className="text-white/90 leading-relaxed whitespace-pre-wrap text-sm md:text-[15px] font-normal break-words">
-                                    {announcement.message}
-                                  </p>
-
-                                  {/* Decorative gradient line - hidden on mobile */}
-                                  <div className="hidden md:block absolute -left-13 top-0 bottom-0 w-0.5 bg-gradient-to-b from-blue-500 via-purple-500 to-transparent opacity-50"></div>
+                                    {/* Decorative gradient line - hidden on mobile */}
+                                    <div className="hidden md:block absolute -left-13 top-0 bottom-0 w-0.5 bg-gradient-to-b from-blue-500 via-purple-500 to-transparent opacity-50"></div>
+                                  </div>
                                 </div>
                               </div>
                             </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-8 md:py-12 px-4">
+                          <div className="text-4xl md:text-5xl mb-3 md:mb-4">
+                            📭
                           </div>
-                        ))}
-                      </div>
+                          <h4 className="text-lg md:text-xl font-semibold text-white mb-2">
+                            No Announcements Yet
+                          </h4>
+                          <p className="text-sm md:text-base text-gray-400">
+                            The organizer hasn't posted any announcements.
+                          </p>
+                        </div>
+                      )
                     ) : (
                       <div className="text-center py-8 md:py-12 px-4">
-                        <div className="text-4xl md:text-5xl mb-3 md:mb-4">
-                          📭
+                        <div className="inline-flex items-center justify-center w-16 h-16 md:w-20 md:h-20 rounded-full bg-yellow-600/20 border-2 border-yellow-500/30 mb-4 md:mb-6">
+                          <span className="text-3xl md:text-4xl">🔒</span>
                         </div>
-                        <h4 className="text-lg md:text-xl font-semibold text-white mb-2">
-                          No Announcements Yet
+                        <h4 className="text-xl md:text-2xl font-bold text-white mb-2 md:mb-3">
+                          Announcements Locked
                         </h4>
-                        <p className="text-sm md:text-base text-gray-400">
-                          The organizer hasn't posted any announcements.
+                        <p className="text-sm md:text-base text-gray-400 max-w-md mx-auto">
+                          Purchase a ticket to view event announcements and
+                          important updates from the organizer.
                         </p>
                       </div>
-                    )
-                  ) : (
-                    <div className="text-center py-8 md:py-12 px-4">
-                      <div className="inline-flex items-center justify-center w-16 h-16 md:w-20 md:h-20 rounded-full bg-yellow-600/20 border-2 border-yellow-500/30 mb-4 md:mb-6">
-                        <span className="text-3xl md:text-4xl">🔒</span>
-                      </div>
-                      <h4 className="text-xl md:text-2xl font-bold text-white mb-2 md:mb-3">
-                        Announcements Locked
-                      </h4>
-                      <p className="text-sm md:text-base text-gray-400 max-w-md mx-auto">
-                        Purchase a ticket to view event announcements and
-                        important updates from the organizer.
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )}
+                    )}
+                  </div>
+                );
+              })()}
             </div>
           </div>
 
@@ -1729,7 +1812,13 @@ export default function Page({ params }) {
       <BookingModal
         event={event}
         isOpen={showBookingModal}
-        onClose={() => setShowBookingModal(false)}
+        onClose={() => {
+          setShowBookingModal(false);
+          refreshAllEventData();
+        }}
+        onBookingSuccess={() => {
+          refreshAllEventData();
+        }}
       />
 
       {/* Share Modal */}

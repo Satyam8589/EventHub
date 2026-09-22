@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { supabase, getSupabaseAdmin } from "@/lib/supabase";
 import { sendPushNotificationToMultiple } from "@/lib/pushNotification";
 
 // GET - Fetch announcements for an event
@@ -8,22 +8,55 @@ export async function GET(request, { params }) {
     const { id } = await params;
     const url = new URL(request.url);
     const userId = url.searchParams.get("userId");
+    const dbClient = getSupabaseAdmin() || supabase;
 
     // Fetch event announcements
-    const { data: event, error: eventError } = await supabase
+    const { data: event, error: eventError } = await dbClient
       .from("events")
-      .select("announcements, userId")
+      .select("announcements, userId, user_id")
       .eq("id", id)
       .single();
 
-    if (eventError) {
+    if (eventError || !event) {
       return NextResponse.json({ error: "Event not found" }, { status: 404 });
     }
 
-    // Check if user has purchased tickets for this event
+    // Check if user has purchased tickets for this event or is admin/creator
     let hasPurchased = false;
+    let isAdminOrCreator = false;
+
     if (userId) {
-      const { data: bookings, error: bookingError } = await supabase
+      const eventUserId = event.userId || event.user_id;
+      if (eventUserId && eventUserId === userId) {
+        isAdminOrCreator = true;
+      }
+
+      if (!isAdminOrCreator) {
+        const { data: adminData } = await dbClient
+          .from("event_admins")
+          .select("id")
+          .eq("event_id", id)
+          .eq("user_id", userId)
+          .maybeSingle();
+
+        if (adminData) {
+          isAdminOrCreator = true;
+        }
+      }
+
+      if (!isAdminOrCreator) {
+        const { data: userData } = await dbClient
+          .from("users")
+          .select("role")
+          .eq("id", userId)
+          .maybeSingle();
+
+        if (userData?.role === "SUPER_ADMIN") {
+          isAdminOrCreator = true;
+        }
+      }
+
+      const { data: bookings, error: bookingError } = await dbClient
         .from("bookings")
         .select("id")
         .eq("eventId", id)
@@ -32,15 +65,38 @@ export async function GET(request, { params }) {
 
       if (!bookingError && bookings && bookings.length > 0) {
         hasPurchased = true;
+      } else {
+        const { data: snakeBookings } = await dbClient
+          .from("bookings")
+          .select("id")
+          .eq("event_id", id)
+          .eq("user_id", userId)
+          .eq("status", "CONFIRMED");
+
+        if (snakeBookings && snakeBookings.length > 0) {
+          hasPurchased = true;
+        }
       }
     }
 
+    const canView = hasPurchased || isAdminOrCreator;
+
     // Return announcements with access info
-    return NextResponse.json({
-      announcements: event.announcements || [],
-      hasPurchased,
-      canView: hasPurchased,
-    });
+    return NextResponse.json(
+      {
+        announcements: event.announcements || [],
+        hasPurchased,
+        canView,
+        isAdmin: isAdminOrCreator,
+      },
+      {
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+          Pragma: "no-cache",
+          Expires: "0",
+        },
+      }
+    );
   } catch (error) {
     console.error("Error fetching event announcements:", error);
     return NextResponse.json(
