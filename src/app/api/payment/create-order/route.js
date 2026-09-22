@@ -233,11 +233,34 @@ export async function POST(request) {
         updatedAt: nowIstIso,
       };
 
-      const { data: booking, error: bookingError } = await supabase
+      let { data: booking, error: bookingError } = await supabase
         .from("bookings")
         .insert([pendingBooking])
         .select()
         .single();
+
+      // Dynamic retry if column missing (PGRST204)
+      let retries = 0;
+      while (bookingError && bookingError.code === "PGRST204" && retries < 5) {
+        retries++;
+        const match = bookingError.message.match(/Could not find the '([^']+)' column/);
+        if (match && match[1]) {
+          const missingCol = match[1];
+          console.warn(`Column '${missingCol}' missing in bookings table, retrying free booking without it.`);
+          delete pendingBooking[missingCol];
+
+          const retryResult = await supabase
+            .from("bookings")
+            .insert([pendingBooking])
+            .select()
+            .single();
+
+          booking = retryResult.data;
+          bookingError = retryResult.error;
+        } else {
+          break;
+        }
+      }
 
       if (bookingError) {
         console.error("Free booking creation error:", bookingError);
@@ -371,11 +394,34 @@ export async function POST(request) {
       updatedAt: nowIstIso,
     };
 
-    const { data: booking, error: bookingError } = await supabase
+    let { data: booking, error: bookingError } = await supabase
       .from("bookings")
       .insert([pendingBooking])
       .select()
       .single();
+
+    // Dynamic retry if column missing (PGRST204)
+    let paidRetries = 0;
+    while (bookingError && bookingError.code === "PGRST204" && paidRetries < 5) {
+      paidRetries++;
+      const match = bookingError.message.match(/Could not find the '([^']+)' column/);
+      if (match && match[1]) {
+        const missingCol = match[1];
+        console.warn(`Column '${missingCol}' missing in bookings table, retrying paid booking without it.`);
+        delete pendingBooking[missingCol];
+
+        const retryResult = await supabase
+          .from("bookings")
+          .insert([pendingBooking])
+          .select()
+          .single();
+
+        booking = retryResult.data;
+        bookingError = retryResult.error;
+      } else {
+        break;
+      }
+    }
 
     if (bookingError) {
       throw bookingError;
