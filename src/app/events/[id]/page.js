@@ -6,6 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import BookingModal from "@/components/BookingModal";
 import ShareEventCard from "@/components/ShareEventCard";
 import EventLocationMap from "@/components/EventLocationMap";
+import EventLoadingAnimation from "@/components/EventLoadingAnimation";
 import { supabase } from "@/lib/supabase";
 
 export default function Page({ params }) {
@@ -443,18 +444,7 @@ export default function Page({ params }) {
   }, []);
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900">
-        <div className="text-center">
-          <div className="relative w-16 h-16 mx-auto mb-6">
-            <div className="absolute inset-0 border-4 border-blue-500/30 rounded-full"></div>
-            <div className="absolute inset-0 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-          </div>
-          <div className="text-xl font-medium text-white">Loading Event...</div>
-          <div className="text-sm text-gray-400 mt-2">Please wait</div>
-        </div>
-      </div>
-    );
+    return <EventLoadingAnimation message="Loading Event Experience..." />;
   }
 
   if (error || !event) {

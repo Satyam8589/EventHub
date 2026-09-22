@@ -288,7 +288,7 @@ export default function BookingModal({
           tickets: parseInt(formData.numberOfTickets),
           totalAmount: (event?.price || 0) * parseInt(formData.numberOfTickets),
           finalAmount: calculateTotal(),
-          discountCode: discountCode || null,
+          discountCode: appliedDiscount ? appliedDiscount.code : null,
           customFieldResponse: event?.show_custom_field
             ? formData.customFieldResponse
             : null,
@@ -713,12 +713,23 @@ export default function BookingModal({
                       <input
                         type="text"
                         value={discountCode}
-                        onChange={(e) =>
-                          setDiscountCode(e.target.value.toUpperCase())
-                        }
+                        onChange={(e) => {
+                          setDiscountCode(e.target.value.toUpperCase());
+                          if (discountError) setDiscountError("");
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            if (!appliedDiscount && discountCode.trim()) {
+                              handleApplyDiscount();
+                            }
+                          }
+                        }}
                         placeholder="Enter discount code"
                         disabled={validatingDiscount || !!appliedDiscount}
-                        className="flex-1 px-3 py-2.5 rounded-lg bg-white border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-gray-800 placeholder-gray-400 text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
+                        className={`flex-1 px-3 py-2.5 rounded-lg bg-white border ${
+                          discountError ? "border-red-400 focus:ring-red-500" : "border-gray-300 focus:ring-blue-500"
+                        } focus:outline-none focus:ring-2 focus:border-transparent transition-all text-gray-800 placeholder-gray-400 text-sm disabled:bg-gray-100 disabled:cursor-not-allowed`}
                       />
                       {!appliedDiscount ? (
                         <button
@@ -744,7 +755,7 @@ export default function BookingModal({
                     {appliedDiscount && (
                       <div className="mt-2 text-sm text-green-700 font-medium flex items-center gap-1.5">
                         <svg
-                          className="w-4 h-4"
+                          className="w-4 h-4 text-green-600 shrink-0"
                           fill="currentColor"
                           viewBox="0 0 20 20"
                         >
@@ -765,8 +776,19 @@ export default function BookingModal({
 
                     {/* Error Message */}
                     {discountError && (
-                      <p className="mt-2 text-sm text-red-600">
-                        {discountError}
+                      <p className="mt-2 text-sm text-red-600 font-medium flex items-center gap-1.5">
+                        <svg
+                          className="w-4 h-4 text-red-500 shrink-0"
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                        <span>{discountError}</span>
                       </p>
                     )}
                   </div>
