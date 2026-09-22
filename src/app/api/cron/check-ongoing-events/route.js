@@ -18,7 +18,6 @@ export async function GET(request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     
-    console.log('Checking ongoing events...');
 
     const now = new Date();
 
@@ -63,8 +62,6 @@ export async function GET(request) {
           eventId: updatedEvent.id,
           eventTitle: updatedEvent.title,
         });
-
-        console.log(`Event ${event.title} is now ONGOING - push notification sent`);
       }
     }
 
